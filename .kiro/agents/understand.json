@@ -1,0 +1,19 @@
+{
+  "name": "understand",
+  "description": "Understand-Anything: Analyze codebase into knowledge graph and interactive dashboard",
+  "prompt": "You are a codebase analysis agent powered by Understand-Anything skills. You help users understand codebases by building knowledge graphs, generating onboarding guides, explaining code, and launching interactive dashboards. Follow the SKILL.md instructions precisely when executing commands.",
+  "tools": ["@builtin"],
+  "allowedTools": ["@builtin"],
+  "resources": [
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-dashboard/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-chat/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-diff/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-domain/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-explain/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-onboard/SKILL.md",
+    "skill:///home/vanszs/.understand-anything/repo/understand-anything-plugin/skills/understand-knowledge/SKILL.md"
+  ],
+  "welcomeMessage": "Understand-Anything agent ready. Commands: /understand, /understand-dashboard, /understand-chat, /understand-diff, /understand-domain, /understand-explain, /understand-onboard, /understand-knowledge",
+  "keyboardShortcut": "ctrl+shift+u"
+}

@@ -1,0 +1,6653 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "61522e103e61601c553b4544abcd53fa7ebf9f1d",
+  "generatedAt": "2026-05-22T15:44:29.804Z",
+  "files": {
+    ".dockerignore": {
+      "filePath": ".dockerignore",
+      "contentHash": "6025a4327a76060af669ec6603fae88d10c6c228a456585c5c66585e16e83a31",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": false
+    },
+    ".env.enterprise.example": {
+      "filePath": ".env.enterprise.example",
+      "contentHash": "219a6279e42eb00a1013a3270cb347f4d84c2553256a6208ca024bacd833d61c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 6,
+      "hasStructuralAnalysis": false
+    },
+    ".env.example": {
+      "filePath": ".env.example",
+      "contentHash": "5744633baf55469b915ee7124a69f7fcc454e139ecbbefb0ff0ce331d9b06361",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 33,
+      "hasStructuralAnalysis": true
+    },
+    "CHANGELOG.md": {
+      "filePath": "CHANGELOG.md",
+      "contentHash": "b7a6551da445dd33eeb7f35ef757b8c03117f7f1059283a16a9cbbafe66b71d8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 342,
+      "hasStructuralAnalysis": true
+    },
+    "Dockerfile": {
+      "filePath": "Dockerfile",
+      "contentHash": "3fe455736e6ff54f78c6d76c583b274f99faab9325103a375661779a77afd75f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "INTEGRATION_FLOW_DIAGRAMS.md": {
+      "filePath": "INTEGRATION_FLOW_DIAGRAMS.md",
+      "contentHash": "bc86b7a8c985122787da04c3c7ba00e3da0011946acd5f216e2cf7d318240ab1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 541,
+      "hasStructuralAnalysis": true
+    },
+    "INTEGRATION_PLAN_KRONOS.md": {
+      "filePath": "INTEGRATION_PLAN_KRONOS.md",
+      "contentHash": "57cb1e280f6093badfb1dbe4d1c5be61c344f601e3bfa260958910761d194dd6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1187,
+      "hasStructuralAnalysis": true
+    },
+    "LEARNING_PLAN.md": {
+      "filePath": "LEARNING_PLAN.md",
+      "contentHash": "13d490ddc9e521da83d07286a5b1033cdd2f4eaf10d61d1c77da2bf3864c5ea9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 338,
+      "hasStructuralAnalysis": true
+    },
+    "READING_GUIDE.md": {
+      "filePath": "READING_GUIDE.md",
+      "contentHash": "341fc5e19160d1097f4e45be358508c0c7c9e825260f5738394a2d12f8c42524",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1307,
+      "hasStructuralAnalysis": true
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "32871cee2625adf0ac0e00d59a4775f4cfa3041dc43e2c5a9a97fe771d8e47a7",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 277,
+      "hasStructuralAnalysis": true
+    },
+    "cli/__init__.py": {
+      "filePath": "cli/__init__.py",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": true
+    },
+    "cli/announcements.py": {
+      "filePath": "cli/announcements.py",
+      "contentHash": "2c3dd67fc0bea2f21d0f24f8c2e2ee470e4cdc41b601917334db8d5fd1f90d9c",
+      "functions": [
+        {
+          "name": "fetch_announcements",
+          "params": [
+            "url",
+            "timeout"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "display_announcements",
+          "params": [
+            "console",
+            "data"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "getpass",
+          "specifiers": [
+            "getpass"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "rich.console",
+          "specifiers": [
+            "Console"
+          ]
+        },
+        {
+          "source": "rich.panel",
+          "specifiers": [
+            "Panel"
+          ]
+        },
+        {
+          "source": "cli.config",
+          "specifiers": [
+            "CLI_CONFIG"
+          ]
+        }
+      ],
+      "exports": [
+        "fetch_announcements",
+        "display_announcements"
+      ],
+      "totalLines": 52,
+      "hasStructuralAnalysis": true
+    },
+    "cli/config.py": {
+      "filePath": "cli/config.py",
+      "contentHash": "80f45b542b9842df01b413fd3fe74b086c838163f3a184d97a43ee1290087fa3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 7,
+      "hasStructuralAnalysis": true
+    },
+    "cli/main.py": {
+      "filePath": "cli/main.py",
+      "contentHash": "24747a392a98a77482579e802dffaf13ae18bc165df96863c8b0dcdfd6b50e1b",
+      "functions": [
+        {
+          "name": "create_layout",
+          "params": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "format_tokens",
+          "params": [
+            "n"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "update_display",
+          "params": [
+            "layout",
+            "spinner_text",
+            "stats_handler",
+            "start_time"
+          ],
+          "exported": true,
+          "lineCount": 205
+        },
+        {
+          "name": "get_user_selections",
+          "params": [],
+          "exported": true,
+          "lineCount": 175
+        },
+        {
+          "name": "get_ticker",
+          "params": [],
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "get_analysis_date",
+          "params": [],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "save_report_to_disk",
+          "params": [
+            "final_state",
+            "ticker",
+            "save_path"
+          ],
+          "exported": true,
+          "lineCount": 88
+        },
+        {
+          "name": "display_complete_report",
+          "params": [
+            "final_state"
+          ],
+          "exported": true,
+          "lineCount": 59
+        },
+        {
+          "name": "update_research_team_status",
+          "params": [
+            "status"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "update_analyst_statuses",
+          "params": [
+            "message_buffer",
+            "chunk",
+            "wall_time_tracker"
+          ],
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "extract_content_string",
+          "params": [
+            "content"
+          ],
+          "exported": true,
+          "lineCount": 40
+        },
+        {
+          "name": "classify_message_type",
+          "params": [
+            "message"
+          ],
+          "returnType": "tuple[str, str | None]",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "format_tool_args",
+          "params": [
+            "args",
+            "max_length"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "run_analysis",
+          "params": [
+            "checkpoint"
+          ],
+          "exported": true,
+          "lineCount": 287
+        },
+        {
+          "name": "analyze",
+          "params": [
+            "checkpoint",
+            "clear_checkpoints"
+          ],
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [
+        {
+          "name": "MessageBuffer",
+          "methods": [
+            "__init__",
+            "init_for_analysis",
+            "get_completed_reports_count",
+            "add_message",
+            "add_tool_call",
+            "update_agent_status",
+            "update_report_section",
+            "_update_current_report",
+            "_update_final_report"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 184
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "typer",
+          "specifiers": [
+            "typer"
+          ]
+        },
+        {
+          "source": "questionary",
+          "specifiers": [
+            "questionary"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "functools",
+          "specifiers": [
+            "wraps"
+          ]
+        },
+        {
+          "source": "rich.console",
+          "specifiers": [
+            "Console"
+          ]
+        },
+        {
+          "source": "rich.panel",
+          "specifiers": [
+            "Panel"
+          ]
+        },
+        {
+          "source": "rich.spinner",
+          "specifiers": [
+            "Spinner"
+          ]
+        },
+        {
+          "source": "rich.live",
+          "specifiers": [
+            "Live"
+          ]
+        },
+        {
+          "source": "rich.columns",
+          "specifiers": [
+            "Columns"
+          ]
+        },
+        {
+          "source": "rich.markdown",
+          "specifiers": [
+            "Markdown"
+          ]
+        },
+        {
+          "source": "rich.layout",
+          "specifiers": [
+            "Layout"
+          ]
+        },
+        {
+          "source": "rich.text",
+          "specifiers": [
+            "Text"
+          ]
+        },
+        {
+          "source": "rich.table",
+          "specifiers": [
+            "Table"
+          ]
+        },
+        {
+          "source": "collections",
+          "specifiers": [
+            "deque"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "rich.tree",
+          "specifiers": [
+            "Tree"
+          ]
+        },
+        {
+          "source": "rich",
+          "specifiers": [
+            "box"
+          ]
+        },
+        {
+          "source": "rich.align",
+          "specifiers": [
+            "Align"
+          ]
+        },
+        {
+          "source": "rich.rule",
+          "specifiers": [
+            "Rule"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.trading_graph",
+          "specifiers": [
+            "TradingAgentsGraph"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.analyst_execution",
+          "specifiers": [
+            "AnalystWallTimeTracker",
+            "build_analyst_execution_plan",
+            "get_initial_analyst_node",
+            "sync_analyst_tracker_from_chunk"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        },
+        {
+          "source": "cli.models",
+          "specifiers": [
+            "AnalystType"
+          ]
+        },
+        {
+          "source": "cli.utils",
+          "specifiers": [
+            "*"
+          ]
+        },
+        {
+          "source": "cli.announcements",
+          "specifiers": [
+            "fetch_announcements",
+            "display_announcements"
+          ]
+        },
+        {
+          "source": "cli.stats_handler",
+          "specifiers": [
+            "StatsCallbackHandler"
+          ]
+        }
+      ],
+      "exports": [
+        "MessageBuffer",
+        "create_layout",
+        "format_tokens",
+        "update_display",
+        "get_user_selections",
+        "get_ticker",
+        "get_analysis_date",
+        "save_report_to_disk",
+        "display_complete_report",
+        "update_research_team_status",
+        "update_analyst_statuses",
+        "extract_content_string",
+        "classify_message_type",
+        "format_tool_args",
+        "run_analysis",
+        "analyze"
+      ],
+      "totalLines": 1288,
+      "hasStructuralAnalysis": true
+    },
+    "cli/models.py": {
+      "filePath": "cli/models.py",
+      "contentHash": "453bb179a7a8cc30e24378d96a9b387e917316fad235c4b3c129de3939fb9ef6",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AnalystType",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "AssetType",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "imports": [
+        {
+          "source": "enum",
+          "specifiers": [
+            "Enum"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "List",
+            "Optional",
+            "Dict"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        }
+      ],
+      "exports": [
+        "AnalystType",
+        "AssetType"
+      ],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    "cli/static/welcome.txt": {
+      "filePath": "cli/static/welcome.txt",
+      "contentHash": "070c00fb5cf458d12fce27c57442ed3f54fb1871871e576688d84b456806ec0e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": false
+    },
+    "cli/stats_handler.py": {
+      "filePath": "cli/stats_handler.py",
+      "contentHash": "20328bb8493a84961a45fb6aac41a4698c04fc5699c66f83a58f5bd6a70ab010",
+      "functions": [],
+      "classes": [
+        {
+          "name": "StatsCallbackHandler",
+          "methods": [
+            "__init__",
+            "on_llm_start",
+            "on_chat_model_start",
+            "on_llm_end",
+            "on_tool_start",
+            "get_stats"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 68
+        }
+      ],
+      "imports": [
+        {
+          "source": "threading",
+          "specifiers": [
+            "threading"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict",
+            "List",
+            "Union"
+          ]
+        },
+        {
+          "source": "langchain_core.callbacks",
+          "specifiers": [
+            "BaseCallbackHandler"
+          ]
+        },
+        {
+          "source": "langchain_core.outputs",
+          "specifiers": [
+            "LLMResult"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        }
+      ],
+      "exports": [
+        "StatsCallbackHandler"
+      ],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
+    "cli/utils.py": {
+      "filePath": "cli/utils.py",
+      "contentHash": "97821d0151d2247a47f1e5173f6791eae78f673d9c92b5ae262d5990410ea824",
+      "functions": [
+        {
+          "name": "get_ticker",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "normalize_ticker_symbol",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "detect_asset_type",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "AssetType",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "filter_analysts_for_asset_type",
+          "params": [
+            "analysts",
+            "asset_type"
+          ],
+          "returnType": "List[AnalystType]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "get_analysis_date",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 31
+        },
+        {
+          "name": "select_analysts",
+          "params": [
+            "asset_type"
+          ],
+          "returnType": "List[AnalystType]",
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "select_research_depth",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "_fetch_openrouter_models",
+          "params": [],
+          "returnType": "List[Tuple[str, str]]",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "select_openrouter_model",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "_prompt_custom_model_id",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_select_model",
+          "params": [
+            "provider",
+            "mode"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 35
+        },
+        {
+          "name": "select_shallow_thinking_agent",
+          "params": [
+            "provider"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "select_deep_thinking_agent",
+          "params": [
+            "provider"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "select_llm_provider",
+          "params": [],
+          "returnType": "tuple[str, str | None]",
+          "exported": true,
+          "lineCount": 43
+        },
+        {
+          "name": "ask_openai_reasoning_effort",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "ask_anthropic_effort",
+          "params": [],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "ask_gemini_thinking_config",
+          "params": [],
+          "returnType": "str | None",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "ask_glm_region",
+          "params": [],
+          "returnType": "tuple[str, str]",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "ask_qwen_region",
+          "params": [],
+          "returnType": "tuple[str, str]",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "ask_minimax_region",
+          "params": [],
+          "returnType": "tuple[str, str]",
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "confirm_ollama_endpoint",
+          "params": [
+            "url"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "ensure_api_key",
+          "params": [
+            "provider"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 41
+        },
+        {
+          "name": "ask_output_language",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 32
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "List",
+            "Optional",
+            "Tuple",
+            "Dict"
+          ]
+        },
+        {
+          "source": "questionary",
+          "specifiers": [
+            "questionary"
+          ]
+        },
+        {
+          "source": "dotenv",
+          "specifiers": [
+            "find_dotenv",
+            "set_key"
+          ]
+        },
+        {
+          "source": "rich.console",
+          "specifiers": [
+            "Console"
+          ]
+        },
+        {
+          "source": "cli.models",
+          "specifiers": [
+            "AnalystType",
+            "AssetType"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.api_key_env",
+          "specifiers": [
+            "get_api_key_env"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.model_catalog",
+          "specifiers": [
+            "get_model_options"
+          ]
+        }
+      ],
+      "exports": [
+        "get_ticker",
+        "normalize_ticker_symbol",
+        "detect_asset_type",
+        "filter_analysts_for_asset_type",
+        "get_analysis_date",
+        "select_analysts",
+        "select_research_depth",
+        "_fetch_openrouter_models",
+        "select_openrouter_model",
+        "_prompt_custom_model_id",
+        "_select_model",
+        "select_shallow_thinking_agent",
+        "select_deep_thinking_agent",
+        "select_llm_provider",
+        "ask_openai_reasoning_effort",
+        "ask_anthropic_effort",
+        "ask_gemini_thinking_config",
+        "ask_glm_region",
+        "ask_qwen_region",
+        "ask_minimax_region",
+        "confirm_ollama_endpoint",
+        "ensure_api_key",
+        "ask_output_language"
+      ],
+      "totalLines": 552,
+      "hasStructuralAnalysis": true
+    },
+    "docker-compose.yml": {
+      "filePath": "docker-compose.yml",
+      "contentHash": "9828d5ee18be74c47cdb65f5cd70b201e9f8c8cb155e57ddc1ff52b55b5687ec",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 36,
+      "hasStructuralAnalysis": true
+    },
+    "main.py": {
+      "filePath": "main.py",
+      "contentHash": "e52b1e3f7ee662ea70eb11374caf173e2396fb68b0979e27ed61dc416b93f08f",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.graph.trading_graph",
+          "specifiers": [
+            "TradingAgentsGraph"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 20,
+      "hasStructuralAnalysis": true
+    },
+    "pyproject.toml": {
+      "filePath": "pyproject.toml",
+      "contentHash": "0beeba81368616a7308d0436ee0fd7cc8bc1b24eeaadb03385aff26bf253aad9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "scripts/smoke_structured_output.py": {
+      "filePath": "scripts/smoke_structured_output.py",
+      "contentHash": "9824da111bc4febdd8c4fb76a76bce02d0d2a4c4a9b8b3c2d150bc9fc1dd2ab2",
+      "functions": [
+        {
+          "name": "_make_rm_state",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_make_trader_state",
+          "params": [
+            "investment_plan"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_make_pm_state",
+          "params": [
+            "investment_plan",
+            "trader_plan"
+          ],
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "_print_section",
+          "params": [
+            "title",
+            "content"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "main",
+          "params": [],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 66
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "argparse",
+          "specifiers": [
+            "argparse"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "sys",
+          "specifiers": [
+            "sys"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.managers.portfolio_manager",
+          "specifiers": [
+            "create_portfolio_manager"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.managers.research_manager",
+          "specifiers": [
+            "create_research_manager"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.trader.trader",
+          "specifiers": [
+            "create_trader"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.signal_processing",
+          "specifiers": [
+            "SignalProcessor"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients",
+          "specifiers": [
+            "create_llm_client"
+          ]
+        }
+      ],
+      "exports": [
+        "_make_rm_state",
+        "_make_trader_state",
+        "_make_pm_state",
+        "_print_section",
+        "main"
+      ],
+      "totalLines": 177,
+      "hasStructuralAnalysis": true
+    },
+    "test.py": {
+      "filePath": "test.py",
+      "contentHash": "c6c232120328b5d114716ed50c5673929ee19228cb97998a29fa5d8b88936b2c",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.y_finance",
+          "specifiers": [
+            "get_YFin_data_online",
+            "get_stock_stats_indicators_window",
+            "get_yfinance_balance_sheet",
+            "get_yfinance_cashflow",
+            "get_yfinance_income_statement",
+            "get_yfinance_insider_transactions"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 12,
+      "hasStructuralAnalysis": true
+    },
+    "tests/__init__.py": {
+      "filePath": "tests/__init__.py",
+      "contentHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": true
+    },
+    "tests/conftest.py": {
+      "filePath": "tests/conftest.py",
+      "contentHash": "bf4d3877265b39ea5984f90d05146bfa299af8f2d6d45792588839a19cc9202b",
+      "functions": [
+        {
+          "name": "pytest_configure",
+          "params": [
+            "config"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_dummy_api_keys",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "mock_llm_client",
+          "params": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock",
+            "patch"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        }
+      ],
+      "exports": [
+        "pytest_configure",
+        "_dummy_api_keys",
+        "mock_llm_client"
+      ],
+      "totalLines": 47,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_analyst_execution.py": {
+      "filePath": "tests/test_analyst_execution.py",
+      "contentHash": "781abe442bac36eb7d1caf3e811c28473cec0a16475f4a4a52064cd6f9e6e251",
+      "functions": [],
+      "classes": [
+        {
+          "name": "AnalystExecutionPlanTests",
+          "methods": [
+            "test_build_plan_preserves_selected_order",
+            "test_rejects_unknown_analyst_keys",
+            "test_requires_positive_concurrency_limit",
+            "test_get_initial_analyst_node_uses_plan_metadata",
+            "test_social_key_displays_as_sentiment_analyst"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "AnalystWallTimeTrackerTests",
+          "methods": [
+            "test_records_wall_time_when_analyst_completes",
+            "test_formats_summary_in_plan_order",
+            "test_syncs_wall_time_from_sequential_chunks"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 47
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.analyst_execution",
+          "specifiers": [
+            "AnalystWallTimeTracker",
+            "build_analyst_execution_plan",
+            "get_initial_analyst_node",
+            "sync_analyst_tracker_from_chunk"
+          ]
+        }
+      ],
+      "exports": [
+        "AnalystExecutionPlanTests",
+        "AnalystWallTimeTrackerTests"
+      ],
+      "totalLines": 96,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_anthropic_effort.py": {
+      "filePath": "tests/test_anthropic_effort.py",
+      "contentHash": "c97cb68f7e8d4423879791bdc93aa13bcebdf407b0327838e0be2c30b43de6a9",
+      "functions": [
+        {
+          "name": "_capture_kwargs",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestEffortGate",
+          "methods": [
+            "test_haiku_does_not_receive_effort",
+            "test_current_opus_and_sonnet_receive_effort",
+            "test_future_opus_sonnet_inherit_effort_via_pattern",
+            "test_mythos_preview_receives_effort",
+            "test_unknown_anthropic_model_does_not_receive_effort",
+            "test_other_kwargs_still_forwarded_when_effort_skipped"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 61
+        }
+      ],
+      "imports": [
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients",
+          "specifiers": [
+            "mod"
+          ]
+        }
+      ],
+      "exports": [
+        "_capture_kwargs",
+        "TestEffortGate"
+      ],
+      "totalLines": 85,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_api_key_env.py": {
+      "filePath": "tests/test_api_key_env.py",
+      "contentHash": "18f92d91248f32b8723cb9c77b920fea974a1e7285f8bbbda6dbf9e9c7069b6f",
+      "functions": [
+        {
+          "name": "test_every_select_llm_provider_choice_has_an_entry",
+          "params": [],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "test_known_providers_resolve",
+          "params": [
+            "provider",
+            "env_var"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_ollama_has_no_key",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_unknown_provider_returns_none",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_case_insensitive_lookup",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "cli_utils",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_ensure_api_key_returns_existing",
+          "params": [
+            "monkeypatch",
+            "cli_utils"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_ensure_api_key_no_op_for_ollama",
+          "params": [
+            "monkeypatch",
+            "cli_utils"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_ensure_api_key_unknown_provider_no_prompt",
+          "params": [
+            "monkeypatch",
+            "cli_utils"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_ensure_api_key_prompts_and_writes_to_env",
+          "params": [
+            "monkeypatch",
+            "tmp_path",
+            "cli_utils"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "test_ensure_api_key_user_cancels_returns_none",
+          "params": [
+            "monkeypatch",
+            "tmp_path",
+            "cli_utils"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "test_ensure_api_key_updates_existing_env_file",
+          "params": [
+            "monkeypatch",
+            "tmp_path",
+            "cli_utils"
+          ],
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.api_key_env",
+          "specifiers": [
+            "PROVIDER_API_KEY_ENV",
+            "get_api_key_env"
+          ]
+        }
+      ],
+      "exports": [
+        "test_every_select_llm_provider_choice_has_an_entry",
+        "test_known_providers_resolve",
+        "test_ollama_has_no_key",
+        "test_unknown_provider_returns_none",
+        "test_case_insensitive_lookup",
+        "cli_utils",
+        "test_ensure_api_key_returns_existing",
+        "test_ensure_api_key_no_op_for_ollama",
+        "test_ensure_api_key_unknown_provider_no_prompt",
+        "test_ensure_api_key_prompts_and_writes_to_env",
+        "test_ensure_api_key_user_cancels_returns_none",
+        "test_ensure_api_key_updates_existing_env_file"
+      ],
+      "totalLines": 150,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_capabilities.py": {
+      "filePath": "tests/test_capabilities.py",
+      "contentHash": "c9c32f18691135a562188e0090a9a012d6685d66892c00300c8a00dc1946db8a",
+      "functions": [
+        {
+          "name": "test_capabilities_dataclass_is_frozen",
+          "params": [],
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestExactIdMatches",
+          "methods": [
+            "test_deepseek_chat_supports_tool_choice",
+            "test_deepseek_reasoner_rejects_tool_choice",
+            "test_deepseek_v4_flash_rejects_tool_choice",
+            "test_deepseek_v4_pro_rejects_tool_choice"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 19
+        },
+        {
+          "name": "TestPatternMatches",
+          "methods": [
+            "test_future_deepseek_v5_inherits_thinking_quirks",
+            "test_future_deepseek_v9_inherits_thinking_quirks",
+            "test_reasoner_variant_inherits_thinking_quirks",
+            "test_future_minimax_m3_inherits_thinking_quirks",
+            "test_future_minimax_m4_highspeed_inherits_thinking_quirks"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "TestMinimaxExactMatches",
+          "methods": [
+            "test_m2_7_rejects_tool_choice",
+            "test_m2_7_highspeed_rejects_tool_choice",
+            "test_m2_1_rejects_tool_choice",
+            "test_m2_base_rejects_tool_choice",
+            "test_m2_x_requires_reasoning_split",
+            "test_future_m3_inherits_reasoning_split",
+            "test_non_reasoning_minimax_does_not_get_reasoning_split"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 33
+        },
+        {
+          "name": "TestDefault",
+          "methods": [
+            "test_gpt_default",
+            "test_grok_default",
+            "test_unknown_model_default",
+            "test_exact_match_precedes_pattern"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "imports": [
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.capabilities",
+          "specifiers": [
+            "ModelCapabilities",
+            "get_capabilities"
+          ]
+        }
+      ],
+      "exports": [
+        "TestExactIdMatches",
+        "TestPatternMatches",
+        "TestMinimaxExactMatches",
+        "TestDefault",
+        "test_capabilities_dataclass_is_frozen"
+      ],
+      "totalLines": 124,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_checkpoint_resume.py": {
+      "filePath": "tests/test_checkpoint_resume.py",
+      "contentHash": "b5c671e207cbf342b400af0aaaebcd201569a0301f9d84c184630b8ef107fd71",
+      "functions": [
+        {
+          "name": "_node_a",
+          "params": [
+            "state"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_node_b",
+          "params": [
+            "state"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_build_graph",
+          "params": [],
+          "returnType": "StateGraph",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "_SimpleState",
+          "methods": [],
+          "properties": [
+            "count"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "TestCheckpointResume",
+          "methods": [
+            "setUp",
+            "test_crash_and_resume",
+            "test_clear_checkpoint_allows_fresh_start",
+            "test_different_date_starts_fresh"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 96
+        }
+      ],
+      "imports": [
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "tempfile",
+          "specifiers": [
+            "tempfile"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "TypedDict"
+          ]
+        },
+        {
+          "source": "langgraph.checkpoint.sqlite",
+          "specifiers": [
+            "SqliteSaver"
+          ]
+        },
+        {
+          "source": "langgraph.graph",
+          "specifiers": [
+            "END",
+            "StateGraph"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.checkpointer",
+          "specifiers": [
+            "checkpoint_step",
+            "clear_checkpoint",
+            "get_checkpointer",
+            "has_checkpoint",
+            "thread_id"
+          ]
+        }
+      ],
+      "exports": [
+        "_SimpleState",
+        "_node_a",
+        "_node_b",
+        "_build_graph",
+        "TestCheckpointResume"
+      ],
+      "totalLines": 148,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_crypto_asset_mode.py": {
+      "filePath": "tests/test_crypto_asset_mode.py",
+      "contentHash": "0059bda7d1f1589d304074e612ca0b178cfd5180175ca16f95aa30bf3562259c",
+      "functions": [],
+      "classes": [
+        {
+          "name": "CryptoAssetModeTests",
+          "methods": [
+            "test_detects_crypto_pair_symbols",
+            "test_defaults_non_crypto_symbols_to_stock",
+            "test_filters_out_fundamentals_analyst_for_crypto",
+            "test_keeps_all_analysts_for_stock",
+            "test_propagator_includes_asset_type_in_initial_state"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 45
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "cli.models",
+          "specifiers": [
+            "AnalystType",
+            "AssetType"
+          ]
+        },
+        {
+          "source": "cli.utils",
+          "specifiers": [
+            "detect_asset_type",
+            "filter_analysts_for_asset_type"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.propagation",
+          "specifiers": [
+            "Propagator"
+          ]
+        }
+      ],
+      "exports": [
+        "CryptoAssetModeTests"
+      ],
+      "totalLines": 57,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_dataflows_config.py": {
+      "filePath": "tests/test_dataflows_config.py",
+      "contentHash": "024b323f569f9a5b86669bb485d7fb839bb9d4c0e7d3676fef38e784d87a86e6",
+      "functions": [],
+      "classes": [
+        {
+          "name": "DataflowsConfigIsolationTests",
+          "methods": [
+            "setUp",
+            "test_get_config_returns_deep_copy",
+            "test_set_config_does_not_alias_caller_nested_dicts",
+            "test_partial_nested_update_preserves_existing_defaults",
+            "test_nested_dict_updates_merge_one_level_deep"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 49
+        }
+      ],
+      "imports": [
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "default_config"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.config",
+          "specifiers": [
+            "get_config",
+            "set_config"
+          ]
+        }
+      ],
+      "exports": [
+        "DataflowsConfigIsolationTests"
+      ],
+      "totalLines": 62,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_deepseek_reasoning.py": {
+      "filePath": "tests/test_deepseek_reasoning.py",
+      "contentHash": "c76a740ac5a448da09f0fb3d4ba706f1d2cbdfaf84d0b88c5ce6299420c70587",
+      "functions": [
+        {
+          "name": "_bound_kwargs",
+          "params": [
+            "runnable"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_has_real_deepseek_key",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestInputToMessages",
+          "methods": [
+            "test_list_input_returned_as_is",
+            "test_chat_prompt_value_unwrapped",
+            "test_string_input_yields_empty_list"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "TestDeepSeekReasoningContent",
+          "methods": [
+            "_client",
+            "test_capture_on_receive",
+            "test_propagate_on_send",
+            "test_propagate_through_chat_prompt_value"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 60
+        },
+        {
+          "name": "TestStructuredOutputCapabilityDispatch",
+          "methods": [
+            "_client",
+            "test_chat_sends_tool_choice",
+            "test_reasoner_suppresses_tool_choice",
+            "test_v4_flash_suppresses_tool_choice",
+            "test_v4_pro_suppresses_tool_choice",
+            "test_future_v_variant_via_regex",
+            "test_schema_is_still_bound_as_tool"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 50
+        },
+        {
+          "name": "TestDeepSeekLiveStructuredOutput",
+          "methods": [
+            "test_v4_flash_returns_structured_output"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 27
+        },
+        {
+          "name": "TestBaseClassIsolation",
+          "methods": [
+            "test_normalized_does_not_propagate_reasoning_content"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage",
+            "HumanMessage"
+          ]
+        },
+        {
+          "source": "langchain_core.prompt_values",
+          "specifiers": [
+            "ChatPromptValue"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.openai_client",
+          "specifiers": [
+            "DeepSeekChatOpenAI",
+            "NormalizedChatOpenAI",
+            "_input_to_messages"
+          ]
+        }
+      ],
+      "exports": [
+        "TestInputToMessages",
+        "TestDeepSeekReasoningContent",
+        "_bound_kwargs",
+        "TestStructuredOutputCapabilityDispatch",
+        "_has_real_deepseek_key",
+        "TestDeepSeekLiveStructuredOutput",
+        "TestBaseClassIsolation"
+      ],
+      "totalLines": 241,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_env_overrides.py": {
+      "filePath": "tests/test_env_overrides.py",
+      "contentHash": "228516c5ec3d37dd31acc6e8b4ef4e6e16796dea9a7d873531ba7012b308131b",
+      "functions": [
+        {
+          "name": "_reload_with_env",
+          "params": [
+            "monkeypatch",
+            "**overrides"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_no_env_uses_built_in_defaults",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_string_overrides",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "test_int_coercion",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "test_bool_coercion",
+          "params": [
+            "monkeypatch",
+            "raw",
+            "expected"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_empty_env_value_is_passthrough",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_invalid_int_raises",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_unknown_env_var_is_ignored",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "default_config_module"
+          ]
+        }
+      ],
+      "exports": [
+        "_reload_with_env",
+        "test_no_env_uses_built_in_defaults",
+        "test_string_overrides",
+        "test_int_coercion",
+        "test_bool_coercion",
+        "test_empty_env_value_is_passthrough",
+        "test_invalid_int_raises",
+        "test_unknown_env_var_is_ignored"
+      ],
+      "totalLines": 99,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_google_api_key.py": {
+      "filePath": "tests/test_google_api_key.py",
+      "contentHash": "b6b70ed0562260fcdfc158c25f1324caec7dcbddaaeaa47af11c67e3399a0318",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestGoogleApiKeyStandardization",
+          "methods": [
+            "test_api_key_handling"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "patch"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.google_client",
+          "specifiers": [
+            "GoogleClient"
+          ]
+        }
+      ],
+      "exports": [
+        "TestGoogleApiKeyStandardization"
+      ],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_memory_log.py": {
+      "filePath": "tests/test_memory_log.py",
+      "contentHash": "d93cbd1b6e33b1dd2ebc60b0cc6eee592483f93d6065fe8979fce65a698db150",
+      "functions": [
+        {
+          "name": "make_log",
+          "params": [
+            "tmp_path",
+            "filename"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_seed_completed",
+          "params": [
+            "tmp_path",
+            "ticker",
+            "date",
+            "decision_text",
+            "reflection_text",
+            "filename"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_resolve_entry",
+          "params": [
+            "log",
+            "ticker",
+            "date",
+            "decision",
+            "reflection"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "_price_df",
+          "params": [
+            "prices"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_make_pm_state",
+          "params": [
+            "past_context"
+          ],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "_structured_pm_llm",
+          "params": [
+            "captured",
+            "decision"
+          ],
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestTradingMemoryLogCore",
+          "methods": [
+            "test_store_creates_file",
+            "test_store_appends_not_overwrites",
+            "test_store_decision_idempotent",
+            "test_batch_update_resolves_multiple_entries",
+            "test_pending_tag_format",
+            "test_rating_parsed_buy",
+            "test_rating_parsed_overweight",
+            "test_rating_fallback_hold",
+            "test_rating_priority_over_prose",
+            "test_decision_with_markdown_separator",
+            "test_load_entries_empty_file",
+            "test_load_entries_single",
+            "test_load_entries_multiple",
+            "test_decision_content_preserved",
+            "test_get_pending_returns_pending_only",
+            "test_get_past_context_empty",
+            "test_get_past_context_pending_excluded",
+            "test_get_past_context_same_ticker",
+            "test_get_past_context_cross_ticker",
+            "test_n_same_limit_respected",
+            "test_n_cross_limit_respected",
+            "test_no_log_path_is_noop",
+            "test_rotation_disabled_by_default",
+            "test_rotation_prunes_oldest_resolved",
+            "test_rotation_never_prunes_pending",
+            "test_rotation_under_cap_is_noop",
+            "test_rating_parsed_from_bold_markdown",
+            "test_rating_parsed_from_bold_value",
+            "test_rating_label_wins_over_prose_with_markdown",
+            "test_rating_parsed_from_numbered_list"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 271
+        },
+        {
+          "name": "TestDeferredReflection",
+          "methods": [
+            "test_update_replaces_pending_tag",
+            "test_update_appends_reflection",
+            "test_update_preserves_other_entries",
+            "test_update_atomic_write",
+            "test_update_noop_when_no_log_path",
+            "test_formatting_roundtrip_after_update",
+            "test_reflect_on_final_decision_returns_llm_output",
+            "test_reflect_on_final_decision_includes_returns_in_prompt",
+            "test_fetch_returns_valid_ticker",
+            "test_fetch_returns_too_recent",
+            "test_fetch_returns_delisted",
+            "test_fetch_returns_spy_shorter_than_stock",
+            "test_resolve_benchmark_explicit_override",
+            "test_resolve_benchmark_suffix_map",
+            "test_resolve_benchmark_us_ticker_defaults_to_spy",
+            "test_resolve_benchmark_unknown_suffix_falls_back",
+            "test_resolve_benchmark_case_insensitive",
+            "test_reflector_includes_benchmark_in_label",
+            "test_reflector_defaults_to_spy_for_unupdated_callers",
+            "test_resolve_skips_other_tickers",
+            "test_resolve_marks_entry_completed"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 270
+        },
+        {
+          "name": "TestPortfolioManagerInjection",
+          "methods": [
+            "test_past_context_in_initial_state",
+            "test_past_context_defaults_to_empty",
+            "test_pm_prompt_includes_past_context",
+            "test_pm_no_past_context_no_section",
+            "test_pm_returns_rendered_markdown_with_rating",
+            "test_pm_falls_back_to_freetext_when_structured_unavailable",
+            "test_same_ticker_prioritised",
+            "test_cross_ticker_reflection_only",
+            "test_n_same_limit_respected",
+            "test_n_cross_limit_respected",
+            "test_full_cycle_store_resolve_inject"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 126
+        },
+        {
+          "name": "TestLegacyRemoval",
+          "methods": [
+            "test_financial_situation_memory_removed",
+            "test_bm25_not_imported",
+            "test_reflect_and_remember_removed",
+            "test_portfolio_manager_no_memory_param",
+            "test_full_pipeline_no_regression"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 67
+        }
+      ],
+      "imports": [
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock",
+            "patch"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.memory",
+          "specifiers": [
+            "TradingMemoryLog"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "PortfolioDecision",
+            "PortfolioRating"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.reflection",
+          "specifiers": [
+            "Reflector"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.trading_graph",
+          "specifiers": [
+            "TradingAgentsGraph"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.propagation",
+          "specifiers": [
+            "Propagator"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.managers.portfolio_manager",
+          "specifiers": [
+            "create_portfolio_manager"
+          ]
+        }
+      ],
+      "exports": [
+        "make_log",
+        "_seed_completed",
+        "_resolve_entry",
+        "_price_df",
+        "_make_pm_state",
+        "_structured_pm_llm",
+        "TestTradingMemoryLogCore",
+        "TestDeferredReflection",
+        "TestPortfolioManagerInjection",
+        "TestLegacyRemoval"
+      ],
+      "totalLines": 861,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_minimax.py": {
+      "filePath": "tests/test_minimax.py",
+      "contentHash": "5f214a65fb806013542366c66d2714df019de684d98ec6ed3d98a8a7ea092f90",
+      "functions": [
+        {
+          "name": "_client",
+          "params": [
+            "model"
+          ],
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestMinimaxReasoningSplit",
+          "methods": [
+            "test_request_payload_sets_reasoning_split",
+            "test_caller_supplied_reasoning_split_is_preserved",
+            "test_non_reasoning_minimax_does_not_inject_reasoning_split"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "TestMinimaxStructuredOutputDispatch",
+          "methods": [
+            "_bound_kwargs",
+            "test_m2_7_suppresses_tool_choice",
+            "test_m2_7_highspeed_suppresses_tool_choice",
+            "test_schema_still_bound_as_tool"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "HumanMessage"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.openai_client",
+          "specifiers": [
+            "MinimaxChatOpenAI"
+          ]
+        }
+      ],
+      "exports": [
+        "_client",
+        "TestMinimaxReasoningSplit",
+        "TestMinimaxStructuredOutputDispatch"
+      ],
+      "totalLines": 86,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_model_validation.py": {
+      "filePath": "tests/test_model_validation.py",
+      "contentHash": "39550fec1c36d6325f4ba0b35ea13275017d002960ea60c344667146159b9c15",
+      "functions": [],
+      "classes": [
+        {
+          "name": "DummyLLMClient",
+          "methods": [
+            "__init__",
+            "get_llm",
+            "validate_model"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "ModelValidationTests",
+          "methods": [
+            "test_cli_catalog_models_are_all_validator_approved",
+            "test_unknown_model_emits_warning_for_strict_provider",
+            "test_openrouter_and_ollama_accept_custom_models_without_warning"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 31
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "warnings",
+          "specifiers": [
+            "warnings"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.base_client",
+          "specifiers": [
+            "BaseLLMClient"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.model_catalog",
+          "specifiers": [
+            "get_known_models"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients.validators",
+          "specifiers": [
+            "validate_model"
+          ]
+        }
+      ],
+      "exports": [
+        "DummyLLMClient",
+        "ModelValidationTests"
+      ],
+      "totalLines": 56,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_ollama_base_url.py": {
+      "filePath": "tests/test_ollama_base_url.py",
+      "contentHash": "68e722486c5970e9bdc9a457ddb1776578edc5f9459ce97d230c59b9cdd573e5",
+      "functions": [
+        {
+          "name": "_reload_client",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "test_resolver_returns_default_when_env_unset",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_resolver_returns_env_when_set",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_resolver_evaluation_is_call_time",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_resolver_does_not_affect_other_providers",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_client_get_llm_picks_up_env",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_explicit_base_url_overrides_env",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "test_cli_dropdown_uses_env",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "test_cli_dropdown_default_when_unset",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_confirm_endpoint_shows_default",
+          "params": [
+            "monkeypatch",
+            "capsys"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_confirm_endpoint_marks_env_origin",
+          "params": [
+            "monkeypatch",
+            "capsys"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_confirm_endpoint_warns_on_missing_scheme",
+          "params": [
+            "monkeypatch",
+            "capsys"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_confirm_endpoint_warns_on_non_default_port_remote",
+          "params": [
+            "monkeypatch",
+            "capsys"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_confirm_endpoint_quiet_on_local_no_port",
+          "params": [
+            "monkeypatch",
+            "capsys"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "test_ollama_model_labels_no_local_suffix",
+          "params": [],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_ollama_offers_custom_model_id",
+          "params": [],
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        }
+      ],
+      "exports": [
+        "_reload_client",
+        "test_resolver_returns_default_when_env_unset",
+        "test_resolver_returns_env_when_set",
+        "test_resolver_evaluation_is_call_time",
+        "test_resolver_does_not_affect_other_providers",
+        "test_client_get_llm_picks_up_env",
+        "test_explicit_base_url_overrides_env",
+        "test_cli_dropdown_uses_env",
+        "test_cli_dropdown_default_when_unset",
+        "test_confirm_endpoint_shows_default",
+        "test_confirm_endpoint_marks_env_origin",
+        "test_confirm_endpoint_warns_on_missing_scheme",
+        "test_confirm_endpoint_warns_on_non_default_port_remote",
+        "test_confirm_endpoint_quiet_on_local_no_port",
+        "test_ollama_model_labels_no_local_suffix",
+        "test_ollama_offers_custom_model_id"
+      ],
+      "totalLines": 168,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_safe_ticker_component.py": {
+      "filePath": "tests/test_safe_ticker_component.py",
+      "contentHash": "9765db12ab750ef5cb884a14ed4983de0ce9913d9f71624e19229faf9d8868ab",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestSafeTickerComponent",
+          "methods": [
+            "test_accepts_common_ticker_formats",
+            "test_rejects_path_separators",
+            "test_rejects_null_byte_and_whitespace",
+            "test_rejects_empty_or_non_string",
+            "test_rejects_overlong_input",
+            "test_rejects_dot_only_values",
+            "test_traversal_string_does_not_escape_join"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 37
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.utils",
+          "specifiers": [
+            "safe_ticker_component"
+          ]
+        }
+      ],
+      "exports": [
+        "TestSafeTickerComponent"
+      ],
+      "totalLines": 53,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_signal_processing.py": {
+      "filePath": "tests/test_signal_processing.py",
+      "contentHash": "f37954eac82e0df539d03a2a6fde43e4842c779c646402fe616f29206f1055de",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TestParseRating",
+          "methods": [
+            "test_explicit_label_buy",
+            "test_explicit_label_overweight",
+            "test_explicit_label_with_markdown_bold_value",
+            "test_explicit_label_with_markdown_bold_label",
+            "test_rendered_pm_markdown_shape",
+            "test_explicit_label_wins_over_prose_with_markdown",
+            "test_no_rating_returns_default",
+            "test_no_rating_custom_default",
+            "test_all_five_tiers_recognised"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 40
+        },
+        {
+          "name": "TestSignalProcessor",
+          "methods": [
+            "test_returns_rating_from_pm_markdown",
+            "test_makes_no_llm_calls",
+            "test_default_when_no_rating_present"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "imports": [
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.rating",
+          "specifiers": [
+            "RATINGS_5_TIER",
+            "parse_rating"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.signal_processing",
+          "specifiers": [
+            "SignalProcessor"
+          ]
+        }
+      ],
+      "exports": [
+        "TestParseRating",
+        "TestSignalProcessor"
+      ],
+      "totalLines": 91,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_structured_agents.py": {
+      "filePath": "tests/test_structured_agents.py",
+      "contentHash": "0e4befd76fdababd9b0f799001203e4c2f7c31ca6cf182576be2b7874ad0b9c3",
+      "functions": [
+        {
+          "name": "_make_trader_state",
+          "params": [],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "_structured_trader_llm",
+          "params": [
+            "captured",
+            "proposal"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "_make_rm_state",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_structured_rm_llm",
+          "params": [
+            "captured",
+            "plan"
+          ],
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestRenderTraderProposal",
+          "methods": [
+            "test_minimal_required_fields",
+            "test_optional_fields_included_when_present",
+            "test_optional_fields_omitted_when_absent"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "TestRenderResearchPlan",
+          "methods": [
+            "test_required_fields",
+            "test_all_5_tier_ratings_render"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "TestTraderAgent",
+          "methods": [
+            "test_structured_path_produces_rendered_markdown",
+            "test_prompt_includes_investment_plan",
+            "test_falls_back_to_freetext_when_structured_unavailable"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 40
+        },
+        {
+          "name": "TestResearchManagerAgent",
+          "methods": [
+            "test_structured_path_produces_rendered_markdown",
+            "test_prompt_uses_5_tier_rating_scale",
+            "test_falls_back_to_freetext_when_structured_unavailable"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 34
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.managers.research_manager",
+          "specifiers": [
+            "create_research_manager"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "PortfolioRating",
+            "ResearchPlan",
+            "TraderAction",
+            "TraderProposal",
+            "render_research_plan",
+            "render_trader_proposal"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.trader.trader",
+          "specifiers": [
+            "create_trader"
+          ]
+        }
+      ],
+      "exports": [
+        "TestRenderTraderProposal",
+        "TestRenderResearchPlan",
+        "_make_trader_state",
+        "_structured_trader_llm",
+        "TestTraderAgent",
+        "_make_rm_state",
+        "_structured_rm_llm",
+        "TestResearchManagerAgent"
+      ],
+      "totalLines": 233,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_ticker_symbol_handling.py": {
+      "filePath": "tests/test_ticker_symbol_handling.py",
+      "contentHash": "f79da128f337f76c07630f1a73da33c745d562a1128ca9ada2984ea2aee1f2bf",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TickerSymbolHandlingTests",
+          "methods": [
+            "test_normalize_ticker_symbol_preserves_exchange_suffix",
+            "test_build_instrument_context_mentions_exact_symbol"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest",
+          "specifiers": [
+            "unittest"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "cli.utils",
+          "specifiers": [
+            "normalize_ticker_symbol"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context"
+          ]
+        }
+      ],
+      "exports": [
+        "TickerSymbolHandlingTests"
+      ],
+      "totalLines": 22,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/__init__.py": {
+      "filePath": "tradingagents/__init__.py",
+      "contentHash": "f3aa9ce8a7e6ca8f5717e10c75531d70593a3faf9fd7ec3ab7df80566f6a789d",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "warnings",
+          "specifiers": [
+            "warnings"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 39,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/__init__.py": {
+      "filePath": "tradingagents/agents/__init__.py",
+      "contentHash": "4e9832f92a24dc82dec6f023164ea728382766709d05e36b50b6832a1a6c50bc",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".utils.agent_utils",
+          "specifiers": [
+            "create_msg_delete"
+          ]
+        },
+        {
+          "source": ".utils.agent_states",
+          "specifiers": [
+            "AgentState",
+            "InvestDebateState",
+            "RiskDebateState"
+          ]
+        },
+        {
+          "source": ".analysts.fundamentals_analyst",
+          "specifiers": [
+            "create_fundamentals_analyst"
+          ]
+        },
+        {
+          "source": ".analysts.market_analyst",
+          "specifiers": [
+            "create_market_analyst"
+          ]
+        },
+        {
+          "source": ".analysts.news_analyst",
+          "specifiers": [
+            "create_news_analyst"
+          ]
+        },
+        {
+          "source": ".analysts.sentiment_analyst",
+          "specifiers": [
+            "create_sentiment_analyst",
+            "create_social_media_analyst"
+          ]
+        },
+        {
+          "source": ".researchers.bear_researcher",
+          "specifiers": [
+            "create_bear_researcher"
+          ]
+        },
+        {
+          "source": ".researchers.bull_researcher",
+          "specifiers": [
+            "create_bull_researcher"
+          ]
+        },
+        {
+          "source": ".risk_mgmt.aggressive_debator",
+          "specifiers": [
+            "create_aggressive_debator"
+          ]
+        },
+        {
+          "source": ".risk_mgmt.conservative_debator",
+          "specifiers": [
+            "create_conservative_debator"
+          ]
+        },
+        {
+          "source": ".risk_mgmt.neutral_debator",
+          "specifiers": [
+            "create_neutral_debator"
+          ]
+        },
+        {
+          "source": ".managers.research_manager",
+          "specifiers": [
+            "create_research_manager"
+          ]
+        },
+        {
+          "source": ".managers.portfolio_manager",
+          "specifiers": [
+            "create_portfolio_manager"
+          ]
+        },
+        {
+          "source": ".trader.trader",
+          "specifiers": [
+            "create_trader"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 43,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/analysts/fundamentals_analyst.py": {
+      "filePath": "tradingagents/agents/analysts/fundamentals_analyst.py",
+      "contentHash": "275c879d2f89b9d93db6bc415aa4b34dfc61559e1ad423c4cb5fe32649a4beb0",
+      "functions": [
+        {
+          "name": "create_fundamentals_analyst",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 56
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.prompts",
+          "specifiers": [
+            "ChatPromptTemplate",
+            "MessagesPlaceholder"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_balance_sheet",
+            "get_cashflow",
+            "get_fundamentals",
+            "get_income_statement",
+            "get_insider_transactions",
+            "get_language_instruction"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.config",
+          "specifiers": [
+            "get_config"
+          ]
+        }
+      ],
+      "exports": [
+        "create_fundamentals_analyst"
+      ],
+      "totalLines": 70,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/analysts/market_analyst.py": {
+      "filePath": "tradingagents/agents/analysts/market_analyst.py",
+      "contentHash": "81794b38b33269fe2b2bc4534a4cc2012a64bcc1f6f6526e2270eb4998ade459",
+      "functions": [
+        {
+          "name": "create_market_analyst",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 81
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.prompts",
+          "specifiers": [
+            "ChatPromptTemplate",
+            "MessagesPlaceholder"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_indicators",
+            "get_language_instruction",
+            "get_stock_data"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.config",
+          "specifiers": [
+            "get_config"
+          ]
+        }
+      ],
+      "exports": [
+        "create_market_analyst"
+      ],
+      "totalLines": 92,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/analysts/news_analyst.py": {
+      "filePath": "tradingagents/agents/analysts/news_analyst.py",
+      "contentHash": "a73f931a94f747918946bf2ee585038b2b9d312a2ddd09b62c1efba21b9d5f7a",
+      "functions": [
+        {
+          "name": "create_news_analyst",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 56
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.prompts",
+          "specifiers": [
+            "ChatPromptTemplate",
+            "MessagesPlaceholder"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_global_news",
+            "get_language_instruction",
+            "get_news"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.config",
+          "specifiers": [
+            "get_config"
+          ]
+        }
+      ],
+      "exports": [
+        "create_news_analyst"
+      ],
+      "totalLines": 67,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/analysts/sentiment_analyst.py": {
+      "filePath": "tradingagents/agents/analysts/sentiment_analyst.py",
+      "contentHash": "2fe1f76b18db74b99b9f62af648585f76b612109b62f3b624089ef49a0b6b3d2",
+      "functions": [
+        {
+          "name": "_seven_days_back",
+          "params": [
+            "trade_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "create_sentiment_analyst",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 59
+        },
+        {
+          "name": "_build_system_message",
+          "params": [
+            "ticker",
+            "start_date",
+            "end_date",
+            "news_block",
+            "stocktwits_block",
+            "reddit_block"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 64
+        },
+        {
+          "name": "create_social_media_analyst",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta"
+          ]
+        },
+        {
+          "source": "langchain_core.prompts",
+          "specifiers": [
+            "ChatPromptTemplate",
+            "MessagesPlaceholder"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_language_instruction",
+            "get_news"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.reddit",
+          "specifiers": [
+            "fetch_reddit_posts"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.stocktwits",
+          "specifiers": [
+            "fetch_stocktwits_messages"
+          ]
+        }
+      ],
+      "exports": [
+        "_seven_days_back",
+        "create_sentiment_analyst",
+        "_build_system_message",
+        "create_social_media_analyst"
+      ],
+      "totalLines": 185,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/analysts/social_media_analyst.py": {
+      "filePath": "tradingagents/agents/analysts/social_media_analyst.py",
+      "contentHash": "22241a1cdaeda887f2c641c739f61fd3ba2254c26dd059b3a716ccfa654d6b87",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "warnings",
+          "specifiers": [
+            "_warnings"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.analysts.sentiment_analyst",
+          "specifiers": [
+            "create_sentiment_analyst",
+            "create_social_media_analyst"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 24,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/managers/portfolio_manager.py": {
+      "filePath": "tradingagents/agents/managers/portfolio_manager.py",
+      "contentHash": "ff07300aa1b0fee9780b7850ca2ca38db478a70323e521dfa1ffe0deab635694",
+      "functions": [
+        {
+          "name": "create_portfolio_manager",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 69
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "PortfolioDecision",
+            "render_pm_decision"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_language_instruction"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.structured",
+          "specifiers": [
+            "bind_structured",
+            "invoke_structured_or_freetext"
+          ]
+        }
+      ],
+      "exports": [
+        "create_portfolio_manager"
+      ],
+      "totalLines": 93,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/managers/research_manager.py": {
+      "filePath": "tradingagents/agents/managers/research_manager.py",
+      "contentHash": "c92644d46a5c4359bca2137e2b4ffd658df048e7f1964565043eaf502bc678cc",
+      "functions": [
+        {
+          "name": "create_research_manager",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 52
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "ResearchPlan",
+            "render_research_plan"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_language_instruction"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.structured",
+          "specifiers": [
+            "bind_structured",
+            "invoke_structured_or_freetext"
+          ]
+        }
+      ],
+      "exports": [
+        "create_research_manager"
+      ],
+      "totalLines": 68,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/researchers/bear_researcher.py": {
+      "filePath": "tradingagents/agents/researchers/bear_researcher.py",
+      "contentHash": "ae243ef5567c598b71746e373ff42183061acf44a881413e3d49ca5f1c760472",
+      "functions": [
+        {
+          "name": "create_bear_researcher",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 55
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_language_instruction"
+          ]
+        }
+      ],
+      "exports": [
+        "create_bear_researcher"
+      ],
+      "totalLines": 59,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/researchers/bull_researcher.py": {
+      "filePath": "tradingagents/agents/researchers/bull_researcher.py",
+      "contentHash": "9d6c98733869e75c5ab2965a65a425dd9725d85e36a5bc27c386bc96f195b987",
+      "functions": [
+        {
+          "name": "create_bull_researcher",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 53
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_language_instruction"
+          ]
+        }
+      ],
+      "exports": [
+        "create_bull_researcher"
+      ],
+      "totalLines": 57,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/risk_mgmt/aggressive_debator.py": {
+      "filePath": "tradingagents/agents/risk_mgmt/aggressive_debator.py",
+      "contentHash": "8f4b7f634ad5b081a284e0fab18507070a5e490a068a8b74286bddb1d5fc381c",
+      "functions": [
+        {
+          "name": "create_aggressive_debator",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 51
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_language_instruction"
+          ]
+        }
+      ],
+      "exports": [
+        "create_aggressive_debator"
+      ],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/risk_mgmt/conservative_debator.py": {
+      "filePath": "tradingagents/agents/risk_mgmt/conservative_debator.py",
+      "contentHash": "b5afc686e2de6d92545bc15a4ca692dc564487b8b74878d30b2bf913f2a04a1a",
+      "functions": [
+        {
+          "name": "create_conservative_debator",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 53
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_language_instruction"
+          ]
+        }
+      ],
+      "exports": [
+        "create_conservative_debator"
+      ],
+      "totalLines": 57,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/risk_mgmt/neutral_debator.py": {
+      "filePath": "tradingagents/agents/risk_mgmt/neutral_debator.py",
+      "contentHash": "8511496d5cb504fe05c4e4aa19de0cc207735da56697e25cb69826e3d996dd82",
+      "functions": [
+        {
+          "name": "create_neutral_debator",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 51
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_language_instruction"
+          ]
+        }
+      ],
+      "exports": [
+        "create_neutral_debator"
+      ],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/schemas.py": {
+      "filePath": "tradingagents/agents/schemas.py",
+      "contentHash": "1e0782006274bf4829c47d81be66e23feb8d674213d4471c4f1042d69464d272",
+      "functions": [
+        {
+          "name": "render_research_plan",
+          "params": [
+            "plan"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "render_trader_proposal",
+          "params": [
+            "proposal"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "render_pm_decision",
+          "params": [
+            "decision"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "classes": [
+        {
+          "name": "PortfolioRating",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "TraderAction",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "ResearchPlan",
+          "methods": [],
+          "properties": [
+            "recommendation",
+            "rationale",
+            "strategic_actions"
+          ],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "TraderProposal",
+          "methods": [],
+          "properties": [
+            "action",
+            "reasoning",
+            "entry_price",
+            "stop_loss",
+            "position_sizing"
+          ],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "PortfolioDecision",
+          "methods": [],
+          "properties": [
+            "rating",
+            "executive_summary",
+            "investment_thesis",
+            "price_target",
+            "time_horizon"
+          ],
+          "exported": true,
+          "lineCount": 36
+        }
+      ],
+      "imports": [
+        {
+          "source": "enum",
+          "specifiers": [
+            "Enum"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel",
+            "Field"
+          ]
+        }
+      ],
+      "exports": [
+        "PortfolioRating",
+        "TraderAction",
+        "ResearchPlan",
+        "render_research_plan",
+        "TraderProposal",
+        "render_trader_proposal",
+        "PortfolioDecision",
+        "render_pm_decision"
+      ],
+      "totalLines": 229,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/trader/trader.py": {
+      "filePath": "tradingagents/agents/trader/trader.py",
+      "contentHash": "d1276efd6bf229899ee4773300622a2db4a9086386dec8f35c951746336beacd",
+      "functions": [
+        {
+          "name": "create_trader",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 47
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "functools",
+          "specifiers": [
+            "functools"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "TraderProposal",
+            "render_trader_proposal"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_language_instruction"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.structured",
+          "specifiers": [
+            "bind_structured",
+            "invoke_structured_or_freetext"
+          ]
+        }
+      ],
+      "exports": [
+        "create_trader"
+      ],
+      "totalLines": 67,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/agent_states.py": {
+      "filePath": "tradingagents/agents/utils/agent_states.py",
+      "contentHash": "4b9111a8dcad13b924cd43f8a9572f9c1c98ffab7f134c5a0ac6de77027a4175",
+      "functions": [],
+      "classes": [
+        {
+          "name": "InvestDebateState",
+          "methods": [],
+          "properties": [
+            "bull_history",
+            "bear_history",
+            "history",
+            "current_response",
+            "judge_decision",
+            "count"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "RiskDebateState",
+          "methods": [],
+          "properties": [
+            "aggressive_history",
+            "conservative_history",
+            "neutral_history",
+            "history",
+            "latest_speaker",
+            "current_aggressive_response",
+            "current_conservative_response",
+            "current_neutral_response",
+            "judge_decision",
+            "count"
+          ],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "AgentState",
+          "methods": [],
+          "properties": [
+            "company_of_interest",
+            "asset_type",
+            "trade_date",
+            "sender",
+            "market_report",
+            "sentiment_report",
+            "news_report",
+            "fundamentals_report",
+            "investment_debate_state",
+            "investment_plan",
+            "trader_investment_plan",
+            "risk_debate_state",
+            "final_trade_decision",
+            "past_context"
+          ],
+          "exported": true,
+          "lineCount": 29
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "typing_extensions",
+          "specifiers": [
+            "TypedDict"
+          ]
+        },
+        {
+          "source": "langgraph.graph",
+          "specifiers": [
+            "MessagesState"
+          ]
+        }
+      ],
+      "exports": [
+        "InvestDebateState",
+        "RiskDebateState",
+        "AgentState"
+      ],
+      "totalLines": 75,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/agent_utils.py": {
+      "filePath": "tradingagents/agents/utils/agent_utils.py",
+      "contentHash": "e8de2524e709bf0eff0621fc7e80b9464523146ca088b0c959bbd7dece9cfb36",
+      "functions": [
+        {
+          "name": "get_language_instruction",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "build_instrument_context",
+          "params": [
+            "ticker",
+            "asset_type"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "create_msg_delete",
+          "params": [],
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "HumanMessage",
+            "RemoveMessage"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.core_stock_tools",
+          "specifiers": [
+            "get_stock_data"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.technical_indicators_tools",
+          "specifiers": [
+            "get_indicators"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.fundamental_data_tools",
+          "specifiers": [
+            "get_fundamentals",
+            "get_balance_sheet",
+            "get_cashflow",
+            "get_income_statement"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.news_data_tools",
+          "specifiers": [
+            "get_news",
+            "get_insider_transactions",
+            "get_global_news"
+          ]
+        }
+      ],
+      "exports": [
+        "get_language_instruction",
+        "build_instrument_context",
+        "create_msg_delete"
+      ],
+      "totalLines": 71,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/core_stock_tools.py": {
+      "filePath": "tradingagents/agents/utils/core_stock_tools.py",
+      "contentHash": "a91f2e1ce18c293edd598a338b82a067f65e8dc1421dabe6d319713c2444bf85",
+      "functions": [
+        {
+          "name": "get_stock_data",
+          "params": [
+            "symbol",
+            "start_date",
+            "end_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.interface",
+          "specifiers": [
+            "route_to_vendor"
+          ]
+        }
+      ],
+      "exports": [
+        "get_stock_data"
+      ],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/fundamental_data_tools.py": {
+      "filePath": "tradingagents/agents/utils/fundamental_data_tools.py",
+      "contentHash": "65ab501f0b5503cb8f0a3f63e3f9964b1f060d00be56cd3c72706ef2aac2254b",
+      "functions": [
+        {
+          "name": "get_fundamentals",
+          "params": [
+            "ticker",
+            "curr_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "get_balance_sheet",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_cashflow",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_income_statement",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.interface",
+          "specifiers": [
+            "route_to_vendor"
+          ]
+        }
+      ],
+      "exports": [
+        "get_fundamentals",
+        "get_balance_sheet",
+        "get_cashflow",
+        "get_income_statement"
+      ],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/memory.py": {
+      "filePath": "tradingagents/agents/utils/memory.py",
+      "contentHash": "3acd7ce641120452c551d92417f177a80df8537e89a05808c2d0b37fe3908c9e",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TradingMemoryLog",
+          "methods": [
+            "__init__",
+            "store_decision",
+            "load_entries",
+            "get_pending_entries",
+            "get_past_context",
+            "update_with_outcome",
+            "batch_update_with_outcomes",
+            "_apply_rotation",
+            "_parse_entry",
+            "_format_full",
+            "_format_reflection_only"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 291
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.rating",
+          "specifiers": [
+            "parse_rating"
+          ]
+        }
+      ],
+      "exports": [
+        "TradingMemoryLog"
+      ],
+      "totalLines": 301,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/news_data_tools.py": {
+      "filePath": "tradingagents/agents/utils/news_data_tools.py",
+      "contentHash": "4cf0cbbb354fc4d3ec1203ec306bc10745da4a4c3ba73f7033f5dc6efe80fe24",
+      "functions": [
+        {
+          "name": "get_news",
+          "params": [
+            "ticker",
+            "start_date",
+            "end_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_global_news",
+          "params": [
+            "curr_date",
+            "look_back_days",
+            "limit"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "get_insider_transactions",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated",
+            "Optional"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.interface",
+          "specifiers": [
+            "route_to_vendor"
+          ]
+        }
+      ],
+      "exports": [
+        "get_news",
+        "get_global_news",
+        "get_insider_transactions"
+      ],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/rating.py": {
+      "filePath": "tradingagents/agents/utils/rating.py",
+      "contentHash": "87d8e5e1e2a4c49b01ab43e908a5540db4efde08f69d62f3fd1530f9eb9b6e44",
+      "functions": [
+        {
+          "name": "parse_rating",
+          "params": [
+            "text",
+            "default"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 21
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Tuple"
+          ]
+        }
+      ],
+      "exports": [
+        "parse_rating"
+      ],
+      "totalLines": 51,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/structured.py": {
+      "filePath": "tradingagents/agents/utils/structured.py",
+      "contentHash": "171c5f7285f0ef44c9de4b6c5dae1d2cff93e0478977d5defbf05c074d38b19f",
+      "functions": [
+        {
+          "name": "bind_structured",
+          "params": [
+            "llm",
+            "schema",
+            "agent_name"
+          ],
+          "returnType": "Optional[Any]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "invoke_structured_or_freetext",
+          "params": [
+            "structured_llm",
+            "plain_llm",
+            "prompt",
+            "render",
+            "agent_name"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 26
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Callable",
+            "Optional",
+            "TypeVar"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "BaseModel"
+          ]
+        }
+      ],
+      "exports": [
+        "bind_structured",
+        "invoke_structured_or_freetext"
+      ],
+      "totalLines": 74,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/technical_indicators_tools.py": {
+      "filePath": "tradingagents/agents/utils/technical_indicators_tools.py",
+      "contentHash": "7bb35b4db42244c97c24bb83fa13d0f5c59823ef5e5520db2e03db023d3f5613",
+      "functions": [
+        {
+          "name": "get_indicators",
+          "params": [
+            "symbol",
+            "indicator",
+            "curr_date",
+            "look_back_days"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 27
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.interface",
+          "specifiers": [
+            "route_to_vendor"
+          ]
+        }
+      ],
+      "exports": [
+        "get_indicators"
+      ],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/__init__.py": {
+      "filePath": "tradingagents/dataflows/__init__.py",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage.py",
+      "contentHash": "12e6d9d97375fb3c3f94f49fb0eb861e0b09517d7fb2ceff83c11493517e3c69",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".alpha_vantage_stock",
+          "specifiers": [
+            "get_stock"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_indicator",
+          "specifiers": [
+            "get_indicator"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_fundamentals",
+          "specifiers": [
+            "get_fundamentals",
+            "get_balance_sheet",
+            "get_cashflow",
+            "get_income_statement"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_news",
+          "specifiers": [
+            "get_news",
+            "get_global_news",
+            "get_insider_transactions"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage_common.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage_common.py",
+      "contentHash": "58dcb3b7f86ae84100ced2979ebf7e2da895316d569e04dd5c1f69bb798c0150",
+      "functions": [
+        {
+          "name": "get_api_key",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "format_datetime_for_api",
+          "params": [
+            "date_input"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "_make_api_request",
+          "params": [
+            "function_name",
+            "params"
+          ],
+          "returnType": "dict | str",
+          "exported": true,
+          "lineCount": 42
+        },
+        {
+          "name": "_filter_csv_by_date_range",
+          "params": [
+            "csv_data",
+            "start_date",
+            "end_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 36
+        }
+      ],
+      "classes": [
+        {
+          "name": "AlphaVantageRateLimitError",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "io",
+          "specifiers": [
+            "StringIO"
+          ]
+        }
+      ],
+      "exports": [
+        "get_api_key",
+        "format_datetime_for_api",
+        "AlphaVantageRateLimitError",
+        "_make_api_request",
+        "_filter_csv_by_date_range"
+      ],
+      "totalLines": 123,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage_fundamentals.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage_fundamentals.py",
+      "contentHash": "f5884b2bed293e7cc7014be1dd3f5047a54e465f04aeaceeee0bb37b058b26df",
+      "functions": [
+        {
+          "name": "_filter_reports_by_date",
+          "params": [
+            "result",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "get_fundamentals",
+          "params": [
+            "ticker",
+            "curr_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "get_balance_sheet",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_cashflow",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_income_statement",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".alpha_vantage_common",
+          "specifiers": [
+            "_make_api_request"
+          ]
+        }
+      ],
+      "exports": [
+        "_filter_reports_by_date",
+        "get_fundamentals",
+        "get_balance_sheet",
+        "get_cashflow",
+        "get_income_statement"
+      ],
+      "totalLines": 56,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage_indicator.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage_indicator.py",
+      "contentHash": "4e6403337e97252f7ec615c8713c91bd39f29781c2fe181240a02c72cc85376f",
+      "functions": [
+        {
+          "name": "get_indicator",
+          "params": [
+            "symbol",
+            "indicator",
+            "curr_date",
+            "look_back_days",
+            "interval",
+            "time_period",
+            "series_type"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 220
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".alpha_vantage_common",
+          "specifiers": [
+            "_make_api_request"
+          ]
+        }
+      ],
+      "exports": [
+        "get_indicator"
+      ],
+      "totalLines": 223,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage_news.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage_news.py",
+      "contentHash": "f4922cdfdb72d3ceac173ea44aceeb0057a675721278183b7291f1a96841a782",
+      "functions": [
+        {
+          "name": "get_news",
+          "params": [
+            "ticker",
+            "start_date",
+            "end_date"
+          ],
+          "returnType": "dict[str, str] | str",
+          "exported": true,
+          "lineCount": 21
+        },
+        {
+          "name": "get_global_news",
+          "params": [
+            "curr_date",
+            "look_back_days",
+            "limit"
+          ],
+          "returnType": "dict[str, str] | str",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "get_insider_transactions",
+          "params": [
+            "symbol"
+          ],
+          "returnType": "dict[str, str] | str",
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".alpha_vantage_common",
+          "specifiers": [
+            "_make_api_request",
+            "format_datetime_for_api"
+          ]
+        }
+      ],
+      "exports": [
+        "get_news",
+        "get_global_news",
+        "get_insider_transactions"
+      ],
+      "totalLines": 71,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage_stock.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage_stock.py",
+      "contentHash": "530f96d6bf7be00273222fd5e3cb18e8093ef61a1ae20ae6b36f3789e82a4f8b",
+      "functions": [
+        {
+          "name": "get_stock",
+          "params": [
+            "symbol",
+            "start_date",
+            "end_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 35
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_common",
+          "specifiers": [
+            "_make_api_request",
+            "_filter_csv_by_date_range"
+          ]
+        }
+      ],
+      "exports": [
+        "get_stock"
+      ],
+      "totalLines": 38,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/config.py": {
+      "filePath": "tradingagents/dataflows/config.py",
+      "contentHash": "efaab28b935e967f401e9d678f6e6668f65bc508d0c500fc7eb62d72781b43ca",
+      "functions": [
+        {
+          "name": "initialize_config",
+          "params": [],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "set_config",
+          "params": [
+            "config"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "get_config",
+          "params": [],
+          "returnType": "Dict",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "copy",
+          "specifiers": [
+            "deepcopy"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Optional"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "default_config"
+          ]
+        }
+      ],
+      "exports": [
+        "initialize_config",
+        "set_config",
+        "get_config"
+      ],
+      "totalLines": 43,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/interface.py": {
+      "filePath": "tradingagents/dataflows/interface.py",
+      "contentHash": "41ff6e892c2d77a804d035c8c9e976ae3b4626ae564f2ec8994f5c8a8a173bcc",
+      "functions": [
+        {
+          "name": "get_category_for_method",
+          "params": [
+            "method"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "get_vendor",
+          "params": [
+            "category",
+            "method"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
+        },
+        {
+          "name": "route_to_vendor",
+          "params": [
+            "method",
+            "*args",
+            "**kwargs"
+          ],
+          "exported": true,
+          "lineCount": 29
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_YFin_data_online",
+            "get_stock_stats_indicators_window",
+            "get_yfinance_fundamentals",
+            "get_yfinance_balance_sheet",
+            "get_yfinance_cashflow",
+            "get_yfinance_income_statement",
+            "get_yfinance_insider_transactions"
+          ]
+        },
+        {
+          "source": ".yfinance_news",
+          "specifiers": [
+            "get_news_yfinance",
+            "get_global_news_yfinance"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_stock",
+            "get_alpha_vantage_indicator",
+            "get_alpha_vantage_fundamentals",
+            "get_alpha_vantage_balance_sheet",
+            "get_alpha_vantage_cashflow",
+            "get_alpha_vantage_income_statement",
+            "get_alpha_vantage_insider_transactions",
+            "get_alpha_vantage_news",
+            "get_alpha_vantage_global_news"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_common",
+          "specifiers": [
+            "AlphaVantageRateLimitError"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "get_config"
+          ]
+        }
+      ],
+      "exports": [
+        "get_category_for_method",
+        "get_vendor",
+        "route_to_vendor"
+      ],
+      "totalLines": 162,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/reddit.py": {
+      "filePath": "tradingagents/dataflows/reddit.py",
+      "contentHash": "0e111f1c3538fc8d5ce117eab855e34fc2697a5a8e869cc36130007e02dfaf00",
+      "functions": [
+        {
+          "name": "_fetch_subreddit",
+          "params": [
+            "ticker",
+            "sub",
+            "limit",
+            "timeout"
+          ],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "fetch_reddit_posts",
+          "params": [
+            "ticker",
+            "subreddits",
+            "limit_per_sub",
+            "timeout",
+            "inter_request_delay"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 48
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Iterable"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "HTTPError",
+            "URLError"
+          ]
+        },
+        {
+          "source": "urllib.parse",
+          "specifiers": [
+            "urlencode"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "Request",
+            "urlopen"
+          ]
+        }
+      ],
+      "exports": [
+        "_fetch_subreddit",
+        "fetch_reddit_posts"
+      ],
+      "totalLines": 107,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/stockstats_utils.py": {
+      "filePath": "tradingagents/dataflows/stockstats_utils.py",
+      "contentHash": "5b1340e39277790c42fc8cfbfd837023996d4f2b288b60dae38355a5a5b4fb0e",
+      "functions": [
+        {
+          "name": "yf_retry",
+          "params": [
+            "func",
+            "max_retries",
+            "base_delay"
+          ],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_clean_dataframe",
+          "params": [
+            "data"
+          ],
+          "returnType": "pd.DataFrame",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "load_ohlcv",
+          "params": [
+            "symbol",
+            "curr_date"
+          ],
+          "returnType": "pd.DataFrame",
+          "exported": true,
+          "lineCount": 46
+        },
+        {
+          "name": "filter_financials_by_date",
+          "params": [
+            "data",
+            "curr_date"
+          ],
+          "returnType": "pd.DataFrame",
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [
+        {
+          "name": "StockstatsUtils",
+          "methods": [
+            "get_stock_stats"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "imports": [
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "yfinance",
+          "specifiers": [
+            "yf"
+          ]
+        },
+        {
+          "source": "yfinance.exceptions",
+          "specifiers": [
+            "YFRateLimitError"
+          ]
+        },
+        {
+          "source": "stockstats",
+          "specifiers": [
+            "wrap"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "get_config"
+          ]
+        },
+        {
+          "source": ".utils",
+          "specifiers": [
+            "safe_ticker_component"
+          ]
+        }
+      ],
+      "exports": [
+        "yf_retry",
+        "_clean_dataframe",
+        "load_ohlcv",
+        "filter_financials_by_date",
+        "StockstatsUtils"
+      ],
+      "totalLines": 134,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/stocktwits.py": {
+      "filePath": "tradingagents/dataflows/stocktwits.py",
+      "contentHash": "dd9007271d8a3b4c25a9c9b2e7b7eb06a465d5eba24219525727e54371cb8fdf",
+      "functions": [
+        {
+          "name": "fetch_stocktwits_messages",
+          "params": [
+            "ticker",
+            "limit",
+            "timeout"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 54
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timezone"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "HTTPError",
+            "URLError"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "Request",
+            "urlopen"
+          ]
+        }
+      ],
+      "exports": [
+        "fetch_stocktwits_messages"
+      ],
+      "totalLines": 84,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/utils.py": {
+      "filePath": "tradingagents/dataflows/utils.py",
+      "contentHash": "cbe6492b85d46f4252cd4653c1d4ababdaaf99bcdecf903b508c5c3c6885c295",
+      "functions": [
+        {
+          "name": "safe_ticker_component",
+          "params": [
+            "value",
+            "max_len"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "save_output",
+          "params": [
+            "data",
+            "tag",
+            "save_path"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_current_date",
+          "params": [],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "decorate_all_methods",
+          "params": [
+            "decorator"
+          ],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "get_next_weekday",
+          "params": [
+            "date"
+          ],
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "date",
+            "timedelta",
+            "datetime"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        }
+      ],
+      "exports": [
+        "safe_ticker_component",
+        "save_output",
+        "get_current_date",
+        "decorate_all_methods",
+        "get_next_weekday"
+      ],
+      "totalLines": 75,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/y_finance.py": {
+      "filePath": "tradingagents/dataflows/y_finance.py",
+      "contentHash": "d57d3e9a95e1e4e2f76d6736d0a444b759f12117a0b7987ce28ee355198639d9",
+      "functions": [
+        {
+          "name": "get_YFin_data_online",
+          "params": [
+            "symbol",
+            "start_date",
+            "end_date"
+          ],
+          "exported": true,
+          "lineCount": 40
+        },
+        {
+          "name": "get_stock_stats_indicators_window",
+          "params": [
+            "symbol",
+            "indicator",
+            "curr_date",
+            "look_back_days"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 136
+        },
+        {
+          "name": "_get_stock_stats_bulk",
+          "params": [
+            "symbol",
+            "indicator",
+            "curr_date"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "get_stockstats_indicator",
+          "params": [
+            "symbol",
+            "indicator",
+            "curr_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 24
+        },
+        {
+          "name": "get_fundamentals",
+          "params": [
+            "ticker",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 55
+        },
+        {
+          "name": "get_balance_sheet",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "get_cashflow",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "get_income_statement",
+          "params": [
+            "ticker",
+            "freq",
+            "curr_date"
+          ],
+          "exported": true,
+          "lineCount": 30
+        },
+        {
+          "name": "get_insider_transactions",
+          "params": [
+            "ticker"
+          ],
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "dateutil.relativedelta",
+          "specifiers": [
+            "relativedelta"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "yfinance",
+          "specifiers": [
+            "yf"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": ".stockstats_utils",
+          "specifiers": [
+            "StockstatsUtils",
+            "_clean_dataframe",
+            "yf_retry",
+            "load_ohlcv",
+            "filter_financials_by_date"
+          ]
+        }
+      ],
+      "exports": [
+        "get_YFin_data_online",
+        "get_stock_stats_indicators_window",
+        "_get_stock_stats_bulk",
+        "get_stockstats_indicator",
+        "get_fundamentals",
+        "get_balance_sheet",
+        "get_cashflow",
+        "get_income_statement",
+        "get_insider_transactions"
+      ],
+      "totalLines": 422,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/yfinance_news.py": {
+      "filePath": "tradingagents/dataflows/yfinance_news.py",
+      "contentHash": "b4bfa521ceb91f0bf80ff52318be0f0b92cf7fcc842eea9db1841dd5e63d37f0",
+      "functions": [
+        {
+          "name": "_extract_article_data",
+          "params": [
+            "article"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 39
+        },
+        {
+          "name": "get_news_yfinance",
+          "params": [
+            "ticker",
+            "start_date",
+            "end_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 55
+        },
+        {
+          "name": "get_global_news_yfinance",
+          "params": [
+            "curr_date",
+            "look_back_days",
+            "limit"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 92
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "yfinance",
+          "specifiers": [
+            "yf"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
+          "source": "dateutil.relativedelta",
+          "specifiers": [
+            "relativedelta"
+          ]
+        },
+        {
+          "source": ".config",
+          "specifiers": [
+            "get_config"
+          ]
+        },
+        {
+          "source": ".stockstats_utils",
+          "specifiers": [
+            "yf_retry"
+          ]
+        }
+      ],
+      "exports": [
+        "_extract_article_data",
+        "get_news_yfinance",
+        "get_global_news_yfinance"
+      ],
+      "totalLines": 203,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/default_config.py": {
+      "filePath": "tradingagents/default_config.py",
+      "contentHash": "cb72033e4dd7f7ee6ae9eaa0304a866cf903302623e73ee4c6c3159a67cfa38f",
+      "functions": [
+        {
+          "name": "_coerce",
+          "params": [
+            "value",
+            "reference"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_apply_env_overrides",
+          "params": [
+            "config"
+          ],
+          "returnType": "dict",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [
+        "_coerce",
+        "_apply_env_overrides"
+      ],
+      "totalLines": 123,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/__init__.py": {
+      "filePath": "tradingagents/graph/__init__.py",
+      "contentHash": "49cba98adcc760000c00d57442169ea822cfbb4b5ec59fa7363b1983f40a16a9",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".trading_graph",
+          "specifiers": [
+            "TradingAgentsGraph"
+          ]
+        },
+        {
+          "source": ".conditional_logic",
+          "specifiers": [
+            "ConditionalLogic"
+          ]
+        },
+        {
+          "source": ".setup",
+          "specifiers": [
+            "GraphSetup"
+          ]
+        },
+        {
+          "source": ".propagation",
+          "specifiers": [
+            "Propagator"
+          ]
+        },
+        {
+          "source": ".reflection",
+          "specifiers": [
+            "Reflector"
+          ]
+        },
+        {
+          "source": ".signal_processing",
+          "specifiers": [
+            "SignalProcessor"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/analyst_execution.py": {
+      "filePath": "tradingagents/graph/analyst_execution.py",
+      "contentHash": "78c6b9aab6fec4e51864013048e570316339dfec0cfa86c3617d145894effbbe",
+      "functions": [
+        {
+          "name": "build_analyst_execution_plan",
+          "params": [
+            "selected_analysts",
+            "concurrency_limit"
+          ],
+          "returnType": "AnalystExecutionPlan",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "get_initial_analyst_node",
+          "params": [
+            "plan"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "sync_analyst_tracker_from_chunk",
+          "params": [
+            "tracker",
+            "chunk",
+            "now"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "classes": [
+        {
+          "name": "AnalystNodeSpec",
+          "methods": [],
+          "properties": [
+            "key",
+            "agent_node",
+            "clear_node",
+            "tool_node",
+            "report_key"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "AnalystExecutionPlan",
+          "methods": [],
+          "properties": [
+            "specs",
+            "concurrency_limit"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "AnalystWallTimeTracker",
+          "methods": [
+            "__init__",
+            "mark_started",
+            "mark_completed",
+            "get_wall_times",
+            "format_summary"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 39
+        }
+      ],
+      "imports": [
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "monotonic"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Iterable",
+            "List",
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "AnalystNodeSpec",
+        "AnalystExecutionPlan",
+        "build_analyst_execution_plan",
+        "get_initial_analyst_node",
+        "AnalystWallTimeTracker",
+        "sync_analyst_tracker_from_chunk"
+      ],
+      "totalLines": 141,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/checkpointer.py": {
+      "filePath": "tradingagents/graph/checkpointer.py",
+      "contentHash": "d8d2031b4571153e943c1327a615d47f12ce559f53669164a0bed68b3e8ea71e",
+      "functions": [
+        {
+          "name": "_db_path",
+          "params": [
+            "data_dir",
+            "ticker"
+          ],
+          "returnType": "Path",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "thread_id",
+          "params": [
+            "ticker",
+            "date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "get_checkpointer",
+          "params": [
+            "data_dir",
+            "ticker"
+          ],
+          "returnType": "Generator[SqliteSaver, None, None]",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "has_checkpoint",
+          "params": [
+            "data_dir",
+            "ticker",
+            "date"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "checkpoint_step",
+          "params": [
+            "data_dir",
+            "ticker",
+            "date"
+          ],
+          "returnType": "int | None",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "clear_all_checkpoints",
+          "params": [
+            "data_dir"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "clear_checkpoint",
+          "params": [
+            "data_dir",
+            "ticker",
+            "date"
+          ],
+          "returnType": "None",
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "hashlib",
+          "specifiers": [
+            "hashlib"
+          ]
+        },
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "contextlib",
+          "specifiers": [
+            "contextmanager"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Generator"
+          ]
+        },
+        {
+          "source": "langgraph.checkpoint.sqlite",
+          "specifiers": [
+            "SqliteSaver"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.utils",
+          "specifiers": [
+            "safe_ticker_component"
+          ]
+        }
+      ],
+      "exports": [
+        "_db_path",
+        "thread_id",
+        "get_checkpointer",
+        "has_checkpoint",
+        "checkpoint_step",
+        "clear_all_checkpoints",
+        "clear_checkpoint"
+      ],
+      "totalLines": 91,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/conditional_logic.py": {
+      "filePath": "tradingagents/graph/conditional_logic.py",
+      "contentHash": "c03af669b8fca7bd9689f045b9dc26a8d38e4c8de984e7693c1c3a9e040c048b",
+      "functions": [],
+      "classes": [
+        {
+          "name": "ConditionalLogic",
+          "methods": [
+            "__init__",
+            "should_continue_market",
+            "should_continue_social",
+            "should_continue_news",
+            "should_continue_fundamentals",
+            "should_continue_debate",
+            "should_continue_risk_analysis"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 68
+        }
+      ],
+      "imports": [
+        {
+          "source": "tradingagents.agents.utils.agent_states",
+          "specifiers": [
+            "AgentState"
+          ]
+        }
+      ],
+      "exports": [
+        "ConditionalLogic"
+      ],
+      "totalLines": 74,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/propagation.py": {
+      "filePath": "tradingagents/graph/propagation.py",
+      "contentHash": "a4268ddb54961356508e97e835f74b1190456d763a0d570756da897aeb87d955",
+      "functions": [],
+      "classes": [
+        {
+          "name": "Propagator",
+          "methods": [
+            "__init__",
+            "create_initial_state",
+            "get_graph_args"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 65
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_states",
+          "specifiers": [
+            "AgentState",
+            "InvestDebateState",
+            "RiskDebateState"
+          ]
+        }
+      ],
+      "exports": [
+        "Propagator"
+      ],
+      "totalLines": 76,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/reflection.py": {
+      "filePath": "tradingagents/graph/reflection.py",
+      "contentHash": "4386a66446cbe770e4d93c3928f2e501e8d4a44614dcc343625c54231e5ff37b",
+      "functions": [],
+      "classes": [
+        {
+          "name": "Reflector",
+          "methods": [
+            "__init__",
+            "_get_log_reflection_prompt",
+            "reflect_on_final_decision"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 52
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        }
+      ],
+      "exports": [
+        "Reflector"
+      ],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/setup.py": {
+      "filePath": "tradingagents/graph/setup.py",
+      "contentHash": "3029728fd9979d989f084b82fe5262e21efa2d0750ab726c49595fec2c94a1d7",
+      "functions": [],
+      "classes": [
+        {
+          "name": "GraphSetup",
+          "methods": [
+            "__init__",
+            "setup_graph"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 144
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Dict"
+          ]
+        },
+        {
+          "source": "langgraph.graph",
+          "specifiers": [
+            "END",
+            "START",
+            "StateGraph"
+          ]
+        },
+        {
+          "source": "langgraph.prebuilt",
+          "specifiers": [
+            "ToolNode"
+          ]
+        },
+        {
+          "source": "tradingagents.agents",
+          "specifiers": [
+            "*"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_states",
+          "specifiers": [
+            "AgentState"
+          ]
+        },
+        {
+          "source": ".analyst_execution",
+          "specifiers": [
+            "build_analyst_execution_plan"
+          ]
+        },
+        {
+          "source": ".conditional_logic",
+          "specifiers": [
+            "ConditionalLogic"
+          ]
+        }
+      ],
+      "exports": [
+        "GraphSetup"
+      ],
+      "totalLines": 158,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/signal_processing.py": {
+      "filePath": "tradingagents/graph/signal_processing.py",
+      "contentHash": "d5802d62e257ab1b00139770b7c35fd3673ad2e2b6e8ae4ea2b9bc5e3babb398",
+      "functions": [],
+      "classes": [
+        {
+          "name": "SignalProcessor",
+          "methods": [
+            "__init__",
+            "process_signal"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.rating",
+          "specifiers": [
+            "parse_rating"
+          ]
+        }
+      ],
+      "exports": [
+        "SignalProcessor"
+      ],
+      "totalLines": 32,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/graph/trading_graph.py": {
+      "filePath": "tradingagents/graph/trading_graph.py",
+      "contentHash": "3f7ee2e8ee21b8983def1574bfa354837f3d67b132e75c83f0670b60af9265c5",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TradingAgentsGraph",
+          "methods": [
+            "__init__",
+            "_get_provider_kwargs",
+            "_create_tool_nodes",
+            "_resolve_benchmark",
+            "_fetch_returns",
+            "_resolve_pending_entries",
+            "propagate",
+            "_run_graph",
+            "_log_state",
+            "process_signal"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 382
+        }
+      ],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "Any",
+            "Tuple",
+            "List",
+            "Optional"
+          ]
+        },
+        {
+          "source": "yfinance",
+          "specifiers": [
+            "yf"
+          ]
+        },
+        {
+          "source": "langgraph.prebuilt",
+          "specifiers": [
+            "ToolNode"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients",
+          "specifiers": [
+            "create_llm_client"
+          ]
+        },
+        {
+          "source": "tradingagents.agents",
+          "specifiers": [
+            "*"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.memory",
+          "specifiers": [
+            "TradingMemoryLog"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.utils",
+          "specifiers": [
+            "safe_ticker_component"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_states",
+          "specifiers": [
+            "AgentState",
+            "InvestDebateState",
+            "RiskDebateState"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.config",
+          "specifiers": [
+            "set_config"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_stock_data",
+            "get_indicators",
+            "get_fundamentals",
+            "get_balance_sheet",
+            "get_cashflow",
+            "get_income_statement",
+            "get_news",
+            "get_insider_transactions",
+            "get_global_news"
+          ]
+        },
+        {
+          "source": ".checkpointer",
+          "specifiers": [
+            "checkpoint_step",
+            "clear_checkpoint",
+            "get_checkpointer",
+            "thread_id"
+          ]
+        },
+        {
+          "source": ".conditional_logic",
+          "specifiers": [
+            "ConditionalLogic"
+          ]
+        },
+        {
+          "source": ".setup",
+          "specifiers": [
+            "GraphSetup"
+          ]
+        },
+        {
+          "source": ".propagation",
+          "specifiers": [
+            "Propagator"
+          ]
+        },
+        {
+          "source": ".reflection",
+          "specifiers": [
+            "Reflector"
+          ]
+        },
+        {
+          "source": ".signal_processing",
+          "specifiers": [
+            "SignalProcessor"
+          ]
+        }
+      ],
+      "exports": [
+        "TradingAgentsGraph"
+      ],
+      "totalLines": 432,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/TODO.md": {
+      "filePath": "tradingagents/llm_clients/TODO.md",
+      "contentHash": "d25dc3de35be6b0638460786023c6f8bc9ef86637f8769a40d33fadbc444c935",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/__init__.py": {
+      "filePath": "tradingagents/llm_clients/__init__.py",
+      "contentHash": "094e8757c990865316132a8dd424df94b1ced2b26d730535c0d3b8e94d3d6f7d",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".base_client",
+          "specifiers": [
+            "BaseLLMClient"
+          ]
+        },
+        {
+          "source": ".factory",
+          "specifiers": [
+            "create_llm_client"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 5,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/anthropic_client.py": {
+      "filePath": "tradingagents/llm_clients/anthropic_client.py",
+      "contentHash": "98bdc4631eb5214777433a08c02f4466834c0384beeb689d6edbb028952a82a3",
+      "functions": [
+        {
+          "name": "_supports_effort",
+          "params": [
+            "model"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "NormalizedChatAnthropic",
+          "methods": [
+            "invoke"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "AnthropicClient",
+          "methods": [
+            "__init__",
+            "get_llm",
+            "validate_model"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 26
+        }
+      ],
+      "imports": [
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "langchain_anthropic",
+          "specifiers": [
+            "ChatAnthropic"
+          ]
+        },
+        {
+          "source": ".base_client",
+          "specifiers": [
+            "BaseLLMClient",
+            "normalize_content"
+          ]
+        },
+        {
+          "source": ".validators",
+          "specifiers": [
+            "validate_model"
+          ]
+        }
+      ],
+      "exports": [
+        "_supports_effort",
+        "NormalizedChatAnthropic",
+        "AnthropicClient"
+      ],
+      "totalLines": 69,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/api_key_env.py": {
+      "filePath": "tradingagents/llm_clients/api_key_env.py",
+      "contentHash": "95844ca11c08d6477b46a776e21ea1d83950779dbf26573b4437f50767d0d19b",
+      "functions": [
+        {
+          "name": "get_api_key_env",
+          "params": [
+            "provider"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 7
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        }
+      ],
+      "exports": [
+        "get_api_key_env"
+      ],
+      "totalLines": 45,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/azure_client.py": {
+      "filePath": "tradingagents/llm_clients/azure_client.py",
+      "contentHash": "03749685477487bb6e68dec3a99ce06f7057d4182a6db257d996ba4c42440ca8",
+      "functions": [],
+      "classes": [
+        {
+          "name": "NormalizedAzureChatOpenAI",
+          "methods": [
+            "invoke"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "AzureOpenAIClient",
+          "methods": [
+            "__init__",
+            "get_llm",
+            "validate_model"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 31
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "langchain_openai",
+          "specifiers": [
+            "AzureChatOpenAI"
+          ]
+        },
+        {
+          "source": ".base_client",
+          "specifiers": [
+            "BaseLLMClient",
+            "normalize_content"
+          ]
+        },
+        {
+          "source": ".validators",
+          "specifiers": [
+            "validate_model"
+          ]
+        }
+      ],
+      "exports": [
+        "NormalizedAzureChatOpenAI",
+        "AzureOpenAIClient"
+      ],
+      "totalLines": 53,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/base_client.py": {
+      "filePath": "tradingagents/llm_clients/base_client.py",
+      "contentHash": "b1931c1b97d348e4a67f97d77d4e391055e091e8d777f15bc49968f3803a3826",
+      "functions": [
+        {
+          "name": "normalize_content",
+          "params": [
+            "response"
+          ],
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [
+        {
+          "name": "BaseLLMClient",
+          "methods": [
+            "__init__",
+            "get_provider_name",
+            "warn_if_unknown_model",
+            "get_llm",
+            "validate_model"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 38
+        }
+      ],
+      "imports": [
+        {
+          "source": "abc",
+          "specifiers": [
+            "ABC",
+            "abstractmethod"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "warnings",
+          "specifiers": [
+            "warnings"
+          ]
+        }
+      ],
+      "exports": [
+        "normalize_content",
+        "BaseLLMClient"
+      ],
+      "totalLines": 63,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/capabilities.py": {
+      "filePath": "tradingagents/llm_clients/capabilities.py",
+      "contentHash": "e9b8b467be101cf5502a325c1a7f5e7cf684d31966047c93960181e38bc58015",
+      "functions": [
+        {
+          "name": "get_capabilities",
+          "params": [
+            "model_name"
+          ],
+          "returnType": "ModelCapabilities",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "ModelCapabilities",
+          "methods": [],
+          "properties": [
+            "supports_tool_choice",
+            "supports_json_mode",
+            "supports_json_schema",
+            "preferred_structured_method",
+            "requires_reasoning_content_roundtrip",
+            "requires_reasoning_split"
+          ],
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "imports": [
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "dataclasses",
+          "specifiers": [
+            "dataclass"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Literal"
+          ]
+        }
+      ],
+      "exports": [
+        "ModelCapabilities",
+        "get_capabilities"
+      ],
+      "totalLines": 128,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/factory.py": {
+      "filePath": "tradingagents/llm_clients/factory.py",
+      "contentHash": "864bb5bc6c9fe86c139253c7915832158adbf559cfd45b65bb7f73a289215647",
+      "functions": [
+        {
+          "name": "create_llm_client",
+          "params": [
+            "provider",
+            "model",
+            "base_url",
+            "**kwargs"
+          ],
+          "returnType": "BaseLLMClient",
+          "exported": true,
+          "lineCount": 43
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": ".base_client",
+          "specifiers": [
+            "BaseLLMClient"
+          ]
+        }
+      ],
+      "exports": [
+        "create_llm_client"
+      ],
+      "totalLines": 58,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/google_client.py": {
+      "filePath": "tradingagents/llm_clients/google_client.py",
+      "contentHash": "a29f64c9c53670a1dfd889db8c2692c254992861088ec07c1528446cb8de10f4",
+      "functions": [],
+      "classes": [
+        {
+          "name": "NormalizedChatGoogleGenerativeAI",
+          "methods": [
+            "invoke"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "GoogleClient",
+          "methods": [
+            "__init__",
+            "get_llm",
+            "validate_model"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 44
+        }
+      ],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "langchain_google_genai",
+          "specifiers": [
+            "ChatGoogleGenerativeAI"
+          ]
+        },
+        {
+          "source": ".base_client",
+          "specifiers": [
+            "BaseLLMClient",
+            "normalize_content"
+          ]
+        },
+        {
+          "source": ".validators",
+          "specifiers": [
+            "validate_model"
+          ]
+        }
+      ],
+      "exports": [
+        "NormalizedChatGoogleGenerativeAI",
+        "GoogleClient"
+      ],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/model_catalog.py": {
+      "filePath": "tradingagents/llm_clients/model_catalog.py",
+      "contentHash": "7d4168ee06ca39d707e7cda3ee2a4244b50afca882bbe9e306e0a440a00d64e9",
+      "functions": [
+        {
+          "name": "get_model_options",
+          "params": [
+            "provider",
+            "mode"
+          ],
+          "returnType": "List[ModelOption]",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "get_known_models",
+          "params": [],
+          "returnType": "Dict[str, List[str]]",
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Dict",
+            "List",
+            "Tuple"
+          ]
+        }
+      ],
+      "exports": [
+        "get_model_options",
+        "get_known_models"
+      ],
+      "totalLines": 198,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/openai_client.py": {
+      "filePath": "tradingagents/llm_clients/openai_client.py",
+      "contentHash": "aa3079feba5f8aefaccf421e2dcd8ed5145128ddcef9db0dd651d8b3cdbf420d",
+      "functions": [
+        {
+          "name": "_input_to_messages",
+          "params": [
+            "input_"
+          ],
+          "returnType": "list",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_resolve_provider_base_url",
+          "params": [
+            "provider"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [
+        {
+          "name": "NormalizedChatOpenAI",
+          "methods": [
+            "invoke",
+            "with_structured_output"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "DeepSeekChatOpenAI",
+          "methods": [
+            "_get_request_payload",
+            "_create_chat_result"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 42
+        },
+        {
+          "name": "MinimaxChatOpenAI",
+          "methods": [
+            "_get_request_payload"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 25
+        },
+        {
+          "name": "OpenAIClient",
+          "methods": [
+            "__init__",
+            "get_llm",
+            "validate_model"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 68
+        }
+      ],
+      "imports": [
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        },
+        {
+          "source": "langchain_openai",
+          "specifiers": [
+            "ChatOpenAI"
+          ]
+        },
+        {
+          "source": ".api_key_env",
+          "specifiers": [
+            "get_api_key_env"
+          ]
+        },
+        {
+          "source": ".base_client",
+          "specifiers": [
+            "BaseLLMClient",
+            "normalize_content"
+          ]
+        },
+        {
+          "source": ".capabilities",
+          "specifiers": [
+            "get_capabilities"
+          ]
+        },
+        {
+          "source": ".validators",
+          "specifiers": [
+            "validate_model"
+          ]
+        }
+      ],
+      "exports": [
+        "NormalizedChatOpenAI",
+        "_input_to_messages",
+        "DeepSeekChatOpenAI",
+        "MinimaxChatOpenAI",
+        "_resolve_provider_base_url",
+        "OpenAIClient"
+      ],
+      "totalLines": 248,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/validators.py": {
+      "filePath": "tradingagents/llm_clients/validators.py",
+      "contentHash": "4cc597d1189c4207fe02f049bba6f1c978490ed1ab235ee227fe20465d1222fd",
+      "functions": [
+        {
+          "name": "validate_model",
+          "params": [
+            "provider",
+            "model"
+          ],
+          "returnType": "bool",
+          "exported": true,
+          "lineCount": 14
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".model_catalog",
+          "specifiers": [
+            "get_known_models"
+          ]
+        }
+      ],
+      "exports": [
+        "validate_model"
+      ],
+      "totalLines": 27,
+      "hasStructuralAnalysis": true
+    }
+  }
+}
