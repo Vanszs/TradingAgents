@@ -47,14 +47,38 @@ def create_sentiment_analyst(llm):
         ticker = state["company_of_interest"]
         end_date = state["trade_date"]
         start_date = _seven_days_back(end_date)
-        instrument_context = build_instrument_context(ticker)
+        asset_type = state.get("asset_type", "stock")
+        instrument_context = build_instrument_context(ticker, asset_type=asset_type)
 
         # Pre-fetch all three sources. Each fetcher degrades gracefully and
         # returns a string (no exceptions surface from here), so the LLM
         # always sees something — either real data or a clear placeholder.
         news_block = get_news.func(ticker, start_date, end_date)
-        stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
-        reddit_block = fetch_reddit_posts(ticker)
+
+        # Convert crypto ticker format for StockTwits (BTC-USD -> BTC.X)
+        if asset_type == "crypto":
+            st_ticker = ticker.split("-")[0] + ".X"
+        else:
+            st_ticker = ticker
+        stocktwits_block = fetch_stocktwits_messages(st_ticker, limit=30)
+
+        if asset_type == "crypto":
+            crypto_subs = ("CryptoCurrency", "Bitcoin", "ethereum", "CryptoMarkets", "altcoin")
+            reddit_block = fetch_reddit_posts(ticker.split("-")[0], subreddits=crypto_subs)
+        else:
+            reddit_block = fetch_reddit_posts(ticker)
+
+        if asset_type == "crypto":
+            community_context = (
+                "Focus on crypto-specific communities: Reddit (r/CryptoCurrency, r/Bitcoin, r/ethereum, "
+                "r/CryptoMarkets), Twitter/X crypto hashtags, and Telegram sentiment. "
+                "Note: StockTwits data may still be available for some crypto tickers."
+            )
+        else:
+            community_context = (
+                "Focus on stock-specific communities: StockTwits cashtag streams, "
+                "Reddit (r/wallstreetbets, r/stocks, r/investing), and financial Twitter."
+            )
 
         system_message = _build_system_message(
             ticker=ticker,
@@ -63,6 +87,7 @@ def create_sentiment_analyst(llm):
             news_block=news_block,
             stocktwits_block=stocktwits_block,
             reddit_block=reddit_block,
+            community_context=community_context,
         )
 
         prompt = ChatPromptTemplate.from_messages(
@@ -104,6 +129,7 @@ def _build_system_message(
     news_block: str,
     stocktwits_block: str,
     reddit_block: str,
+    community_context: str = "",
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks."""
     return f"""You are a financial market sentiment analyst. Your task is to produce a comprehensive sentiment report for {ticker} covering the period from {start_date} to {end_date}, drawing on three complementary data sources that have already been collected for you.
@@ -158,6 +184,10 @@ Produce a sentiment report covering, in order:
 3. **Divergences, alignments, and key narratives** across sources.
 4. **Catalysts and risks** surfaced by the data.
 5. **Markdown table** at the end summarizing key sentiment signals, their direction, source, and supporting evidence.
+
+## Community context
+
+{community_context}
 
 {get_language_instruction()}"""
 

@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import importlib
+import re
 
 import pytest
+
+_ANSI = re.compile(r'\x1b\[[0-9;]*m')
+def _strip(s: str) -> str:
+    return _ANSI.sub('', s)
 
 
 # ---- openai_client side: _resolve_provider_base_url -----------------------
@@ -123,7 +128,9 @@ def test_confirm_endpoint_warns_on_missing_scheme(monkeypatch, capsys):
     import cli.utils as cli_utils
     importlib.reload(cli_utils)
     cli_utils.confirm_ollama_endpoint("0.0.0.128")
-    out = capsys.readouterr().out
+    captured = capsys.readouterr()
+    out = _strip(captured.out)
+    err = _strip(captured.err)
     assert "missing a scheme" in out
     assert "http://<host>:11434/v1" in out
 
@@ -134,7 +141,9 @@ def test_confirm_endpoint_warns_on_non_default_port_remote(monkeypatch, capsys):
     import cli.utils as cli_utils
     importlib.reload(cli_utils)
     cli_utils.confirm_ollama_endpoint("http://remote-host/v1")
-    out = capsys.readouterr().out
+    captured = capsys.readouterr()
+    out = _strip(captured.out)
+    err = _strip(captured.err)
     assert "port 11434" in out
 
 

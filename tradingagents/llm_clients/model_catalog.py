@@ -153,6 +153,19 @@ MODEL_OPTIONS: ProviderModeOptions = {
     # so the two provider keys share one model list.
     "minimax": _MINIMAX_MODELS,
     "minimax-cn": _MINIMAX_MODELS,
+    # BluesMinds: OpenAI-compatible endpoint hosting Moonshot/Kimi models.
+    "bluesmind": {
+        "quick": [
+            ("Kimi K2.6 - Latest Moonshot flagship", "moonshotai/kimi-k2.6"),
+            ("Kimi K2 - Previous-gen flagship", "moonshotai/kimi-k2"),
+            ("Custom model ID", "custom"),
+        ],
+        "deep": [
+            ("Kimi K2.6 - Latest Moonshot flagship", "moonshotai/kimi-k2.6"),
+            ("Kimi K2 - Previous-gen flagship", "moonshotai/kimi-k2"),
+            ("Custom model ID", "custom"),
+        ],
+    },
     # OpenRouter: fetched dynamically. Azure: any deployed model name.
     # Ollama display labels intentionally omit a "local" marker — the
     # endpoint is now configurable via OLLAMA_BASE_URL, so the same labels

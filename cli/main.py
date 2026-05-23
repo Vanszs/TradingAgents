@@ -1,9 +1,15 @@
 from typing import Optional
 import datetime
+import os
 import typer
 import questionary
 from pathlib import Path
 from functools import wraps
+from dotenv import load_dotenv
+
+# Load .env before anything else so TRADINGAGENTS_* env vars are available
+load_dotenv()
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.spinner import Spinner
@@ -268,82 +274,38 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
         )
     )
 
-    # Progress panel showing agent status
-    progress_table = Table(
-        show_header=True,
-        header_style="bold magenta",
-        show_footer=False,
-        box=box.SIMPLE_HEAD,  # Use simple header with horizontal lines
-        title=None,  # Remove the redundant Progress title
-        padding=(0, 2),  # Add horizontal padding
-        expand=True,  # Make table expand to fill available space
-    )
-    progress_table.add_column("Team", style="cyan", justify="center", width=20)
-    progress_table.add_column("Agent", style="green", justify="center", width=20)
-    progress_table.add_column("Status", style="yellow", justify="center", width=20)
+    # Progress panel — compact: one line per agent
+    STATUS_ICON = {"completed": "✓", "in_progress": "⟳", "pending": "·", "error": "✗"}
+    STATUS_COLOR = {"completed": "green", "in_progress": "cyan", "pending": "dim", "error": "red"}
 
-    # Group agents by team - filter to only include agents in agent_status
     all_teams = {
-        "Analyst Team": [
-            "Market Analyst",
-            "Sentiment Analyst",
-            "News Analyst",
-            "Fundamentals Analyst",
-        ],
-        "Research Team": ["Bull Researcher", "Bear Researcher", "Research Manager"],
-        "Trading Team": ["Trader"],
-        "Risk Management": ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"],
-        "Portfolio Management": ["Portfolio Manager"],
+        "Analyst": ["Market Analyst", "Sentiment Analyst", "News Analyst", "Fundamentals Analyst"],
+        "Research": ["Bull Researcher", "Bear Researcher", "Research Manager"],
+        "Trading": ["Trader"],
+        "Risk": ["Aggressive Analyst", "Conservative Analyst", "Neutral Analyst"],
+        "Portfolio": ["Portfolio Manager"],
     }
 
-    # Filter teams to only include agents that are in agent_status
-    teams = {}
+    from rich.text import Text as RichText
+    progress_lines = RichText()
     for team, agents in all_teams.items():
-        active_agents = [a for a in agents if a in message_buffer.agent_status]
-        if active_agents:
-            teams[team] = active_agents
-
-    for team, agents in teams.items():
-        # Add first agent with team name
-        first_agent = agents[0]
-        status = message_buffer.agent_status.get(first_agent, "pending")
-        if status == "in_progress":
-            spinner = Spinner(
-                "dots", text="[blue]in_progress[/blue]", style="bold cyan"
-            )
-            status_cell = spinner
-        else:
-            status_color = {
-                "pending": "yellow",
-                "completed": "green",
-                "error": "red",
-            }.get(status, "white")
-            status_cell = f"[{status_color}]{status}[/{status_color}]"
-        progress_table.add_row(team, first_agent, status_cell)
-
-        # Add remaining agents in team
-        for agent in agents[1:]:
+        active = [a for a in agents if a in message_buffer.agent_status]
+        if not active:
+            continue
+        # Team header
+        progress_lines.append(f" {team}\n", style="bold cyan")
+        for agent in active:
             status = message_buffer.agent_status.get(agent, "pending")
-            if status == "in_progress":
-                spinner = Spinner(
-                    "dots", text="[blue]in_progress[/blue]", style="bold cyan"
-                )
-                status_cell = spinner
-            else:
-                status_color = {
-                    "pending": "yellow",
-                    "completed": "green",
-                    "error": "red",
-                }.get(status, "white")
-                status_cell = f"[{status_color}]{status}[/{status_color}]"
-            progress_table.add_row("", agent, status_cell)
-
-        # Add horizontal line after each team
-        progress_table.add_row("─" * 20, "─" * 20, "─" * 20, style="dim")
+            icon = STATUS_ICON.get(status, "·")
+            color = STATUS_COLOR.get(status, "white")
+            short = agent.replace(" Analyst", "").replace(" Researcher", "").replace(" Manager", " Mgr")
+            progress_lines.append(f"  {icon} ", style=color)
+            progress_lines.append(f"{short}\n", style=color if status != "pending" else "dim")
 
     layout["progress"].update(
-        Panel(progress_table, title="Progress", border_style="cyan", padding=(1, 2))
+        Panel(progress_lines, title="Progress", border_style="cyan", padding=(0, 1))
     )
+
 
     # Messages panel showing recent messages and tool calls
     messages_table = Table(
@@ -1011,6 +973,7 @@ def run_analysis(checkpoint: bool = False):
         config=config,
         debug=True,
         callbacks=[stats_handler],
+        asset_type=selections["asset_type"],
     )
 
     # Initialize message buffer with selected analysts
@@ -1020,7 +983,11 @@ def run_analysis(checkpoint: bool = False):
     start_time = time.time()
 
     # Create result directory
-    results_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
+    base_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
+    v = 1
+    while (base_dir / f"v{v}.0").exists():
+        v += 1
+    results_dir = base_dir / f"v{v}.0"
     results_dir.mkdir(parents=True, exist_ok=True)
     report_dir = results_dir / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)

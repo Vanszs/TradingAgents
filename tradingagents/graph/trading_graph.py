@@ -39,6 +39,8 @@ from tradingagents.agents.utils.agent_utils import (
     get_global_news
 )
 
+from tradingagents.agents.utils.web_search_tools import get_web_search
+
 from .checkpointer import checkpoint_step, clear_checkpoint, get_checkpointer, thread_id
 from .conditional_logic import ConditionalLogic
 from .setup import GraphSetup
@@ -56,6 +58,7 @@ class TradingAgentsGraph:
         debug=False,
         config: Dict[str, Any] = None,
         callbacks: Optional[List] = None,
+        asset_type: str = "stock",
     ):
         """Initialize the trading agents graph and components.
 
@@ -64,10 +67,12 @@ class TradingAgentsGraph:
             debug: Whether to run in debug mode
             config: Configuration dictionary. If None, uses default config
             callbacks: Optional list of callback handlers (e.g., for tracking LLM/tool stats)
+            asset_type: "stock" or "crypto"
         """
         self.debug = debug
         self.config = config or DEFAULT_CONFIG
         self.callbacks = callbacks or []
+        self.asset_type = asset_type
 
         # Update the interface's config
         set_config(self.config)
@@ -115,6 +120,7 @@ class TradingAgentsGraph:
             self.tool_nodes,
             self.conditional_logic,
             analyst_concurrency_limit=self.config.get("analyst_concurrency_limit", 1),
+            asset_type=self.asset_type,
         )
 
         self.propagator = Propagator(
@@ -157,6 +163,24 @@ class TradingAgentsGraph:
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""
+        if self.asset_type == "crypto":
+            try:
+                from tradingagents.agents.utils.crypto_fundamental_tools import (
+                    get_crypto_tokenomics, get_crypto_dev_activity,
+                    get_crypto_network_metrics, get_crypto_market_sentiment,
+                    get_crypto_onchain_news,
+                )
+                fundamentals_tools = [
+                    get_crypto_tokenomics, get_crypto_dev_activity,
+                    get_crypto_network_metrics, get_crypto_market_sentiment,
+                    get_crypto_onchain_news,
+                ]
+            except ImportError:
+                # Phase 1 not yet implemented — fall back to stock tools
+                fundamentals_tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
+        else:
+            fundamentals_tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
+
         return {
             "market": ToolNode(
                 [
@@ -168,27 +192,21 @@ class TradingAgentsGraph:
             ),
             "social": ToolNode(
                 [
-                    # News tools for social media analysis
+                    # Sentiment analyst pre-fetches data directly (no tool-calling).
+                    # This node exists for graph topology consistency but is never invoked.
                     get_news,
                 ]
             ),
             "news": ToolNode(
                 [
-                    # News and insider information
                     get_news,
                     get_global_news,
-                    get_insider_transactions,
+                    get_web_search,
+                    # get_insider_transactions only for stock — conditionally included
+                    *([] if self.asset_type == "crypto" else [get_insider_transactions]),
                 ]
             ),
-            "fundamentals": ToolNode(
-                [
-                    # Fundamental analysis tools
-                    get_fundamentals,
-                    get_balance_sheet,
-                    get_cashflow,
-                    get_income_statement,
-                ]
-            ),
+            "fundamentals": ToolNode(fundamentals_tools),
         }
 
     def _resolve_benchmark(self, ticker: str) -> str:
@@ -292,7 +310,7 @@ class TradingAgentsGraph:
         if updates:
             self.memory_log.batch_update_with_outcomes(updates)
 
-    def propagate(self, company_name, trade_date, asset_type: str = "stock"):
+    def propagate(self, company_name, trade_date, asset_type: str = None):
         """Run the trading agents graph for a company on a specific date.
 
         ``asset_type`` selects between the stock pipeline (default) and the
@@ -301,7 +319,12 @@ class TradingAgentsGraph:
         ``checkpoint_enabled`` is set in config, the graph is recompiled with
         a per-ticker SqliteSaver so a crashed run can resume from the last
         successful node on a subsequent invocation with the same ticker+date.
+
+        If ``asset_type`` is not passed, defaults to ``self.asset_type`` set
+        at construction time — so callers only need to specify it once.
         """
+        if asset_type is None:
+            asset_type = self.asset_type
         self.ticker = company_name
 
         # Resolve any pending memory-log entries for this ticker before the pipeline runs.

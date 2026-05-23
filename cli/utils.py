@@ -59,13 +59,8 @@ def detect_asset_type(ticker: str) -> AssetType:
 def filter_analysts_for_asset_type(
     analysts: List[AnalystType], asset_type: AssetType
 ) -> List[AnalystType]:
-    if asset_type != AssetType.CRYPTO:
-        return analysts
-    return [
-        analyst
-        for analyst in analysts
-        if analyst != AnalystType.FUNDAMENTALS
-    ]
+    """Crypto now has its own fundamentals analyst — keep all analysts."""
+    return analysts
 
 
 def get_analysis_date() -> str:
@@ -178,15 +173,21 @@ def _fetch_openrouter_models() -> List[Tuple[str, str]]:
         return []
 
 
-def select_openrouter_model() -> str:
-    """Select an OpenRouter model from the newest available, or enter a custom ID."""
-    models = _fetch_openrouter_models()
+def select_openrouter_model(mode: str = "deep") -> str:
+    """Select an OpenRouter model. Checks env var for the given mode first."""
+    import os
+    env_key = "TRADINGAGENTS_DEEP_THINK_LLM" if mode == "deep" else "TRADINGAGENTS_QUICK_THINK_LLM"
+    val = os.environ.get(env_key, "").strip()
+    if val:
+        console.print(f"\n[green]Using OpenRouter model from env ({env_key}): {val}[/green]")
+        return val
 
+    models = _fetch_openrouter_models()
     choices = [questionary.Choice(name, value=mid) for name, mid in models[:5]]
     choices.append(questionary.Choice("Custom model ID", value="custom"))
 
     choice = questionary.select(
-        "Select OpenRouter Model (latest available):",
+        f"Select OpenRouter Model ({mode}-thinking):",
         choices=choices,
         instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
         style=questionary.Style([
@@ -216,7 +217,7 @@ def _prompt_custom_model_id() -> str:
 def _select_model(provider: str, mode: str) -> str:
     """Select a model for the given provider and mode (quick/deep)."""
     if provider.lower() == "openrouter":
-        return select_openrouter_model()
+        return select_openrouter_model(mode=mode)
 
     if provider.lower() == "azure":
         return questionary.text(
@@ -276,6 +277,7 @@ def select_llm_provider() -> tuple[str, str | None]:
         ("GLM", "glm", "https://open.bigmodel.cn/api/paas/v4/"),
         ("MiniMax", "minimax", "https://api.minimax.io/v1"),
         ("OpenRouter", "openrouter", "https://openrouter.ai/api/v1"),
+        ("BluesMind", "bluesmind", "https://api.bluesminds.com/v1"),
         ("Azure OpenAI", "azure", None),
         ("Ollama", "ollama", ollama_url),
     ]
