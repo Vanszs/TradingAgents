@@ -56,6 +56,7 @@ class TradingAgentsGraph:
         debug=False,
         config: Dict[str, Any] = None,
         callbacks: Optional[List] = None,
+        asset_type: str = "stock",
     ):
         """Initialize the trading agents graph and components.
 
@@ -64,10 +65,12 @@ class TradingAgentsGraph:
             debug: Whether to run in debug mode
             config: Configuration dictionary. If None, uses default config
             callbacks: Optional list of callback handlers (e.g., for tracking LLM/tool stats)
+            asset_type: "stock" or "crypto"
         """
         self.debug = debug
         self.config = config or DEFAULT_CONFIG
         self.callbacks = callbacks or []
+        self.asset_type = asset_type
 
         # Update the interface's config
         set_config(self.config)
@@ -115,6 +118,7 @@ class TradingAgentsGraph:
             self.tool_nodes,
             self.conditional_logic,
             analyst_concurrency_limit=self.config.get("analyst_concurrency_limit", 1),
+            asset_type=self.asset_type,
         )
 
         self.propagator = Propagator(
@@ -157,6 +161,24 @@ class TradingAgentsGraph:
 
     def _create_tool_nodes(self) -> Dict[str, ToolNode]:
         """Create tool nodes for different data sources using abstract methods."""
+        if self.asset_type == "crypto":
+            try:
+                from tradingagents.agents.utils.crypto_fundamental_tools import (
+                    get_crypto_tokenomics, get_crypto_dev_activity,
+                    get_crypto_network_metrics, get_crypto_market_sentiment,
+                    get_crypto_onchain_news,
+                )
+                fundamentals_tools = [
+                    get_crypto_tokenomics, get_crypto_dev_activity,
+                    get_crypto_network_metrics, get_crypto_market_sentiment,
+                    get_crypto_onchain_news,
+                ]
+            except ImportError:
+                # Phase 1 not yet implemented — fall back to stock tools
+                fundamentals_tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
+        else:
+            fundamentals_tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
+
         return {
             "market": ToolNode(
                 [
@@ -180,15 +202,7 @@ class TradingAgentsGraph:
                     get_insider_transactions,
                 ]
             ),
-            "fundamentals": ToolNode(
-                [
-                    # Fundamental analysis tools
-                    get_fundamentals,
-                    get_balance_sheet,
-                    get_cashflow,
-                    get_income_statement,
-                ]
-            ),
+            "fundamentals": ToolNode(fundamentals_tools),
         }
 
     def _resolve_benchmark(self, ticker: str) -> str:

@@ -21,6 +21,7 @@ class GraphSetup:
         tool_nodes: Dict[str, ToolNode],
         conditional_logic: ConditionalLogic,
         analyst_concurrency_limit: int = 1,
+        asset_type: str = "stock",
     ):
         """Initialize with required components."""
         self.quick_thinking_llm = quick_thinking_llm
@@ -28,6 +29,7 @@ class GraphSetup:
         self.tool_nodes = tool_nodes
         self.conditional_logic = conditional_logic
         self.analyst_concurrency_limit = analyst_concurrency_limit
+        self.asset_type = asset_type
 
     def setup_graph(
         self, selected_analysts=["market", "social", "news", "fundamentals"]
@@ -46,11 +48,22 @@ class GraphSetup:
             concurrency_limit=self.analyst_concurrency_limit,
         )
 
+        try:
+            from tradingagents.agents.analysts.crypto_fundamentals_analyst import create_crypto_fundamentals_analyst
+            _crypto_analyst_available = True
+        except ImportError:
+            _crypto_analyst_available = False
+
+        if self.asset_type == "crypto" and _crypto_analyst_available:
+            fundamentals_factory = lambda: create_crypto_fundamentals_analyst(self.quick_thinking_llm)
+        else:
+            fundamentals_factory = lambda: create_fundamentals_analyst(self.quick_thinking_llm)
+
         analyst_factories = {
             "market": lambda: create_market_analyst(self.quick_thinking_llm),
             "social": lambda: create_sentiment_analyst(self.quick_thinking_llm),
             "news": lambda: create_news_analyst(self.quick_thinking_llm),
-            "fundamentals": lambda: create_fundamentals_analyst(self.quick_thinking_llm),
+            "fundamentals": fundamentals_factory,
         }
 
         # Create researcher and manager nodes

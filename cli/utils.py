@@ -59,13 +59,8 @@ def detect_asset_type(ticker: str) -> AssetType:
 def filter_analysts_for_asset_type(
     analysts: List[AnalystType], asset_type: AssetType
 ) -> List[AnalystType]:
-    if asset_type != AssetType.CRYPTO:
-        return analysts
-    return [
-        analyst
-        for analyst in analysts
-        if analyst != AnalystType.FUNDAMENTALS
-    ]
+    """Crypto now has its own fundamentals analyst — keep all analysts."""
+    return analysts
 
 
 def get_analysis_date() -> str:

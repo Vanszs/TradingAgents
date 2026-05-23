@@ -1011,6 +1011,7 @@ def run_analysis(checkpoint: bool = False):
         config=config,
         debug=True,
         callbacks=[stats_handler],
+        asset_type=selections["asset_type"],
     )
 
     # Initialize message buffer with selected analysts

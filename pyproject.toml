@@ -52,3 +52,23 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = ["build", "dist", ".venv", "tradingagents.egg-info"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501", "B008", "B006"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.coverage.run]
+source = ["tradingagents", "cli"]
+omit = ["*/tests/*", "*/build/*"]

@@ -17,6 +17,11 @@ def create_market_analyst(llm):
             state["company_of_interest"], asset_type
         )
 
+        if asset_type == "crypto":
+            analysis_note = " Note: For crypto, OHLCV data reflects 24/7 trading. Volume spikes and weekend gaps are normal. Consider that crypto markets have no circuit breakers."
+        else:
+            analysis_note = ""
+
         tools = [
             get_stock_data,
             get_indicators,
@@ -63,7 +68,7 @@ Volume-Based Indicators:
                     " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
                     " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
                     " You have access to the following tools: {tool_names}.\n{system_message}"
-                    "For your reference, the current date is {current_date}. {instrument_context}",
+                    "For your reference, the current date is {current_date}. {instrument_context}{analysis_note}",
                 ),
                 MessagesPlaceholder(variable_name="messages"),
             ]
@@ -73,6 +78,7 @@ Volume-Based Indicators:
         prompt = prompt.partial(tool_names=", ".join([tool.name for tool in tools]))
         prompt = prompt.partial(current_date=current_date)
         prompt = prompt.partial(instrument_context=instrument_context)
+        prompt = prompt.partial(analysis_note=analysis_note)
 
         chain = prompt | llm.bind_tools(tools)
 

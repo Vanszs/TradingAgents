@@ -22,13 +22,10 @@ class CryptoAssetModeTests(unittest.TestCase):
             AnalystType.FUNDAMENTALS,
         ]
 
+        # Crypto now has its own fundamentals analyst — all analysts are kept
         self.assertEqual(
             filter_analysts_for_asset_type(analysts, AssetType.CRYPTO),
-            [
-                AnalystType.MARKET,
-                AnalystType.SOCIAL,
-                AnalystType.NEWS,
-            ],
+            analysts,
         )
 
     def test_keeps_all_analysts_for_stock(self):
