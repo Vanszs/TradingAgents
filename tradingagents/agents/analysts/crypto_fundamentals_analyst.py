@@ -46,7 +46,7 @@ def create_crypto_fundamentals_analyst(llm):
         "4. **Market Sentiment**: Fear & Greed Index (0-100), BTC dominance trends, "
         "social community size\n"
         "5. **On-Chain Metrics & News**: Etherscan data (supply, burns, token contracts) "
-        "and CryptoPanic news sentiment for EVM-based assets\n\n"
+        "and RSS news sentiment for EVM-based assets\n\n"
         "Use the available tools: `get_crypto_tokenomics`, `get_crypto_dev_activity`, "
         "`get_crypto_network_metrics`, `get_crypto_market_sentiment`, `get_crypto_onchain_news`.\n\n"
         "Apply this evidence-based grading rubric:\n"
@@ -57,7 +57,10 @@ def create_crypto_fundamentals_analyst(llm):
         "- **Sentiment**: Fear & Greed <25 = extreme fear (contrarian buy signal possible); "
         ">75 = extreme greed (caution, possible top).\n"
         "- **BTC Dominance**: Rising dominance = altcoin headwinds; "
-        "falling dominance = altcoin season potential.\n\n"
+        "falling dominance = altcoin season potential.\n"
+        "- **On-Chain Supply**: Compare on-chain circulating supply vs CoinGecko reported supply. "
+        "Large discrepancy may indicate locked/burned tokens. "
+        "For EVM tokens: contract address confirms legitimacy.\n\n"
         "Write a comprehensive report covering all four areas. "
         "Append a Markdown table at the end summarizing key metrics with grades. "
         "Provide specific, actionable insights to help traders make informed decisions."
@@ -96,12 +99,7 @@ def create_crypto_fundamentals_analyst(llm):
         chain = filled_prompt | llm.bind_tools(tools)
         result = chain.invoke(state["messages"])
 
-        report = ""
-        if hasattr(result, "tool_calls") and result.tool_calls:
-            report = result.content or ""
-        else:
-            report = result.content or ""
-
+        report = result.content or ""
         return {
             "messages": [result],
             "fundamentals_report": report,

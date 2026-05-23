@@ -54,8 +54,19 @@ def create_sentiment_analyst(llm):
         # returns a string (no exceptions surface from here), so the LLM
         # always sees something — either real data or a clear placeholder.
         news_block = get_news.func(ticker, start_date, end_date)
-        stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
-        reddit_block = fetch_reddit_posts(ticker)
+
+        # Convert crypto ticker format for StockTwits (BTC-USD -> BTC.X)
+        if asset_type == "crypto":
+            st_ticker = ticker.split("-")[0] + ".X"
+        else:
+            st_ticker = ticker
+        stocktwits_block = fetch_stocktwits_messages(st_ticker, limit=30)
+
+        if asset_type == "crypto":
+            crypto_subs = ("CryptoCurrency", "Bitcoin", "ethereum", "CryptoMarkets", "altcoin")
+            reddit_block = fetch_reddit_posts(ticker.split("-")[0], subreddits=crypto_subs)
+        else:
+            reddit_block = fetch_reddit_posts(ticker)
 
         if asset_type == "crypto":
             community_context = (

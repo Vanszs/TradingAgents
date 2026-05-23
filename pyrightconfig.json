@@ -1,0 +1,15 @@
+{
+  "pythonPath": "/home/vanszs/.pyenv/versions/3.11.9/bin/python",
+  "pythonVersion": "3.11",
+  "venvPath": "/home/vanszs/.pyenv/versions/3.11.9",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "exclude": [
+    "build",
+    "dist",
+    ".venv",
+    "tradingagents.egg-info"
+  ]
+}

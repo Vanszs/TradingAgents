@@ -19,7 +19,7 @@ from .crypto_id_map import ticker_to_coingecko_id
 logger = logging.getLogger(__name__)
 
 _BASE = "https://api.coingecko.com/api/v3"
-_DEMO_BASE = "https://pro-api.coingecko.com/api/v3"
+_PRO_BASE = "https://pro-api.coingecko.com/api/v3"
 _CACHE: dict[str, tuple[float, Any]] = {}
 _CACHE_TTL = 300  # 5 minutes
 
@@ -27,7 +27,9 @@ _CACHE_TTL = 300  # 5 minutes
 def _get(path: str, params: dict | None = None) -> Optional[dict]:
     """Make a GET request to CoinGecko, with caching and error handling."""
     api_key = os.environ.get("COINGECKO_API_KEY", "")
-    base = _DEMO_BASE if api_key else _BASE
+    # Demo keys (CG-...) use api.coingecko.com; Pro keys use pro-api.coingecko.com
+    is_pro_key = api_key and not api_key.startswith("CG-")
+    base = _PRO_BASE if is_pro_key else _BASE
     url = f"{base}{path}"
     cache_key = f"{url}:{params}"
     now = time.time()
@@ -37,7 +39,8 @@ def _get(path: str, params: dict | None = None) -> Optional[dict]:
             return data
     headers = {"accept": "application/json"}
     if api_key:
-        headers["x-cg-demo-api-key"] = api_key
+        hdr_key = "x-cg-pro-api-key" if is_pro_key else "x-cg-demo-api-key"
+        headers[hdr_key] = api_key
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=15)
         if resp.status_code == 429:
@@ -85,13 +88,15 @@ def get_tokenomics(ticker: str) -> str:
     def fmt_num(n, prefix="$", suffix=""):
         if n is None:
             return "N/A"
-        if abs(n) >= 1e12:
-            return f"{prefix}{n/1e12:.2f}T{suffix}"
-        if abs(n) >= 1e9:
-            return f"{prefix}{n/1e9:.2f}B{suffix}"
-        if abs(n) >= 1e6:
-            return f"{prefix}{n/1e6:.2f}M{suffix}"
-        return f"{prefix}{n:,.2f}{suffix}"
+        sign = "-" if n < 0 else ""
+        n = abs(n)
+        if n >= 1e12:
+            return f"{sign}{prefix}{n/1e12:.2f}T{suffix}"
+        if n >= 1e9:
+            return f"{sign}{prefix}{n/1e9:.2f}B{suffix}"
+        if n >= 1e6:
+            return f"{sign}{prefix}{n/1e6:.2f}M{suffix}"
+        return f"{sign}{prefix}{n:,.2f}{suffix}"
 
     supply_ratio = f"{circ/max_s*100:.1f}%" if circ and max_s else "N/A (unlimited supply)"
     is_deflationary = "Yes (max supply capped)" if max_s else "No (unlimited supply)"

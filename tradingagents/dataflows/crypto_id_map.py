@@ -42,6 +42,17 @@ _TICKER_TO_ID: dict[str, str] = {
     "TON-USD": "the-open-network", "TON-USDT": "the-open-network",
     "SHIB-USD": "shiba-inu", "SHIB-USDT": "shiba-inu",
     "PEPE-USD": "pepe", "PEPE-USDT": "pepe",
+    # Meme coins
+    "CHILLGUY-USD": "just-a-chill-guy", "CHILLGUY-USDT": "just-a-chill-guy",
+    "BONK-USD": "bonk", "BONK-USDT": "bonk",
+    "WIF-USD": "dogwifcoin", "WIF-USDT": "dogwifcoin",
+    "FLOKI-USD": "floki", "FLOKI-USDT": "floki",
+    "MEME-USD": "memecoin-2", "MEME-USDT": "memecoin-2",
+    "POPCAT-USD": "popcat", "POPCAT-USDT": "popcat",
+    "MOG-USD": "mog-coin", "MOG-USDT": "mog-coin",
+    "BRETT-USD": "based-brett", "BRETT-USDT": "based-brett",
+    "TURBO-USD": "turbo", "TURBO-USDT": "turbo",
+    "NEIRO-USD": "neiro-on-eth", "NEIRO-USDT": "neiro-on-eth",
 }
 
 _list_cache: dict[str, str] = {}
@@ -51,6 +62,8 @@ _LIST_CACHE_TTL = 3600  # 1 hour
 
 def ticker_to_coingecko_id(ticker: str) -> Optional[str]:
     """Return CoinGecko coin ID for a ticker symbol, or None if not found."""
+    if not ticker:
+        return None
     normalized = ticker.strip().upper()
     # Fast path
     if normalized in _TICKER_TO_ID:
@@ -76,7 +89,12 @@ def _lookup_from_list(symbol: str) -> Optional[str]:
             )
             resp.raise_for_status()
             coins = resp.json()
-            _list_cache = {c["symbol"].upper(): c["id"] for c in coins}
+            _list_cache = {}
+            for c in coins:
+                sym = c["symbol"].upper()
+                # Keep first occurrence (CoinGecko returns by market cap rank)
+                if sym not in _list_cache:
+                    _list_cache[sym] = c["id"]
             _list_cache_ts = now
         except Exception as exc:
             logger.warning("CoinGecko /coins/list failed: %s", exc)

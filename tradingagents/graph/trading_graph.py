@@ -39,6 +39,8 @@ from tradingagents.agents.utils.agent_utils import (
     get_global_news
 )
 
+from tradingagents.agents.utils.web_search_tools import get_web_search
+
 from .checkpointer import checkpoint_step, clear_checkpoint, get_checkpointer, thread_id
 from .conditional_logic import ConditionalLogic
 from .setup import GraphSetup
@@ -190,16 +192,18 @@ class TradingAgentsGraph:
             ),
             "social": ToolNode(
                 [
-                    # News tools for social media analysis
+                    # Sentiment analyst pre-fetches data directly (no tool-calling).
+                    # This node exists for graph topology consistency but is never invoked.
                     get_news,
                 ]
             ),
             "news": ToolNode(
                 [
-                    # News and insider information
                     get_news,
                     get_global_news,
-                    get_insider_transactions,
+                    get_web_search,
+                    # get_insider_transactions only for stock — conditionally included
+                    *([] if self.asset_type == "crypto" else [get_insider_transactions]),
                 ]
             ),
             "fundamentals": ToolNode(fundamentals_tools),
@@ -306,7 +310,7 @@ class TradingAgentsGraph:
         if updates:
             self.memory_log.batch_update_with_outcomes(updates)
 
-    def propagate(self, company_name, trade_date, asset_type: str = "stock"):
+    def propagate(self, company_name, trade_date, asset_type: str = None):
         """Run the trading agents graph for a company on a specific date.
 
         ``asset_type`` selects between the stock pipeline (default) and the
@@ -315,7 +319,12 @@ class TradingAgentsGraph:
         ``checkpoint_enabled`` is set in config, the graph is recompiled with
         a per-ticker SqliteSaver so a crashed run can resume from the last
         successful node on a subsequent invocation with the same ticker+date.
+
+        If ``asset_type`` is not passed, defaults to ``self.asset_type`` set
+        at construction time — so callers only need to specify it once.
         """
+        if asset_type is None:
+            asset_type = self.asset_type
         self.ticker = company_name
 
         # Resolve any pending memory-log entries for this ticker before the pipeline runs.

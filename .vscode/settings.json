@@ -1,0 +1,16 @@
+{
+  "python.defaultInterpreterPath": "/home/vanszs/.pyenv/versions/3.11.9/bin/python",
+  "python.analysis.extraPaths": [
+    "/home/vanszs/.pyenv/versions/3.11.9/lib/python3.11/site-packages"
+  ],
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.useLibraryCodeForTypes": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  }
+}
