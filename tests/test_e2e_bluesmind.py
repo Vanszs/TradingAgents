@@ -279,6 +279,7 @@ class TestBluesmindEnvOverride:
         monkeypatch.setenv("TRADINGAGENTS_DEEP_THINK_LLM", "moonshotai/kimi-k2.6")
         monkeypatch.setenv("TRADINGAGENTS_QUICK_THINK_LLM", "moonshotai/kimi-k2.6")
         import importlib
+
         import tradingagents.default_config as dc
         config = importlib.reload(dc).DEFAULT_CONFIG
         assert config["llm_provider"] == "bluesmind"

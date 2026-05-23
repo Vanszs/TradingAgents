@@ -1,9 +1,9 @@
 """yfinance-based news data fetching functions."""
 
+from datetime import datetime
 from typing import Optional
 
 import yfinance as yf
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 from .config import get_config

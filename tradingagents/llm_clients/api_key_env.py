@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-
 PROVIDER_API_KEY_ENV: dict[str, Optional[str]] = {
     "openai":     "OPENAI_API_KEY",
     "anthropic":  "ANTHROPIC_API_KEY",

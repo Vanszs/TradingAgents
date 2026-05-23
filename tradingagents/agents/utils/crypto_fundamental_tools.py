@@ -70,8 +70,8 @@ def get_crypto_onchain_news(
     ticker: Annotated[str, "Crypto ticker symbol, e.g. ETH-USD, LINK-USD"],
 ) -> str:
     """Get on-chain metrics (Etherscan) and recent news (RSS feeds) for a crypto asset."""
-    from tradingagents.dataflows.onchain_metrics import get_onchain_metrics
     from tradingagents.dataflows.crypto_news import get_crypto_news
+    from tradingagents.dataflows.onchain_metrics import get_onchain_metrics
     onchain = get_onchain_metrics(ticker)
     news = get_crypto_news(ticker)
     return onchain + '\n\n' + news

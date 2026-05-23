@@ -5,8 +5,6 @@ from __future__ import annotations
 import importlib
 import re
 
-import pytest
-
 _ANSI = re.compile(r'\x1b\[[0-9;]*m')
 def _strip(s: str) -> str:
     return _ANSI.sub('', s)

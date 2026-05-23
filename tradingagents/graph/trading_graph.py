@@ -1,11 +1,11 @@
 # TradingAgents/graph/trading_graph.py
 
+import json
 import logging
 import os
-from pathlib import Path
-import json
 from datetime import datetime, timedelta
-from typing import Dict, Any, Tuple, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import yfinance as yf
 
@@ -13,39 +13,37 @@ logger = logging.getLogger(__name__)
 
 from langgraph.prebuilt import ToolNode
 
-from tradingagents.llm_clients import create_llm_client
-
 from tradingagents.agents import *
-from tradingagents.default_config import DEFAULT_CONFIG
-from tradingagents.agents.utils.memory import TradingMemoryLog
-from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.agents.utils.agent_states import (
     AgentState,
     InvestDebateState,
     RiskDebateState,
 )
-from tradingagents.dataflows.config import set_config
 
 # Import the new abstract tool methods from agent_utils
 from tradingagents.agents.utils.agent_utils import (
-    get_stock_data,
-    get_indicators,
-    get_fundamentals,
     get_balance_sheet,
     get_cashflow,
+    get_fundamentals,
+    get_global_news,
     get_income_statement,
-    get_news,
+    get_indicators,
     get_insider_transactions,
-    get_global_news
+    get_news,
+    get_stock_data,
 )
-
+from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.agents.utils.web_search_tools import get_web_search
+from tradingagents.dataflows.config import set_config
+from tradingagents.dataflows.utils import safe_ticker_component
+from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.llm_clients import create_llm_client
 
 from .checkpointer import checkpoint_step, clear_checkpoint, get_checkpointer, thread_id
 from .conditional_logic import ConditionalLogic
-from .setup import GraphSetup
 from .propagation import Propagator
 from .reflection import Reflector
+from .setup import GraphSetup
 from .signal_processing import SignalProcessor
 
 
@@ -166,9 +164,11 @@ class TradingAgentsGraph:
         if self.asset_type == "crypto":
             try:
                 from tradingagents.agents.utils.crypto_fundamental_tools import (
-                    get_crypto_tokenomics, get_crypto_dev_activity,
-                    get_crypto_network_metrics, get_crypto_market_sentiment,
+                    get_crypto_dev_activity,
+                    get_crypto_market_sentiment,
+                    get_crypto_network_metrics,
                     get_crypto_onchain_news,
+                    get_crypto_tokenomics,
                 )
                 fundamentals_tools = [
                     get_crypto_tokenomics, get_crypto_dev_activity,

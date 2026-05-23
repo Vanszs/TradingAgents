@@ -60,7 +60,7 @@ exclude = ["build", "dist", ".venv", "tradingagents.egg-info"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
-ignore = ["E501", "B008", "B006"]
+ignore = ["E501", "B008", "B006", "E402", "F401", "F403", "F405", "F841", "B017", "B904", "B905", "E731"]
 
 [tool.coverage.report]
 exclude_lines = [

@@ -18,7 +18,6 @@ from tradingagents.agents.utils.crypto_fundamental_tools import (
     get_crypto_onchain_news,
     get_crypto_tokenomics,
 )
-from tradingagents.dataflows.config import get_config
 
 
 def create_crypto_fundamentals_analyst(llm):

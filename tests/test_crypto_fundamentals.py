@@ -14,7 +14,6 @@ import tradingagents.dataflows.fear_greed as fear_greed_mod
 import tradingagents.dataflows.github_activity as github_mod
 import tradingagents.dataflows.onchain_metrics as onchain_mod
 
-
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
 
@@ -453,8 +452,8 @@ class TestCryptoNews:
     @pytest.mark.unit
     def test_returns_headlines(self, monkeypatch):
         """RSS-based: mock _fetch_feed to return fake articles."""
-        from tradingagents.dataflows.crypto_news import get_crypto_news
         import tradingagents.dataflows.crypto_news as cp
+        from tradingagents.dataflows.crypto_news import get_crypto_news
         cp._CACHE.clear()
 
         fake_articles = [
@@ -473,8 +472,8 @@ class TestCryptoNews:
     @pytest.mark.unit
     def test_no_coverage_for_unknown_coin(self, monkeypatch):
         """Unknown meme coin with no news returns informative message."""
-        from tradingagents.dataflows.crypto_news import get_crypto_news
         import tradingagents.dataflows.crypto_news as cp
+        from tradingagents.dataflows.crypto_news import get_crypto_news
         cp._CACHE.clear()
 
         monkeypatch.setattr(
@@ -487,8 +486,8 @@ class TestCryptoNews:
 
     @pytest.mark.unit
     def test_network_error_graceful(self, monkeypatch):
-        from tradingagents.dataflows.crypto_news import get_crypto_news
         import tradingagents.dataflows.crypto_news as cp
+        from tradingagents.dataflows.crypto_news import get_crypto_news
         cp._CACHE.clear()
 
         # Simulate all RSS feeds failing

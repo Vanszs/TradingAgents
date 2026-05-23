@@ -12,11 +12,8 @@ Covers every layer that was touched when adding the provider:
 from __future__ import annotations
 
 import importlib
-import os
-from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # 1. api_key_env

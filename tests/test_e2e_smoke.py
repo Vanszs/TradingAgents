@@ -4,14 +4,13 @@ These tests mock the LLM and data-fetching layers so they run fast,
 require no API keys, and make no HTTP calls.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
-from langchain_core.runnables import RunnableSerializable
+import pytest
 from langchain_core.messages import AIMessage
+from langchain_core.runnables import RunnableSerializable
 
 from tradingagents.default_config import DEFAULT_CONFIG
-
 
 # ---------------------------------------------------------------------------
 # Mock LLM helpers

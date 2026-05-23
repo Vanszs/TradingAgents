@@ -143,7 +143,7 @@ def get_crypto_news(ticker: str, limit: int = 10) -> str:
 
     lines = [
         f"## Crypto News: {ticker} ({len(unique)} articles)",
-        f"*Sources: CoinDesk, CoinTelegraph, Decrypt, TheBlock — no API key required*",
+        "*Sources: CoinDesk, CoinTelegraph, Decrypt, TheBlock — no API key required*",
         "",
     ]
     for src, art in unique:

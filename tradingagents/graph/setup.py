@@ -1,6 +1,7 @@
 # TradingAgents/graph/setup.py
 
 from typing import Any, Dict
+
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 
@@ -49,7 +50,9 @@ class GraphSetup:
         )
 
         try:
-            from tradingagents.agents.analysts.crypto_fundamentals_analyst import create_crypto_fundamentals_analyst
+            from tradingagents.agents.analysts.crypto_fundamentals_analyst import (
+                create_crypto_fundamentals_analyst,
+            )
             _crypto_analyst_available = True
         except ImportError:
             _crypto_analyst_available = False

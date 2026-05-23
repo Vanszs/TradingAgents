@@ -11,7 +11,6 @@ Verifies:
 from __future__ import annotations
 
 import sqlite3
-import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest

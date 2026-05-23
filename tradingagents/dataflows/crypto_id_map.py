@@ -4,6 +4,7 @@ Fast path: hardcoded top-50 map.
 Slow path: CoinGecko /coins/list endpoint (cached).
 """
 from __future__ import annotations
+
 import logging
 import os
 import time
