@@ -28,6 +28,7 @@
 # TradingAgents: Multi-Agents LLM Financial Trading Framework
 
 ## News
+- [2026-05] **TradingAgents v0.2.6** (fork) added BluesMind provider (Kimi K2.6), Crypto Fundamentals Analyst, SearXNG web search, on-chain metrics (Etherscan), DeFi TVL (DeFiLlama), GitHub dev activity, Fear & Greed index, and 327-test CI suite.
 - [2026-05] **TradingAgents v0.2.5** released with the grounded Sentiment Analyst, GPT-5.5 etc. model coverage, Qwen/GLM/MiniMax dual-region support, `TRADINGAGENTS_*` env-var configurability with API-key auto-detection, remote Ollama support, non-US alpha benchmarks, and ticker path-traversal hardening. See [CHANGELOG.md](CHANGELOG.md) for the full list.
 - [2026-04] **TradingAgents v0.2.4** released with structured-output agents (Research Manager, Trader, Portfolio Manager), LangGraph checkpoint resume, persistent decision log, DeepSeek/Qwen/GLM/Azure provider support, Docker, and a Windows UTF-8 encoding fix.
 - [2026-03] **TradingAgents v0.2.3** released with multi-language support, GPT-5.4 family models, unified model catalog, backtesting date fidelity, and proxy support.
@@ -72,6 +73,7 @@ Our framework decomposes complex trading tasks into specialized roles. This ensu
 - Sentiment Analyst: Aggregates news headlines, StockTwits, and Reddit chatter into a single sentiment read to gauge short-term market mood.
 - News Analyst: Monitors global news and macroeconomic indicators, interpreting the impact of events on market conditions.
 - Technical Analyst: Utilizes technical indicators (like MACD and RSI) to detect trading patterns and forecast price movements.
+- **Crypto Fundamentals Analyst** *(crypto tickers only)*: Aggregates on-chain metrics (Etherscan), DeFi TVL (DeFiLlama), tokenomics (CoinGecko), GitHub developer activity, Fear & Greed index, and crypto news into a single fundamentals read for digital assets.
 
 <p align="center">
   <img src="assets/analyst.png" width="100%" style="display: inline-block; margin: 0 2%;">
@@ -150,7 +152,17 @@ export ZHIPU_CN_API_KEY=...        # GLM via BigModel (China, open.bigmodel.cn)
 export MINIMAX_API_KEY=...         # MiniMax — Global (api.minimax.io, M2.x, 204K ctx)
 export MINIMAX_CN_API_KEY=...      # MiniMax — China (api.minimaxi.com, M2.x, 204K ctx)
 export OPENROUTER_API_KEY=...      # OpenRouter
+export BLUESMIND_API_KEY=...       # BluesMind (api.bluesminds.com, Kimi K2.6 etc.)
 export ALPHA_VANTAGE_API_KEY=...   # Alpha Vantage
+```
+
+For crypto analysis, set the data provider keys:
+
+```bash
+export COINGECKO_API_KEY=...       # CoinGecko — free tier: 30 req/min, with key: 500 req/min
+export ETHERSCAN_API_KEY=...       # Etherscan — on-chain metrics (required for ETH/ERC-20)
+export GITHUB_TOKEN=...            # GitHub — dev activity (optional, 60→5000 req/hr)
+# SEARXNG_URL=http://localhost:8080  # Self-hosted SearXNG for web search (optional)
 ```
 
 For enterprise providers (e.g. Azure OpenAI, AWS Bedrock), copy `.env.enterprise.example` to `.env.enterprise` and fill in your credentials.
@@ -189,7 +201,7 @@ An interface will appear showing results as they load, letting you track the age
 
 ### Implementation Details
 
-We built TradingAgents with LangGraph to ensure flexibility and modularity. The framework supports multiple LLM providers: OpenAI, Google, Anthropic, xAI, DeepSeek, Qwen (Alibaba DashScope, international and China endpoints), GLM (Zhipu), MiniMax (global + China), OpenRouter, Ollama for local models, and Azure OpenAI for enterprise.
+We built TradingAgents with LangGraph to ensure flexibility and modularity. The framework supports multiple LLM providers: OpenAI, Google, Anthropic, xAI, DeepSeek, Qwen (Alibaba DashScope, international and China endpoints), GLM (Zhipu), MiniMax (global + China), OpenRouter, BluesMind (Kimi K2.6), Ollama for local models, and Azure OpenAI for enterprise.
 
 ### Python Usage
 
@@ -213,7 +225,7 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
 config = DEFAULT_CONFIG.copy()
-config["llm_provider"] = "openai"        # openai, google, anthropic, xai, deepseek, qwen, qwen-cn, glm, glm-cn, minimax, minimax-cn, openrouter, ollama, azure
+config["llm_provider"] = "openai"        # openai, google, anthropic, xai, deepseek, qwen, qwen-cn, glm, glm-cn, minimax, minimax-cn, openrouter, bluesmind, ollama, azure
 config["deep_think_llm"] = "gpt-5.4"     # Model for complex reasoning
 config["quick_think_llm"] = "gpt-5.4-mini" # Model for quick tasks
 config["max_debate_rounds"] = 2
