@@ -1,0 +1,17 @@
+**Recommendation**: Sell
+
+**Rationale**: This was a fiercely contested debate with genuine arguments on both sides, but the bear case carried the decisive weight on the three pillars that matter most right now: technical structure, policy risk, and balance-sheet fragility.
+
+The bull's coal super-cycle thesis is compelling in isolation — oil above $100, Iran disrupting LNG, Japan and Korea pivoting to coal — and the RSI at 21.68 does mark historic capitulation. But a rising tide only lifts boats without holes, and BUMI's hull has three critical breaches.
+
+First, the technical damage is not yet exhausted. The bounce from 157 to 185 came on declining volume — 10.6B to 7.2B to 6.6B shares — which is distribution, not accumulation. The stock couldn't reclaim even the 10 EMA at 195. A death cross is hours away, not weeks, and will mechanically trigger systematic short pressure. The sequence of lower highs (476 → 300 → 240) and lower lows (198 → 157) remains intact. The two-day trading suspension is a structural red flag, not a healthy washout.
+
+Second, Danantara is not the 2020 export-ban scare that was quickly walked back. This is an institutional, permanent restructuring of Indonesia's resource export channel, announced May 20 and live June 1 with no implementation framework. The 'contracts honored but reviewed' language is a loaded invitation to renegotiate. Even a 2-3% friction devours a third of quarterly operating income — lethal for a company with negative free cash flow. The Australian Glencore-backed production is a genuine hedge but is immaterial to current cash flows.
+
+Third, the balance sheet is funding growth with debt, not internal cash generation. Three consecutive quarters of negative FCF (IDR -87.4B cumulative), Q1 operating cash flow of only IDR 16.5B against IDR 40.1B capex, and IDR 159B in new long-term debt in a single quarter. The thin book value (IDR 0.004/share) provides no equity cushion. Even assuming doubled earnings, 22x P/E is expensive versus global coal peers at 4-10x.
+
+The bull's risk/reward math — target 316, stop 157 — assumes a perfect sequence of Danantara fears vanishing, the death cross failing, and coal prices sustaining new highs. The probability-weighted outcome is far less favorable. If 157 breaks, the next support is 120-140 — another 25-35% down.
+
+The bull made me think. But when the death cross triggers in days, the Danantara chaos begins June 1, and the balance sheet has no margin for error, the bear's call to exit is the prudent course.
+
+**Strategic Actions**: Exit any existing long position immediately. If holding from higher levels, use any strength toward the 195-200 zone (10 EMA / psychological resistance) as an opportunity to sell. Do not initiate new longs ahead of the June 1 Danantara implementation. Place a hard stop at 185 if forced to hold, but recommended action is complete exit. Reassess only if the stock recaptures 217-225 (200/50 SMA zone) on expanding volume and Danantara implementation provides clear, favorable clarity on contract terms. Downside target on a break of 157 is the 120-140 zone. Position sizing on any short or residual long should reflect the binary nature of the June 1 catalyst.
