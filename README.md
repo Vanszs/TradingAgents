@@ -28,6 +28,7 @@
 # TradingAgents: Multi-Agents LLM Financial Trading Framework
 
 ## News
+- [2026-05] **TradingAgents v0.2.7** (fork) expanded the Sentiment Analyst to six sources (added Bluesky, Mastodon, and Fear & Greed alongside news, StockTwits, and Reddit), gave both Fundamentals analysts optional web search for real-time context, and grew the CI suite to 345 tests.
 - [2026-05] **TradingAgents v0.2.6** (fork) added BluesMind provider (Kimi K2.6), Crypto Fundamentals Analyst, SearXNG web search, on-chain metrics (Etherscan), DeFi TVL (DeFiLlama), GitHub dev activity, Fear & Greed index, and 327-test CI suite.
 - [2026-05] **TradingAgents v0.2.5** released with the grounded Sentiment Analyst, GPT-5.5 etc. model coverage, Qwen/GLM/MiniMax dual-region support, `TRADINGAGENTS_*` env-var configurability with API-key auto-detection, remote Ollama support, non-US alpha benchmarks, and ticker path-traversal hardening. See [CHANGELOG.md](CHANGELOG.md) for the full list.
 - [2026-04] **TradingAgents v0.2.4** released with structured-output agents (Research Manager, Trader, Portfolio Manager), LangGraph checkpoint resume, persistent decision log, DeepSeek/Qwen/GLM/Azure provider support, Docker, and a Windows UTF-8 encoding fix.
@@ -69,11 +70,11 @@ TradingAgents is a multi-agent trading framework that mirrors the dynamics of re
 Our framework decomposes complex trading tasks into specialized roles. This ensures the system achieves a robust, scalable approach to market analysis and decision-making.
 
 ### Analyst Team
-- Fundamentals Analyst: Evaluates company financials and performance metrics, identifying intrinsic values and potential red flags.
-- Sentiment Analyst: Aggregates news headlines, StockTwits, and Reddit chatter into a single sentiment read to gauge short-term market mood.
+- Fundamentals Analyst: Evaluates company financials and performance metrics, identifying intrinsic values and potential red flags, with optional web search for real-time context (earnings guidance, management changes, analyst ratings).
+- Sentiment Analyst: Aggregates news headlines, StockTwits, Reddit, Bluesky, and Mastodon chatter together with the Fear & Greed index into a single sentiment read to gauge short-term market mood.
 - News Analyst: Monitors global news and macroeconomic indicators, interpreting the impact of events on market conditions.
 - Technical Analyst: Utilizes technical indicators (like MACD and RSI) to detect trading patterns and forecast price movements.
-- **Crypto Fundamentals Analyst** *(crypto tickers only)*: Aggregates on-chain metrics (Etherscan), DeFi TVL (DeFiLlama), tokenomics (CoinGecko), GitHub developer activity, Fear & Greed index, and crypto news into a single fundamentals read for digital assets.
+- **Crypto Fundamentals Analyst** *(crypto tickers only)*: Aggregates on-chain metrics (Etherscan), DeFi TVL (DeFiLlama), tokenomics (CoinGecko), GitHub developer activity, Fear & Greed index, crypto news, and optional web search (exchange listings, regulatory news, protocol upgrades) into a single fundamentals read for digital assets.
 
 <p align="center">
   <img src="assets/analyst.png" width="100%" style="display: inline-block; margin: 0 2%;">
