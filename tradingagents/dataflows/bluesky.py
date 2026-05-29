@@ -15,11 +15,11 @@ function returns a placeholder string rather than raising.
 
 from __future__ import annotations
 
+import json
 import logging
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
-import json
 
 logger = logging.getLogger(__name__)
 

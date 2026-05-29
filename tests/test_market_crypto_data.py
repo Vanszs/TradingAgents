@@ -17,8 +17,8 @@ import pandas as pd
 import pytest
 
 import tradingagents.dataflows.config as config_mod
-import tradingagents.default_config as default_config
 import tradingagents.dataflows.y_finance as yf_mod
+import tradingagents.default_config as default_config
 from tradingagents.dataflows.interface import route_to_vendor
 
 
@@ -101,7 +101,7 @@ def test_crypto_indicator_returns_valid_values(monkeypatch, _indicator_df):
     assert "rsi values" in out
     assert "2026-05-28:" in out
     # An actual numeric RSI (not "N/A"/empty) must be present for the curr date.
-    line = next(l for l in out.splitlines() if l.startswith("2026-05-28:"))
+    line = next(ln for ln in out.splitlines() if ln.startswith("2026-05-28:"))
     value = line.split(":", 1)[1].strip()
     assert value not in ("", "N/A")
     assert 0.0 <= float(value) <= 100.0
