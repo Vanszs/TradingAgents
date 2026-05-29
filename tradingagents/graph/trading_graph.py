@@ -181,6 +181,10 @@ class TradingAgentsGraph:
         else:
             fundamentals_tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
 
+        # Both stock and crypto fundamentals analysts can fall back to web
+        # search for real-time context not covered by structured tools.
+        fundamentals_tools = [*fundamentals_tools, get_web_search]
+
         return {
             "market": ToolNode(
                 [

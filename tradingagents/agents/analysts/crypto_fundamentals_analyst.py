@@ -18,6 +18,7 @@ from tradingagents.agents.utils.crypto_fundamental_tools import (
     get_crypto_onchain_news,
     get_crypto_tokenomics,
 )
+from tradingagents.agents.utils.web_search_tools import get_web_search
 
 
 def create_crypto_fundamentals_analyst(llm):
@@ -32,6 +33,7 @@ def create_crypto_fundamentals_analyst(llm):
         get_crypto_network_metrics,
         get_crypto_market_sentiment,
         get_crypto_onchain_news,
+        get_web_search,
     ]
 
     system_message = (
@@ -47,7 +49,9 @@ def create_crypto_fundamentals_analyst(llm):
         "5. **On-Chain Metrics & News**: Etherscan data (supply, burns, token contracts) "
         "and RSS news sentiment for EVM-based assets\n\n"
         "Use the available tools: `get_crypto_tokenomics`, `get_crypto_dev_activity`, "
-        "`get_crypto_network_metrics`, `get_crypto_market_sentiment`, `get_crypto_onchain_news`.\n\n"
+        "`get_crypto_network_metrics`, `get_crypto_market_sentiment`, `get_crypto_onchain_news`. "
+        "Use `get_web_search(query)` for the latest real-time context not covered by the other "
+        "tools — exchange listings, regulatory news, protocol upgrades, hacks, or partnerships.\n\n"
         "Apply this evidence-based grading rubric:\n"
         "- **Tokenomics**: Is supply deflationary (capped max supply)? "
         "What % is circulating? High supply ratio = less future dilution risk.\n"
