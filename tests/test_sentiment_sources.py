@@ -7,12 +7,18 @@ from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
 import pytest
+from pydantic import ValidationError
 
 import tradingagents.dataflows.bluesky as bluesky_mod
 import tradingagents.dataflows.mastodon as mastodon_mod
 from tradingagents.agents.analysts.sentiment_analyst import (
     _build_system_message,
     create_sentiment_analyst,
+)
+from tradingagents.agents.schemas import (
+    SentimentBand,
+    SentimentReport,
+    render_sentiment_report,
 )
 
 
@@ -122,17 +128,19 @@ class TestPromptWiring:
 class TestSentimentNode:
     @pytest.mark.unit
     def test_node_injects_all_fetchers_into_prompt(self):
-        from langchain_core.runnables import RunnableLambda
-
         captured = {}
-
-        # A real Runnable so `prompt | llm` builds a valid sequence; it
-        # records the fully-rendered prompt the LLM would receive.
-        def _capture(prompt_value):
-            captured["text"] = prompt_value.to_string()
-            return MagicMock(content="report")
-
-        fake_llm = RunnableLambda(_capture)
+        report = SentimentReport(
+            overall_band=SentimentBand.BULLISH,
+            overall_score=7.5,
+            confidence="high",
+            narrative="breakdown",
+        )
+        structured = MagicMock()
+        structured.invoke.side_effect = lambda prompt: (
+            captured.__setitem__("prompt", prompt) or report
+        )
+        llm = MagicMock()
+        llm.with_structured_output.return_value = structured
 
         with patch("tradingagents.agents.analysts.sentiment_analyst.get_news") as gn, \
              patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value="ST_DATA"), \
@@ -142,29 +150,36 @@ class TestSentimentNode:
              patch("tradingagents.agents.analysts.sentiment_analyst.get_fear_greed_index", return_value="FG_DATA") as fg:
             gn.invoke.return_value = "NEWS_DATA"
 
-            node = create_sentiment_analyst(fake_llm)
-            state = {
+            node = create_sentiment_analyst(llm)
+            result = node({
                 "company_of_interest": "NVDA",
                 "trade_date": "2026-05-29",
                 "asset_type": "stock",
                 "messages": [],
-            }
-            result = node(state)
+            })
 
         # Fetchers called with the expected ticker-derived args.
         fb.assert_called_once_with("$NVDA")
         fm.assert_called_once_with("NVDA")
         fg.assert_called_once()
-        # Every source's data made it into the rendered prompt.
+        # Every source's data made it into the formatted prompt messages.
+        prompt_text = " ".join(m.content for m in captured["prompt"])
         for data in ("NEWS_DATA", "ST_DATA", "RD_DATA", "BSKY_DATA", "MASTO_DATA", "FG_DATA"):
-            assert data in captured["text"]
-        assert result["sentiment_report"] == "report"
+            assert data in prompt_text
+        # Output is the rendered structured report (deterministic header).
+        assert "**Overall Sentiment:** **Bullish** (Score: 7.5/10)" in result["sentiment_report"]
 
     @pytest.mark.unit
     def test_crypto_strips_suffix_for_new_sources(self):
-        from langchain_core.runnables import RunnableLambda
+        report = SentimentReport(
+            overall_band=SentimentBand.NEUTRAL, overall_score=5.0,
+            confidence="low", narrative="n",
+        )
+        structured = MagicMock()
+        structured.invoke.return_value = report
+        llm = MagicMock()
+        llm.with_structured_output.return_value = structured
 
-        fake_llm = RunnableLambda(lambda pv: MagicMock(content="r"))
         with patch("tradingagents.agents.analysts.sentiment_analyst.get_news") as gn, \
              patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value=""), \
              patch("tradingagents.agents.analysts.sentiment_analyst.fetch_reddit_posts", return_value=""), \
@@ -172,7 +187,7 @@ class TestSentimentNode:
              patch("tradingagents.agents.analysts.sentiment_analyst.fetch_mastodon_posts", return_value="") as fm, \
              patch("tradingagents.agents.analysts.sentiment_analyst.get_fear_greed_index", return_value=""):
             gn.invoke.return_value = ""
-            node = create_sentiment_analyst(fake_llm)
+            node = create_sentiment_analyst(llm)
             node({
                 "company_of_interest": "BTC-USD",
                 "trade_date": "2026-05-29",
@@ -181,3 +196,56 @@ class TestSentimentNode:
             })
         fb.assert_called_once_with("$BTC")
         fm.assert_called_once_with("BTC")
+
+    @pytest.mark.unit
+    def test_falls_back_to_freetext_when_structured_unavailable(self):
+        # Provider without structured-output support: with_structured_output raises.
+        llm = MagicMock()
+        llm.with_structured_output.side_effect = NotImplementedError
+        llm.invoke.return_value = MagicMock(content="PLAIN_TEXT_REPORT")
+
+        with patch("tradingagents.agents.analysts.sentiment_analyst.get_news") as gn, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value=""), \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_reddit_posts", return_value=""), \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_bluesky_posts", return_value=""), \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_mastodon_posts", return_value=""), \
+             patch("tradingagents.agents.analysts.sentiment_analyst.get_fear_greed_index", return_value=""):
+            gn.invoke.return_value = ""
+            node = create_sentiment_analyst(llm)
+            result = node({
+                "company_of_interest": "NVDA",
+                "trade_date": "2026-05-29",
+                "messages": [],
+            })
+        assert result["sentiment_report"] == "PLAIN_TEXT_REPORT"
+
+
+# ─── Schema + render ─────────────────────────────────────────────────────────
+
+
+class TestSentimentSchema:
+    @pytest.mark.unit
+    def test_render_contains_band_score_confidence(self):
+        md = render_sentiment_report(SentimentReport(
+            overall_band=SentimentBand.MILDLY_BEARISH, overall_score=4.0,
+            confidence="medium", narrative="NARR",
+        ))
+        assert "**Overall Sentiment:** **Mildly Bearish** (Score: 4.0/10)" in md
+        assert "**Confidence:** Medium" in md
+        assert "NARR" in md
+
+    @pytest.mark.unit
+    def test_all_six_bands_render(self):
+        for band in SentimentBand:
+            md = render_sentiment_report(SentimentReport(
+                overall_band=band, overall_score=5.0, confidence="low", narrative="n",
+            ))
+            assert band.value in md
+
+    @pytest.mark.unit
+    def test_score_out_of_range_rejected(self):
+        with pytest.raises(ValidationError):
+            SentimentReport(
+                overall_band=SentimentBand.BULLISH, overall_score=11.0,
+                confidence="high", narrative="n",
+            )

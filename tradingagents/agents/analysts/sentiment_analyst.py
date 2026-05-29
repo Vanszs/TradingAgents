@@ -25,12 +25,18 @@ See: https://github.com/TauricResearch/TradingAgents/issues/557
 
 from datetime import datetime, timedelta
 
+from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
+from tradingagents.agents.schemas import SentimentReport, render_sentiment_report
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
     get_language_instruction,
     get_news,
+)
+from tradingagents.agents.utils.structured import (
+    bind_structured,
+    invoke_structured_or_freetext,
 )
 from tradingagents.dataflows.bluesky import fetch_bluesky_posts
 from tradingagents.dataflows.fear_greed import get_fear_greed_index
@@ -48,8 +54,10 @@ def create_sentiment_analyst(llm):
 
     Pre-fetches news + StockTwits + Reddit + Bluesky + Mastodon + Fear &
     Greed data, injects them into the prompt as structured blocks, and
-    produces a sentiment report in a single LLM call.
+    produces a deterministic sentiment report via structured output (with a
+    free-text fallback for providers that do not support it).
     """
+    structured_llm = bind_structured(llm, SentimentReport, "Sentiment Analyst")
 
     def sentiment_analyst_node(state):
         ticker = state["company_of_interest"]
@@ -130,14 +138,23 @@ def create_sentiment_analyst(llm):
         prompt = prompt.partial(current_date=end_date)
         prompt = prompt.partial(instrument_context=instrument_context)
 
-        # No bind_tools — the data is already in the prompt; a single LLM
-        # call produces the report directly.
-        chain = prompt | llm
-        result = chain.invoke(state["messages"])
+        # Format the template into a concrete message list so both the
+        # structured and free-text paths receive the same input. The data is
+        # already in the prompt (no tool-calling); structured output only
+        # shapes the result into a deterministic header + narrative.
+        formatted_messages = prompt.format_messages(messages=state["messages"])
+
+        report_text = invoke_structured_or_freetext(
+            structured_llm,
+            llm,
+            formatted_messages,
+            render_sentiment_report,
+            "Sentiment Analyst",
+        )
 
         return {
-            "messages": [result],
-            "sentiment_report": result.content,
+            "messages": [AIMessage(content=report_text)],
+            "sentiment_report": report_text,
         }
 
     return sentiment_analyst_node
@@ -221,15 +238,18 @@ Macro risk-on/risk-off proxy. Extreme readings can be contrarian signals. (Crypt
 
 8. **Past sentiment is not predictive.** Frame your conclusions as signal for the trader to weigh alongside fundamentals and technicals, not as a price call.
 
-## Output
+## Output fields
 
-Produce a sentiment report covering, in order:
+Fill the following fields:
 
-1. **Overall sentiment direction** — Bullish / Bearish / Neutral / Mixed — with a brief confidence note based on data quality and sample size.
-2. **Source-by-source breakdown** — what each of news / StockTwits / Reddit / Bluesky / Mastodon / Fear & Greed is telling you, with specific evidence (cite message counts, ratios, notable posts).
-3. **Divergences, alignments, and key narratives** across sources.
-4. **Catalysts and risks** surfaced by the data.
-5. **Markdown table** at the end summarizing key sentiment signals, their direction, source, and supporting evidence.
+- **overall_band**: Exactly one of Bullish / Mildly Bullish / Neutral / Mixed / Mildly Bearish / Bearish.
+  Use Mixed when sources point in clearly different directions; Neutral only when all sources are genuinely silent.
+- **overall_score**: A number from 0 (maximally bearish) to 10 (maximally bullish). 5 is neutral.
+  Must be consistent with overall_band.
+- **confidence**: low / medium / high, based on data quality and sample size across the six sources.
+- **narrative**: Full source-by-source breakdown (news / StockTwits / Reddit / Bluesky / Mastodon / Fear & Greed)
+  with specific evidence, cross-source divergences and alignments, dominant narrative themes, catalysts and risks,
+  and a markdown summary table of key sentiment signals (direction, source, supporting evidence).
 
 ## Community context
 
