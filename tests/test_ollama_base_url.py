@@ -4,10 +4,28 @@ from __future__ import annotations
 
 import importlib
 import re
+import pytest
 
 _ANSI = re.compile(r'\x1b\[[0-9;]*m')
 def _strip(s: str) -> str:
     return _ANSI.sub('', s)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _resync_reloaded_modules():
+    """Restore module state after this file's importlib.reload() calls.
+
+    Several tests below reload ``cli.utils`` to re-evaluate OLLAMA_BASE_URL.
+    That leaves ``cli.main``'s star-imported names (e.g. get_ticker) bound to
+    the pre-reload module objects, which breaks identity checks in unrelated
+    tests that happen to run afterward. Re-sync once on teardown so the reload
+    doesn't leak across test modules.
+    """
+    yield
+    import cli.utils
+    import cli.main
+    importlib.reload(cli.utils)
+    importlib.reload(cli.main)
 
 
 # ---- openai_client side: _resolve_provider_base_url -----------------------

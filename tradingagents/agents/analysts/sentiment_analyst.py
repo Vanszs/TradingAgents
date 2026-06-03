@@ -30,7 +30,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.schemas import SentimentReport, render_sentiment_report
 from tradingagents.agents.utils.agent_utils import (
-    build_instrument_context,
+    get_instrument_context_from_state,
     get_language_instruction,
     get_news,
 )
@@ -64,7 +64,7 @@ def create_sentiment_analyst(llm):
         end_date = state["trade_date"]
         start_date = _seven_days_back(end_date)
         asset_type = state.get("asset_type", "stock")
-        instrument_context = build_instrument_context(ticker, asset_type=asset_type)
+        instrument_context = get_instrument_context_from_state(state)
 
         # Pre-fetch every source. Each fetcher degrades gracefully and
         # returns a string (no exceptions surface from here), so the LLM
