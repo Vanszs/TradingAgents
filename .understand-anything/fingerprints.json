@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "gitCommitHash": "61522e103e61601c553b4544abcd53fa7ebf9f1d",
-  "generatedAt": "2026-05-22T15:44:29.804Z",
+  "gitCommitHash": "19d58389343ecef6a6961f7a095047a7a904b382",
+  "generatedAt": "2026-06-03T09:52:28.764Z",
   "files": {
     ".dockerignore": {
       "filePath": ".dockerignore",
@@ -25,13 +25,143 @@
     },
     ".env.example": {
       "filePath": ".env.example",
-      "contentHash": "5744633baf55469b915ee7124a69f7fcc454e139ecbbefb0ff0ce331d9b06361",
+      "contentHash": "4ffa2a552a04d6fbef25d60df4d2b5413faa7cc3c928a4805d3c2f5c30f64705",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 33,
+      "totalLines": 42,
       "hasStructuralAnalysis": true
+    },
+    ".github/workflows/test.yml": {
+      "filePath": ".github/workflows/test.yml",
+      "contentHash": "0649fee1a5363b17bcd277c6548a982142a92d7bd29af603965447ba3c4c10fb",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 44,
+      "hasStructuralAnalysis": true
+    },
+    ".python-version": {
+      "filePath": ".python-version",
+      "contentHash": "61141e9590171b900fdf709e7ea8f050d5c2a69198d4a4a1977d7c45186307e5",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
+    },
+    "assets/analyst.png": {
+      "filePath": "assets/analyst.png",
+      "contentHash": "4c16442fe8c3e84beb4e285a79d833500bec24fd583720e88612d6723411095b",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 585,
+      "hasStructuralAnalysis": false
+    },
+    "assets/cli/cli_init.png": {
+      "filePath": "assets/cli/cli_init.png",
+      "contentHash": "1fc4576f16609e357e207b5ad2ca734239b664f4e09841e441bf397b76c2332d",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 362,
+      "hasStructuralAnalysis": false
+    },
+    "assets/cli/cli_news.png": {
+      "filePath": "assets/cli/cli_news.png",
+      "contentHash": "77e71cc6e797852718cd6b527b52150e9d15cbed0cde5dcee96268ef227fd7c4",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2375,
+      "hasStructuralAnalysis": false
+    },
+    "assets/cli/cli_technical.png": {
+      "filePath": "assets/cli/cli_technical.png",
+      "contentHash": "516487ecb264b2c5ccd56e32d9232bfb7cf1b174fe6d9a50d64e92526ae91c00",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2158,
+      "hasStructuralAnalysis": false
+    },
+    "assets/cli/cli_transaction.png": {
+      "filePath": "assets/cli/cli_transaction.png",
+      "contentHash": "44598028fdc448b5912d499780a59685f98dbdd516ba9768d6c687b17a28515c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2218,
+      "hasStructuralAnalysis": false
+    },
+    "assets/researcher.png": {
+      "filePath": "assets/researcher.png",
+      "contentHash": "a1b00cef2bc3d814428cbcbb8a535377dbe159e790a2977857b4af21c2e55485",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 613,
+      "hasStructuralAnalysis": false
+    },
+    "assets/risk.png": {
+      "filePath": "assets/risk.png",
+      "contentHash": "09af6949156ecab4290af6f63f18c841c1a1dda2dfe58ec77ef293cd1da1deb3",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 548,
+      "hasStructuralAnalysis": false
+    },
+    "assets/schema.png": {
+      "filePath": "assets/schema.png",
+      "contentHash": "731a32b223806dd5030ec663599d9fb7e39a8837b3266835352ceb3d1966e44f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 5063,
+      "hasStructuralAnalysis": false
+    },
+    "assets/TauricResearch.png": {
+      "filePath": "assets/TauricResearch.png",
+      "contentHash": "312aecb33d0f3239cbaef6c383f600649b707a39c0c0c15577103ed2c7bbbd48",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 155,
+      "hasStructuralAnalysis": false
+    },
+    "assets/trader.png": {
+      "filePath": "assets/trader.png",
+      "contentHash": "a6b27312dc92de00ba1ce04a5730adea869f74445e97263dc44a27f34df8a701",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 568,
+      "hasStructuralAnalysis": false
+    },
+    "assets/wechat.png": {
+      "filePath": "assets/wechat.png",
+      "contentHash": "ca726f6720c56b3ec497dabf78579d7acc11fb87ea0bf6a971543a530360eefa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 873,
+      "hasStructuralAnalysis": false
     },
     "CHANGELOG.md": {
       "filePath": "CHANGELOG.md",
@@ -41,66 +171,6 @@
       "imports": [],
       "exports": [],
       "totalLines": 342,
-      "hasStructuralAnalysis": true
-    },
-    "Dockerfile": {
-      "filePath": "Dockerfile",
-      "contentHash": "3fe455736e6ff54f78c6d76c583b274f99faab9325103a375661779a77afd75f",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 29,
-      "hasStructuralAnalysis": true
-    },
-    "INTEGRATION_FLOW_DIAGRAMS.md": {
-      "filePath": "INTEGRATION_FLOW_DIAGRAMS.md",
-      "contentHash": "bc86b7a8c985122787da04c3c7ba00e3da0011946acd5f216e2cf7d318240ab1",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 541,
-      "hasStructuralAnalysis": true
-    },
-    "INTEGRATION_PLAN_KRONOS.md": {
-      "filePath": "INTEGRATION_PLAN_KRONOS.md",
-      "contentHash": "57cb1e280f6093badfb1dbe4d1c5be61c344f601e3bfa260958910761d194dd6",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 1187,
-      "hasStructuralAnalysis": true
-    },
-    "LEARNING_PLAN.md": {
-      "filePath": "LEARNING_PLAN.md",
-      "contentHash": "13d490ddc9e521da83d07286a5b1033cdd2f4eaf10d61d1c77da2bf3864c5ea9",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 338,
-      "hasStructuralAnalysis": true
-    },
-    "READING_GUIDE.md": {
-      "filePath": "READING_GUIDE.md",
-      "contentHash": "341fc5e19160d1097f4e45be358508c0c7c9e825260f5738394a2d12f8c42524",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 1307,
-      "hasStructuralAnalysis": true
-    },
-    "README.md": {
-      "filePath": "README.md",
-      "contentHash": "32871cee2625adf0ac0e00d59a4775f4cfa3041dc43e2c5a9a97fe771d8e47a7",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 277,
       "hasStructuralAnalysis": true
     },
     "cli/__init__.py": {
@@ -115,7 +185,7 @@
     },
     "cli/announcements.py": {
       "filePath": "cli/announcements.py",
-      "contentHash": "2c3dd67fc0bea2f21d0f24f8c2e2ee470e4cdc41b601917334db8d5fd1f90d9c",
+      "contentHash": "35d301132f36e32b5e6ff614f1c30586cb8dbb70109566aaaa2e2dde0f0bc3ac",
       "functions": [
         {
           "name": "fetch_announcements",
@@ -175,7 +245,7 @@
         "fetch_announcements",
         "display_announcements"
       ],
-      "totalLines": 52,
+      "totalLines": 53,
       "hasStructuralAnalysis": true
     },
     "cli/config.py": {
@@ -190,7 +260,7 @@
     },
     "cli/main.py": {
       "filePath": "cli/main.py",
-      "contentHash": "24747a392a98a77482579e802dffaf13ae18bc165df96863c8b0dcdfd6b50e1b",
+      "contentHash": "b613cb6d80d8a0437e6ddfc0c73a39c32e2205fa69c80ea08366ce537ba86082",
       "functions": [
         {
           "name": "create_layout",
@@ -215,7 +285,7 @@
             "start_time"
           ],
           "exported": true,
-          "lineCount": 205
+          "lineCount": 161
         },
         {
           "name": "get_user_selections",
@@ -304,7 +374,7 @@
             "checkpoint"
           ],
           "exported": true,
-          "lineCount": 287
+          "lineCount": 292
         },
         {
           "name": "analyze",
@@ -337,33 +407,15 @@
       ],
       "imports": [
         {
-          "source": "typing",
-          "specifiers": [
-            "Optional"
-          ]
-        },
-        {
           "source": "datetime",
           "specifiers": [
             "datetime"
           ]
         },
         {
-          "source": "typer",
+          "source": "os",
           "specifiers": [
-            "typer"
-          ]
-        },
-        {
-          "source": "questionary",
-          "specifiers": [
-            "questionary"
-          ]
-        },
-        {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
+            "os"
           ]
         },
         {
@@ -373,63 +425,33 @@
           ]
         },
         {
-          "source": "rich.console",
+          "source": "pathlib",
           "specifiers": [
-            "Console"
+            "Path"
           ]
         },
         {
-          "source": "rich.panel",
+          "source": "typing",
           "specifiers": [
-            "Panel"
+            "Optional"
           ]
         },
         {
-          "source": "rich.spinner",
+          "source": "questionary",
           "specifiers": [
-            "Spinner"
+            "questionary"
           ]
         },
         {
-          "source": "rich.live",
+          "source": "typer",
           "specifiers": [
-            "Live"
+            "typer"
           ]
         },
         {
-          "source": "rich.columns",
+          "source": "dotenv",
           "specifiers": [
-            "Columns"
-          ]
-        },
-        {
-          "source": "rich.markdown",
-          "specifiers": [
-            "Markdown"
-          ]
-        },
-        {
-          "source": "rich.layout",
-          "specifiers": [
-            "Layout"
-          ]
-        },
-        {
-          "source": "rich.text",
-          "specifiers": [
-            "Text"
-          ]
-        },
-        {
-          "source": "rich.table",
-          "specifiers": [
-            "Table"
-          ]
-        },
-        {
-          "source": "collections",
-          "specifiers": [
-            "deque"
+            "load_dotenv"
           ]
         },
         {
@@ -439,9 +461,9 @@
           ]
         },
         {
-          "source": "rich.tree",
+          "source": "collections",
           "specifiers": [
-            "Tree"
+            "deque"
           ]
         },
         {
@@ -457,15 +479,100 @@
           ]
         },
         {
+          "source": "rich.columns",
+          "specifiers": [
+            "Columns"
+          ]
+        },
+        {
+          "source": "rich.console",
+          "specifiers": [
+            "Console"
+          ]
+        },
+        {
+          "source": "rich.layout",
+          "specifiers": [
+            "Layout"
+          ]
+        },
+        {
+          "source": "rich.live",
+          "specifiers": [
+            "Live"
+          ]
+        },
+        {
+          "source": "rich.markdown",
+          "specifiers": [
+            "Markdown"
+          ]
+        },
+        {
+          "source": "rich.panel",
+          "specifiers": [
+            "Panel"
+          ]
+        },
+        {
           "source": "rich.rule",
           "specifiers": [
             "Rule"
           ]
         },
         {
-          "source": "tradingagents.graph.trading_graph",
+          "source": "rich.spinner",
           "specifiers": [
-            "TradingAgentsGraph"
+            "Spinner"
+          ]
+        },
+        {
+          "source": "rich.table",
+          "specifiers": [
+            "Table"
+          ]
+        },
+        {
+          "source": "rich.text",
+          "specifiers": [
+            "Text"
+          ]
+        },
+        {
+          "source": "rich.tree",
+          "specifiers": [
+            "Tree"
+          ]
+        },
+        {
+          "source": "cli.announcements",
+          "specifiers": [
+            "display_announcements",
+            "fetch_announcements"
+          ]
+        },
+        {
+          "source": "cli.models",
+          "specifiers": [
+            "AnalystType"
+          ]
+        },
+        {
+          "source": "cli.stats_handler",
+          "specifiers": [
+            "StatsCallbackHandler"
+          ]
+        },
+        {
+          "source": "cli.utils",
+          "specifiers": [
+            "*"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
           ]
         },
         {
@@ -478,34 +585,9 @@
           ]
         },
         {
-          "source": "tradingagents.default_config",
+          "source": "tradingagents.graph.trading_graph",
           "specifiers": [
-            "DEFAULT_CONFIG"
-          ]
-        },
-        {
-          "source": "cli.models",
-          "specifiers": [
-            "AnalystType"
-          ]
-        },
-        {
-          "source": "cli.utils",
-          "specifiers": [
-            "*"
-          ]
-        },
-        {
-          "source": "cli.announcements",
-          "specifiers": [
-            "fetch_announcements",
-            "display_announcements"
-          ]
-        },
-        {
-          "source": "cli.stats_handler",
-          "specifiers": [
-            "StatsCallbackHandler"
+            "TradingAgentsGraph"
           ]
         }
       ],
@@ -527,12 +609,12 @@
         "run_analysis",
         "analyze"
       ],
-      "totalLines": 1288,
+      "totalLines": 1257,
       "hasStructuralAnalysis": true
     },
     "cli/models.py": {
       "filePath": "cli/models.py",
-      "contentHash": "453bb179a7a8cc30e24378d96a9b387e917316fad235c4b3c129de3939fb9ef6",
+      "contentHash": "545a32e0d801065e85300fd52f0b551e782248f91acf31ba853e43a992d590e2",
       "functions": [],
       "classes": [
         {
@@ -560,9 +642,9 @@
         {
           "source": "typing",
           "specifiers": [
+            "Dict",
             "List",
-            "Optional",
-            "Dict"
+            "Optional"
           ]
         },
         {
@@ -576,7 +658,7 @@
         "AnalystType",
         "AssetType"
       ],
-      "totalLines": 18,
+      "totalLines": 19,
       "hasStructuralAnalysis": true
     },
     "cli/static/welcome.txt": {
@@ -591,7 +673,7 @@
     },
     "cli/stats_handler.py": {
       "filePath": "cli/stats_handler.py",
-      "contentHash": "20328bb8493a84961a45fb6aac41a4698c04fc5699c66f83a58f5bd6a70ab010",
+      "contentHash": "894440c3ff400cec4b7f01be775b6be5fe2de74a8a9a15b4fbd2746364c786cc",
       "functions": [],
       "classes": [
         {
@@ -632,15 +714,15 @@
           ]
         },
         {
-          "source": "langchain_core.outputs",
-          "specifiers": [
-            "LLMResult"
-          ]
-        },
-        {
           "source": "langchain_core.messages",
           "specifiers": [
             "AIMessage"
+          ]
+        },
+        {
+          "source": "langchain_core.outputs",
+          "specifiers": [
+            "LLMResult"
           ]
         }
       ],
@@ -652,7 +734,7 @@
     },
     "cli/utils.py": {
       "filePath": "cli/utils.py",
-      "contentHash": "97821d0151d2247a47f1e5173f6791eae78f673d9c92b5ae262d5990410ea824",
+      "contentHash": "26a28bef0d95859c14c5d7515c25f33d32e20f9f834c26e3bef48a30a3fcc7c8",
       "functions": [
         {
           "name": "get_ticker",
@@ -687,7 +769,7 @@
           ],
           "returnType": "List[AnalystType]",
           "exported": true,
-          "lineCount": 10
+          "lineCount": 5
         },
         {
           "name": "get_analysis_date",
@@ -721,10 +803,12 @@
         },
         {
           "name": "select_openrouter_model",
-          "params": [],
+          "params": [
+            "mode"
+          ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 25
+          "lineCount": 31
         },
         {
           "name": "_prompt_custom_model_id",
@@ -766,7 +850,7 @@
           "params": [],
           "returnType": "tuple[str, str | None]",
           "exported": true,
-          "lineCount": 43
+          "lineCount": 44
         },
         {
           "name": "ask_openai_reasoning_effort",
@@ -855,8 +939,7 @@
           "specifiers": [
             "List",
             "Optional",
-            "Tuple",
-            "Dict"
+            "Tuple"
           ]
         },
         {
@@ -923,7 +1006,17 @@
         "ensure_api_key",
         "ask_output_language"
       ],
-      "totalLines": 552,
+      "totalLines": 554,
+      "hasStructuralAnalysis": true
+    },
+    "CRYPTO_FUNDAMENTALS_PLAN.md": {
+      "filePath": "CRYPTO_FUNDAMENTALS_PLAN.md",
+      "contentHash": "86c57a89e7c2bebca47c164c05d1147ba152b473c64aa7ccab1c50291f36e641",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1247,
       "hasStructuralAnalysis": true
     },
     "docker-compose.yml": {
@@ -934,6 +1027,56 @@
       "imports": [],
       "exports": [],
       "totalLines": 36,
+      "hasStructuralAnalysis": true
+    },
+    "Dockerfile": {
+      "filePath": "Dockerfile",
+      "contentHash": "3fe455736e6ff54f78c6d76c583b274f99faab9325103a375661779a77afd75f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "INTEGRATION_FLOW_DIAGRAMS.md": {
+      "filePath": "INTEGRATION_FLOW_DIAGRAMS.md",
+      "contentHash": "bc86b7a8c985122787da04c3c7ba00e3da0011946acd5f216e2cf7d318240ab1",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 541,
+      "hasStructuralAnalysis": true
+    },
+    "INTEGRATION_PLAN_KRONOS.md": {
+      "filePath": "INTEGRATION_PLAN_KRONOS.md",
+      "contentHash": "57cb1e280f6093badfb1dbe4d1c5be61c344f601e3bfa260958910761d194dd6",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1187,
+      "hasStructuralAnalysis": true
+    },
+    "LEARNING_PLAN.md": {
+      "filePath": "LEARNING_PLAN.md",
+      "contentHash": "13d490ddc9e521da83d07286a5b1033cdd2f4eaf10d61d1c77da2bf3864c5ea9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 338,
+      "hasStructuralAnalysis": true
+    },
+    "limitaion.md": {
+      "filePath": "limitaion.md",
+      "contentHash": "8360ef28e9583f7df58b453630ef35700b62f388c32180a4cbcf223fde9b8623",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1171,
       "hasStructuralAnalysis": true
     },
     "main.py": {
@@ -961,13 +1104,53 @@
     },
     "pyproject.toml": {
       "filePath": "pyproject.toml",
-      "contentHash": "0beeba81368616a7308d0436ee0fd7cc8bc1b24eeaadb03385aff26bf253aad9",
+      "contentHash": "83e8816f2d5045e77e0662f7a20a3895de91cf4b0feb14bd4650fdea9b85a9d3",
       "functions": [],
       "classes": [],
       "imports": [],
       "exports": [],
-      "totalLines": 55,
+      "totalLines": 75,
       "hasStructuralAnalysis": true
+    },
+    "pyrightconfig.json": {
+      "filePath": "pyrightconfig.json",
+      "contentHash": "32751564077c03be55d17b620cdb9b3a96889e8093a74a5c12f429014b6a3359",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "READING_GUIDE.md": {
+      "filePath": "READING_GUIDE.md",
+      "contentHash": "341fc5e19160d1097f4e45be358508c0c7c9e825260f5738394a2d12f8c42524",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 1307,
+      "hasStructuralAnalysis": true
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "9afe605963e9860a7fd83a7a33a5b68b59beeb931e83c1a36cd4add8a9b10802",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 290,
+      "hasStructuralAnalysis": true
+    },
+    "requirements.txt": {
+      "filePath": "requirements.txt",
+      "contentHash": "eb4bd64f7014f7d42e9d358035802242741b974e8dfcd37c59f9c21ce29d781e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
     },
     "scripts/smoke_structured_output.py": {
       "filePath": "scripts/smoke_structured_output.py",
@@ -1115,7 +1298,7 @@
     },
     "tests/conftest.py": {
       "filePath": "tests/conftest.py",
-      "contentHash": "bf4d3877265b39ea5984f90d05146bfa299af8f2d6d45792588839a19cc9202b",
+      "contentHash": "bf19ee0a0bb2fb2c39a48a27168c5587573a32bddd226db2f4ca53d198d095c9",
       "functions": [
         {
           "name": "pytest_configure",
@@ -1167,7 +1350,7 @@
         "_dummy_api_keys",
         "mock_llm_client"
       ],
-      "totalLines": 47,
+      "totalLines": 51,
       "hasStructuralAnalysis": true
     },
     "tests/test_analyst_execution.py": {
@@ -1276,7 +1459,7 @@
     },
     "tests/test_api_key_env.py": {
       "filePath": "tests/test_api_key_env.py",
-      "contentHash": "18f92d91248f32b8723cb9c77b920fea974a1e7285f8bbbda6dbf9e9c7069b6f",
+      "contentHash": "75715edd7fe310aac09d527a0567ae9175bfe4e04c3eb0ed76acda7a1e13e9fd",
       "functions": [
         {
           "name": "test_every_select_llm_provider_choice_has_an_entry",
@@ -1317,7 +1500,7 @@
             "monkeypatch"
           ],
           "exported": true,
-          "lineCount": 5
+          "lineCount": 6
         },
         {
           "name": "test_ensure_api_key_returns_existing",
@@ -1386,12 +1569,6 @@
           ]
         },
         {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        },
-        {
           "source": "unittest.mock",
           "specifiers": [
             "patch"
@@ -1425,12 +1602,130 @@
         "test_ensure_api_key_user_cancels_returns_none",
         "test_ensure_api_key_updates_existing_env_file"
       ],
-      "totalLines": 150,
+      "totalLines": 149,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_bluesmind_provider.py": {
+      "filePath": "tests/test_bluesmind_provider.py",
+      "contentHash": "86cb70ada67e7ec5cba7b8a433b882244f019f5f06c1b02412f3d7dfa2bda5cc",
+      "functions": [
+        {
+          "name": "_reload_client",
+          "params": [],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestApiKeyEnv",
+          "methods": [
+            "test_bluesmind_maps_to_correct_env_var",
+            "test_bluesmind_in_provider_map",
+            "test_bluesmind_lookup_case_insensitive",
+            "test_openai_key_not_affected"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "TestFactory",
+          "methods": [
+            "test_bluesmind_creates_openai_client",
+            "test_bluesmind_provider_stored_on_client",
+            "test_unknown_provider_still_raises"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "TestOpenAIClient",
+          "methods": [
+            "test_bluesmind_base_url_is_correct",
+            "test_bluesmind_resolve_returns_correct_url",
+            "test_bluesmind_does_not_use_responses_api",
+            "test_bluesmind_uses_correct_api_key",
+            "test_bluesmind_uses_correct_base_url",
+            "test_explicit_base_url_overrides_default",
+            "test_missing_api_key_raises",
+            "test_openai_provider_unaffected"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 58
+        },
+        {
+          "name": "TestModelCatalog",
+          "methods": [
+            "test_bluesmind_quick_models_present",
+            "test_bluesmind_deep_models_present",
+            "test_bluesmind_has_custom_option",
+            "test_kimi_not_in_openai_catalog",
+            "test_bluesmind_in_known_models",
+            "test_openai_catalog_unchanged"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 39
+        },
+        {
+          "name": "TestCliProviderDropdown",
+          "methods": [
+            "_src",
+            "test_bluesmind_in_providers_list",
+            "test_bluesmind_display_name",
+            "test_bluesmind_url_in_providers",
+            "test_openai_still_in_providers"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "TestIntegration",
+          "methods": [
+            "test_create_client_returns_valid_llm",
+            "test_validate_model_known",
+            "test_validate_model_unknown_warns",
+            "test_warn_if_unknown_model_emits_warning",
+            "test_trading_graph_config_accepts_bluesmind"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 59
+        }
+      ],
+      "imports": [
+        {
+          "source": "importlib",
+          "specifiers": [
+            "importlib"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        }
+      ],
+      "exports": [
+        "TestApiKeyEnv",
+        "TestFactory",
+        "_reload_client",
+        "TestOpenAIClient",
+        "TestModelCatalog",
+        "TestCliProviderDropdown",
+        "TestIntegration"
+      ],
+      "totalLines": 265,
       "hasStructuralAnalysis": true
     },
     "tests/test_capabilities.py": {
       "filePath": "tests/test_capabilities.py",
-      "contentHash": "c9c32f18691135a562188e0090a9a012d6685d66892c00300c8a00dc1946db8a",
+      "contentHash": "846fb1c53cf2d9d394cfc1bd0c71447f2d9e5cccca0772bf88165442809be359",
       "functions": [
         {
           "name": "test_capabilities_dataclass_is_frozen",
@@ -1503,7 +1798,6 @@
         {
           "source": "tradingagents.llm_clients.capabilities",
           "specifiers": [
-            "ModelCapabilities",
             "get_capabilities"
           ]
         }
@@ -1515,12 +1809,183 @@
         "TestDefault",
         "test_capabilities_dataclass_is_frozen"
       ],
-      "totalLines": 124,
+      "totalLines": 123,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_checkpoint_bluesmind.py": {
+      "filePath": "tests/test_checkpoint_bluesmind.py",
+      "contentHash": "a9e4d49cb354d2d4d1ddc09ee795d0ddb2a9b7d541e4666f27ba18e4ecbff1d2",
+      "functions": [
+        {
+          "name": "_make_factory",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_make_config",
+          "params": [
+            "tmp_path",
+            "checkpoint_enabled"
+          ],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "_db_path",
+          "params": [
+            "tmp_path",
+            "ticker"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "_checkpoint_rows",
+          "params": [
+            "db_path"
+          ],
+          "returnType": "int",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_set_key",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "test_checkpoint_db_created_when_enabled",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "test_checkpoint_cleared_after_successful_run",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "test_checkpoint_saved_after_crash",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "test_no_checkpoint_db_when_disabled",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "test_resume_after_crash",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 33
+        }
+      ],
+      "classes": [
+        {
+          "name": "_MockLLM",
+          "methods": [
+            "invoke",
+            "bind_tools",
+            "with_structured_output"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_CrashingLLM",
+          "methods": [
+            "invoke",
+            "bind_tools",
+            "with_structured_output"
+          ],
+          "properties": [
+            "call_count",
+            "crash_on"
+          ],
+          "exported": true,
+          "lineCount": 19
+        }
+      ],
+      "imports": [
+        {
+          "source": "sqlite3",
+          "specifiers": [
+            "sqlite3"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock",
+            "patch"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        },
+        {
+          "source": "langchain_core.runnables",
+          "specifiers": [
+            "RunnableSerializable"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        }
+      ],
+      "exports": [
+        "_MockLLM",
+        "_CrashingLLM",
+        "_make_factory",
+        "_make_config",
+        "_db_path",
+        "_checkpoint_rows",
+        "_set_key",
+        "test_checkpoint_db_created_when_enabled",
+        "test_checkpoint_cleared_after_successful_run",
+        "test_checkpoint_saved_after_crash",
+        "test_no_checkpoint_db_when_disabled",
+        "test_resume_after_crash"
+      ],
+      "totalLines": 231,
       "hasStructuralAnalysis": true
     },
     "tests/test_checkpoint_resume.py": {
       "filePath": "tests/test_checkpoint_resume.py",
-      "contentHash": "b5c671e207cbf342b400af0aaaebcd201569a0301f9d84c184630b8ef107fd71",
+      "contentHash": "ff47d2c6422740cb229d54782eca402e04ad0250354e5dd6d5d0d7902fcfd565",
       "functions": [
         {
           "name": "_node_a",
@@ -1573,12 +2038,6 @@
       ],
       "imports": [
         {
-          "source": "sqlite3",
-          "specifiers": [
-            "sqlite3"
-          ]
-        },
-        {
           "source": "tempfile",
           "specifiers": [
             "tempfile"
@@ -1591,21 +2050,9 @@
           ]
         },
         {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        },
-        {
           "source": "typing",
           "specifiers": [
             "TypedDict"
-          ]
-        },
-        {
-          "source": "langgraph.checkpoint.sqlite",
-          "specifiers": [
-            "SqliteSaver"
           ]
         },
         {
@@ -1633,12 +2080,12 @@
         "_build_graph",
         "TestCheckpointResume"
       ],
-      "totalLines": 148,
+      "totalLines": 145,
       "hasStructuralAnalysis": true
     },
     "tests/test_crypto_asset_mode.py": {
       "filePath": "tests/test_crypto_asset_mode.py",
-      "contentHash": "0059bda7d1f1589d304074e612ca0b178cfd5180175ca16f95aa30bf3562259c",
+      "contentHash": "9a1512feb042569ba71db6a0ba94f71159416aa1a865b9a4cd6411d4a2116fde",
       "functions": [],
       "classes": [
         {
@@ -1652,7 +2099,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 45
+          "lineCount": 42
         }
       ],
       "imports": [
@@ -1686,7 +2133,218 @@
       "exports": [
         "CryptoAssetModeTests"
       ],
-      "totalLines": 57,
+      "totalLines": 54,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_crypto_fundamentals.py": {
+      "filePath": "tests/test_crypto_fundamentals.py",
+      "contentHash": "2195ca30738e7432d460cf900a6b63a0faefabccdcf7701339c315003f9ecebe",
+      "functions": [
+        {
+          "name": "_clear_caches",
+          "params": [
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "_mock_response",
+          "params": [
+            "json_data",
+            "status_code",
+            "headers"
+          ],
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestCryptoIdMap",
+          "methods": [
+            "test_known_ticker_returns_id",
+            "test_eth_ticker",
+            "test_unknown_ticker_returns_none",
+            "test_base_symbol_fallback"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "TestCoinGecko",
+          "methods": [
+            "test_get_tokenomics_returns_string",
+            "test_get_tokenomics_unknown_ticker",
+            "test_rate_limit_graceful_degradation",
+            "test_network_error_graceful_degradation",
+            "test_caching"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 106
+        },
+        {
+          "name": "TestFearGreed",
+          "methods": [
+            "test_returns_formatted_string",
+            "test_network_error_returns_unavailable",
+            "test_caching"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 52
+        },
+        {
+          "name": "TestGithubActivity",
+          "methods": [
+            "test_no_api_key_uses_unauthenticated",
+            "test_with_api_key_uses_auth_header",
+            "test_repo_not_found_returns_unavailable",
+            "test_activity_grade_very_active",
+            "test_activity_grade_low",
+            "test_network_error_graceful"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 100
+        },
+        {
+          "name": "TestDeFiLlama",
+          "methods": [
+            "test_defi_token_returns_tvl",
+            "test_non_defi_token_returns_not_applicable",
+            "test_network_error_graceful"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 37
+        },
+        {
+          "name": "TestOnchainMetrics",
+          "methods": [
+            "test_no_api_key_returns_setup_message",
+            "test_unsupported_token_returns_message",
+            "test_eth_native_metrics"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 36
+        },
+        {
+          "name": "TestCryptoNews",
+          "methods": [
+            "test_no_api_key_returns_setup_message",
+            "test_returns_headlines",
+            "test_no_coverage_for_unknown_coin",
+            "test_network_error_graceful"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 64
+        },
+        {
+          "name": "TestCryptoFundamentalTools",
+          "methods": [
+            "test_all_tools_return_strings",
+            "test_get_crypto_tokenomics_tool",
+            "test_get_crypto_dev_activity_tool",
+            "test_get_crypto_network_metrics_tool",
+            "test_get_crypto_market_sentiment_tool",
+            "test_get_crypto_onchain_news_tool"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 73
+        },
+        {
+          "name": "TestCryptoFundamentalsAnalyst",
+          "methods": [
+            "test_analyst_node_returns_fundamentals_report",
+            "test_analyst_node_state_has_messages"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 68
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.coingecko",
+          "specifiers": [
+            "coingecko_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.crypto_id_map",
+          "specifiers": [
+            "id_map_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.crypto_news",
+          "specifiers": [
+            "crypto_news_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.defillama",
+          "specifiers": [
+            "defillama_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.fear_greed",
+          "specifiers": [
+            "fear_greed_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.github_activity",
+          "specifiers": [
+            "github_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.onchain_metrics",
+          "specifiers": [
+            "onchain_mod"
+          ]
+        }
+      ],
+      "exports": [
+        "_clear_caches",
+        "_mock_response",
+        "TestCryptoIdMap",
+        "TestCoinGecko",
+        "TestFearGreed",
+        "TestGithubActivity",
+        "TestDeFiLlama",
+        "TestOnchainMetrics",
+        "TestCryptoNews",
+        "TestCryptoFundamentalTools",
+        "TestCryptoFundamentalsAnalyst"
+      ],
+      "totalLines": 651,
       "hasStructuralAnalysis": true
     },
     "tests/test_dataflows_config.py": {
@@ -1749,7 +2407,7 @@
     },
     "tests/test_deepseek_reasoning.py": {
       "filePath": "tests/test_deepseek_reasoning.py",
-      "contentHash": "c76a740ac5a448da09f0fb3d4ba706f1d2cbdfaf84d0b88c5ce6299420c70587",
+      "contentHash": "797d4b48c7948f769f338253a19bb34c6d268b0498f621b13e0239f483c449a8",
       "functions": [
         {
           "name": "_bound_kwargs",
@@ -1874,7 +2532,295 @@
         "TestDeepSeekLiveStructuredOutput",
         "TestBaseClassIsolation"
       ],
-      "totalLines": 241,
+      "totalLines": 240,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_e2e_bluesmind.py": {
+      "filePath": "tests/test_e2e_bluesmind.py",
+      "contentHash": "e422d777f76a72da0c8fc9e5565f562121372761909c3d062b052f55b8c43783",
+      "functions": [
+        {
+          "name": "_mock_create_llm_client",
+          "params": [
+            "*args",
+            "**kwargs"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "bluesmind_config",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "bluesmind_graph",
+          "params": [
+            "bluesmind_config",
+            "monkeypatch"
+          ],
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [
+        {
+          "name": "_MockLLM",
+          "methods": [
+            "invoke",
+            "bind_tools",
+            "with_structured_output"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "TestBluesmindConfig",
+          "methods": [
+            "test_config_provider_is_bluesmind",
+            "test_config_model_is_kimi",
+            "test_graph_instantiates_with_bluesmind",
+            "test_graph_has_deep_and_quick_llm",
+            "test_llm_client_called_with_bluesmind_provider"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 31
+        },
+        {
+          "name": "TestBluesmindGraphTopology",
+          "methods": [
+            "test_graph_has_required_nodes",
+            "test_graph_has_analyst_tool_nodes",
+            "test_graph_topology_matches_openai_baseline"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 40
+        },
+        {
+          "name": "TestBluesmindStockPipeline",
+          "methods": [
+            "test_propagate_returns_valid_decision",
+            "test_propagate_populates_all_analyst_reports",
+            "test_propagate_final_decision_not_empty",
+            "test_propagate_returns_tuple",
+            "test_propagate_non_us_ticker"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "TestBluesmindCryptoPipeline",
+          "methods": [
+            "test_crypto_propagate_returns_valid_decision",
+            "test_crypto_fundamentals_report_not_empty"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "TestBluesmindDebateRounds",
+          "methods": [
+            "test_single_debate_round_completes",
+            "test_two_debate_rounds_complete"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "TestBluesmindMissingKey",
+          "methods": [
+            "test_missing_key_raises_on_get_llm",
+            "test_missing_key_error_message_names_env_var"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "TestBluesmindEnvOverride",
+          "methods": [
+            "test_env_override_sets_provider"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock",
+            "patch"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        },
+        {
+          "source": "langchain_core.runnables",
+          "specifiers": [
+            "RunnableSerializable"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        }
+      ],
+      "exports": [
+        "_MockLLM",
+        "_mock_create_llm_client",
+        "bluesmind_config",
+        "bluesmind_graph",
+        "TestBluesmindConfig",
+        "TestBluesmindGraphTopology",
+        "TestBluesmindStockPipeline",
+        "TestBluesmindCryptoPipeline",
+        "TestBluesmindDebateRounds",
+        "TestBluesmindMissingKey",
+        "TestBluesmindEnvOverride"
+      ],
+      "totalLines": 288,
+      "hasStructuralAnalysis": true
+    },
+    "tests/test_e2e_smoke.py": {
+      "filePath": "tests/test_e2e_smoke.py",
+      "contentHash": "a864ba266418a14e3b5a27b3662e390908c5f7b25e00152e7dcd6f6da9725c01",
+      "functions": [
+        {
+          "name": "_mock_create_llm_client",
+          "params": [
+            "*args",
+            "**kwargs"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "patched_graph",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "test_e2e_stock_pipeline_returns_decision",
+          "params": [
+            "patched_graph"
+          ],
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "test_e2e_crypto_pipeline_returns_decision",
+          "params": [
+            "patched_graph"
+          ],
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "test_e2e_stock_pipeline_uses_yfinance_fundamentals",
+          "params": [
+            "patched_graph"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_e2e_crypto_uses_crypto_fundamentals_tools",
+          "params": [],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_graph_topology_identical_for_stock_and_crypto",
+          "params": [
+            "tmp_path"
+          ],
+          "exported": true,
+          "lineCount": 24
+        }
+      ],
+      "classes": [
+        {
+          "name": "_MockLLM",
+          "methods": [
+            "invoke",
+            "bind_tools",
+            "with_structured_output"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 18
+        }
+      ],
+      "imports": [
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock",
+            "patch"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        },
+        {
+          "source": "langchain_core.runnables",
+          "specifiers": [
+            "RunnableSerializable"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        }
+      ],
+      "exports": [
+        "_MockLLM",
+        "_mock_create_llm_client",
+        "patched_graph",
+        "test_e2e_stock_pipeline_returns_decision",
+        "test_e2e_crypto_pipeline_returns_decision",
+        "test_e2e_stock_pipeline_uses_yfinance_fundamentals",
+        "test_e2e_crypto_uses_crypto_fundamentals_tools",
+        "test_graph_topology_identical_for_stock_and_crypto"
+      ],
+      "totalLines": 146,
       "hasStructuralAnalysis": true
     },
     "tests/test_env_overrides.py": {
@@ -1983,6 +2929,75 @@
       "totalLines": 99,
       "hasStructuralAnalysis": true
     },
+    "tests/test_fundamentals_web_search.py": {
+      "filePath": "tests/test_fundamentals_web_search.py",
+      "contentHash": "9c34c3a5c483e413d44a1a27c337c4d4ad283ecd9e2cd36a6a5a64d5f6e339e5",
+      "functions": [
+        {
+          "name": "_fundamentals_tool_names",
+          "params": [
+            "asset_type"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "test_stock_fundamentals_toolnode_has_web_search",
+          "params": [],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "test_crypto_fundamentals_toolnode_has_web_search",
+          "params": [],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "test_stock_fundamentals_analyst_binds_web_search",
+          "params": [],
+          "exported": true,
+          "lineCount": 23
+        },
+        {
+          "name": "test_crypto_fundamentals_analyst_binds_web_search",
+          "params": [],
+          "exported": true,
+          "lineCount": 23
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.graph.trading_graph",
+          "specifiers": [
+            "TradingAgentsGraph"
+          ]
+        }
+      ],
+      "exports": [
+        "_fundamentals_tool_names",
+        "test_stock_fundamentals_toolnode_has_web_search",
+        "test_crypto_fundamentals_toolnode_has_web_search",
+        "test_stock_fundamentals_analyst_binds_web_search",
+        "test_crypto_fundamentals_analyst_binds_web_search"
+      ],
+      "totalLines": 89,
+      "hasStructuralAnalysis": true
+    },
     "tests/test_google_api_key.py": {
       "filePath": "tests/test_google_api_key.py",
       "contentHash": "b6b70ed0562260fcdfc158c25f1324caec7dcbddaaeaa47af11c67e3399a0318",
@@ -2030,9 +3045,105 @@
       "totalLines": 32,
       "hasStructuralAnalysis": true
     },
+    "tests/test_market_crypto_data.py": {
+      "filePath": "tests/test_market_crypto_data.py",
+      "contentHash": "a9949b2d7cd7e81e08a498991c9af9aa04c22bd7a2961bab0e4990acc4611ee9",
+      "functions": [
+        {
+          "name": "_force_yfinance_vendor",
+          "params": [],
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "_ohlcv_df",
+          "params": [],
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "_indicator_df",
+          "params": [],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "test_crypto_ohlcv_returns_valid_data",
+          "params": [
+            "monkeypatch",
+            "_ohlcv_df"
+          ],
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "test_crypto_indicator_returns_valid_values",
+          "params": [
+            "monkeypatch",
+            "_indicator_df"
+          ],
+          "exported": true,
+          "lineCount": 12
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "copy",
+          "specifiers": [
+            "copy"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.config",
+          "specifiers": [
+            "config_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.y_finance",
+          "specifiers": [
+            "yf_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "default_config"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.interface",
+          "specifiers": [
+            "route_to_vendor"
+          ]
+        }
+      ],
+      "exports": [
+        "_force_yfinance_vendor",
+        "_ohlcv_df",
+        "_indicator_df",
+        "test_crypto_ohlcv_returns_valid_data",
+        "test_crypto_indicator_returns_valid_values"
+      ],
+      "totalLines": 108,
+      "hasStructuralAnalysis": true
+    },
     "tests/test_memory_log.py": {
       "filePath": "tests/test_memory_log.py",
-      "contentHash": "d93cbd1b6e33b1dd2ebc60b0cc6eee592483f93d6065fe8979fce65a698db150",
+      "contentHash": "3842c4cb4476b66161d6b8110e1caa516b3316f14befcf7dbfc7e767b1a5a9c1",
       "functions": [
         {
           "name": "make_log",
@@ -2197,9 +3308,10 @@
       ],
       "imports": [
         {
-          "source": "pytest",
+          "source": "unittest.mock",
           "specifiers": [
-            "pytest"
+            "MagicMock",
+            "patch"
           ]
         },
         {
@@ -2209,10 +3321,22 @@
           ]
         },
         {
-          "source": "unittest.mock",
+          "source": "pytest",
           "specifiers": [
-            "MagicMock",
-            "patch"
+            "pytest"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.managers.portfolio_manager",
+          "specifiers": [
+            "create_portfolio_manager"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "PortfolioDecision",
+            "PortfolioRating"
           ]
         },
         {
@@ -2222,10 +3346,9 @@
           ]
         },
         {
-          "source": "tradingagents.agents.schemas",
+          "source": "tradingagents.graph.propagation",
           "specifiers": [
-            "PortfolioDecision",
-            "PortfolioRating"
+            "Propagator"
           ]
         },
         {
@@ -2238,18 +3361,6 @@
           "source": "tradingagents.graph.trading_graph",
           "specifiers": [
             "TradingAgentsGraph"
-          ]
-        },
-        {
-          "source": "tradingagents.graph.propagation",
-          "specifiers": [
-            "Propagator"
-          ]
-        },
-        {
-          "source": "tradingagents.agents.managers.portfolio_manager",
-          "specifiers": [
-            "create_portfolio_manager"
           ]
         }
       ],
@@ -2265,7 +3376,7 @@
         "TestPortfolioManagerInjection",
         "TestLegacyRemoval"
       ],
-      "totalLines": 861,
+      "totalLines": 862,
       "hasStructuralAnalysis": true
     },
     "tests/test_minimax.py": {
@@ -2421,8 +3532,17 @@
     },
     "tests/test_ollama_base_url.py": {
       "filePath": "tests/test_ollama_base_url.py",
-      "contentHash": "68e722486c5970e9bdc9a457ddb1776578edc5f9459ce97d230c59b9cdd573e5",
+      "contentHash": "d99c005d76335ee9cc47d78f804d6758690bb0dbd4685bdbb098eb997ba90585",
       "functions": [
+        {
+          "name": "_strip",
+          "params": [
+            "s"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
         {
           "name": "_reload_client",
           "params": [],
@@ -2518,7 +3638,7 @@
             "capsys"
           ],
           "exported": true,
-          "lineCount": 9
+          "lineCount": 11
         },
         {
           "name": "test_confirm_endpoint_warns_on_non_default_port_remote",
@@ -2527,7 +3647,7 @@
             "capsys"
           ],
           "exported": true,
-          "lineCount": 8
+          "lineCount": 10
         },
         {
           "name": "test_confirm_endpoint_quiet_on_local_no_port",
@@ -2560,13 +3680,14 @@
           ]
         },
         {
-          "source": "pytest",
+          "source": "re",
           "specifiers": [
-            "pytest"
+            "re"
           ]
         }
       ],
       "exports": [
+        "_strip",
         "_reload_client",
         "test_resolver_returns_default_when_env_unset",
         "test_resolver_returns_env_when_set",
@@ -2584,7 +3705,7 @@
         "test_ollama_model_labels_no_local_suffix",
         "test_ollama_offers_custom_model_id"
       ],
-      "totalLines": 168,
+      "totalLines": 175,
       "hasStructuralAnalysis": true
     },
     "tests/test_safe_ticker_component.py": {
@@ -2640,9 +3761,150 @@
       "totalLines": 53,
       "hasStructuralAnalysis": true
     },
+    "tests/test_sentiment_sources.py": {
+      "filePath": "tests/test_sentiment_sources.py",
+      "contentHash": "027f23d7a0b3a32b1475810f07befe710e668a4941cfb596c3240e46ec783b10",
+      "functions": [
+        {
+          "name": "_mock_urlopen",
+          "params": [
+            "payload"
+          ],
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "TestBlueskyFetcher",
+          "methods": [
+            "test_parses_posts",
+            "test_empty_results_placeholder",
+            "test_http_error_degrades_gracefully"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 26
+        },
+        {
+          "name": "TestMastodonFetcher",
+          "methods": [
+            "test_parses_posts_and_strips_html",
+            "test_empty_results_placeholder",
+            "test_invalid_tag_placeholder",
+            "test_http_error_degrades_gracefully"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 32
+        },
+        {
+          "name": "TestPromptWiring",
+          "methods": [
+            "test_all_six_blocks_present",
+            "test_breakdown_lists_new_sources"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "TestSentimentNode",
+          "methods": [
+            "test_node_injects_all_fetchers_into_prompt",
+            "test_crypto_strips_suffix_for_new_sources",
+            "test_falls_back_to_freetext_when_structured_unavailable"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 93
+        },
+        {
+          "name": "TestSentimentSchema",
+          "methods": [
+            "test_render_contains_band_score_confidence",
+            "test_all_six_bands_render",
+            "test_score_out_of_range_rejected"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 26
+        }
+      ],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "unittest.mock",
+          "specifiers": [
+            "MagicMock",
+            "patch"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "HTTPError"
+          ]
+        },
+        {
+          "source": "pytest",
+          "specifiers": [
+            "pytest"
+          ]
+        },
+        {
+          "source": "pydantic",
+          "specifiers": [
+            "ValidationError"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.bluesky",
+          "specifiers": [
+            "bluesky_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.mastodon",
+          "specifiers": [
+            "mastodon_mod"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.analysts.sentiment_analyst",
+          "specifiers": [
+            "_build_system_message",
+            "create_sentiment_analyst"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "SentimentBand",
+            "SentimentReport",
+            "render_sentiment_report"
+          ]
+        }
+      ],
+      "exports": [
+        "_mock_urlopen",
+        "TestBlueskyFetcher",
+        "TestMastodonFetcher",
+        "TestPromptWiring",
+        "TestSentimentNode",
+        "TestSentimentSchema"
+      ],
+      "totalLines": 252,
+      "hasStructuralAnalysis": true
+    },
     "tests/test_signal_processing.py": {
       "filePath": "tests/test_signal_processing.py",
-      "contentHash": "f37954eac82e0df539d03a2a6fde43e4842c779c646402fe616f29206f1055de",
+      "contentHash": "88a9aa62383b72e388c766674caec9b85fcfb37a6c8633a52496bcb99e1057a5",
       "functions": [],
       "classes": [
         {
@@ -2699,12 +3961,12 @@
         "TestParseRating",
         "TestSignalProcessor"
       ],
-      "totalLines": 91,
+      "totalLines": 90,
       "hasStructuralAnalysis": true
     },
     "tests/test_structured_agents.py": {
       "filePath": "tests/test_structured_agents.py",
-      "contentHash": "0e4befd76fdababd9b0f799001203e4c2f7c31ca6cf182576be2b7874ad0b9c3",
+      "contentHash": "c4dba2d6a3cc620245fd0689c26da8f0ed637d7cc6d78fa01e97fa1008b81ab4",
       "functions": [
         {
           "name": "_make_trader_state",
@@ -2829,7 +4091,7 @@
         "_structured_rm_llm",
         "TestResearchManagerAgent"
       ],
-      "totalLines": 233,
+      "totalLines": 232,
       "hasStructuralAnalysis": true
     },
     "tests/test_ticker_symbol_handling.py": {
@@ -2899,22 +4161,14 @@
     },
     "tradingagents/agents/__init__.py": {
       "filePath": "tradingagents/agents/__init__.py",
-      "contentHash": "4e9832f92a24dc82dec6f023164ea728382766709d05e36b50b6832a1a6c50bc",
+      "contentHash": "bc2127e3792c9976eca1f876f5843007fb0c4abd69bdc20f41bdf6671aed8a2c",
       "functions": [],
       "classes": [],
       "imports": [
         {
-          "source": ".utils.agent_utils",
+          "source": ".analysts.crypto_fundamentals_analyst",
           "specifiers": [
-            "create_msg_delete"
-          ]
-        },
-        {
-          "source": ".utils.agent_states",
-          "specifiers": [
-            "AgentState",
-            "InvestDebateState",
-            "RiskDebateState"
+            "create_crypto_fundamentals_analyst"
           ]
         },
         {
@@ -2940,6 +4194,18 @@
           "specifiers": [
             "create_sentiment_analyst",
             "create_social_media_analyst"
+          ]
+        },
+        {
+          "source": ".managers.portfolio_manager",
+          "specifiers": [
+            "create_portfolio_manager"
+          ]
+        },
+        {
+          "source": ".managers.research_manager",
+          "specifiers": [
+            "create_research_manager"
           ]
         },
         {
@@ -2973,31 +4239,85 @@
           ]
         },
         {
-          "source": ".managers.research_manager",
-          "specifiers": [
-            "create_research_manager"
-          ]
-        },
-        {
-          "source": ".managers.portfolio_manager",
-          "specifiers": [
-            "create_portfolio_manager"
-          ]
-        },
-        {
           "source": ".trader.trader",
           "specifiers": [
             "create_trader"
           ]
+        },
+        {
+          "source": ".utils.agent_states",
+          "specifiers": [
+            "AgentState",
+            "InvestDebateState",
+            "RiskDebateState"
+          ]
+        },
+        {
+          "source": ".utils.agent_utils",
+          "specifiers": [
+            "create_msg_delete"
+          ]
         }
       ],
       "exports": [],
-      "totalLines": 43,
+      "totalLines": 40,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/analysts/crypto_fundamentals_analyst.py": {
+      "filePath": "tradingagents/agents/analysts/crypto_fundamentals_analyst.py",
+      "contentHash": "30eabe6b7ae7ee995a28459b7a8886d82139e2cf7dd5f98e252075aa498c74bd",
+      "functions": [
+        {
+          "name": "create_crypto_fundamentals_analyst",
+          "params": [
+            "llm"
+          ],
+          "exported": true,
+          "lineCount": 88
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "langchain_core.prompts",
+          "specifiers": [
+            "ChatPromptTemplate",
+            "MessagesPlaceholder"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "build_instrument_context",
+            "get_language_instruction"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.crypto_fundamental_tools",
+          "specifiers": [
+            "get_crypto_dev_activity",
+            "get_crypto_market_sentiment",
+            "get_crypto_network_metrics",
+            "get_crypto_onchain_news",
+            "get_crypto_tokenomics"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.web_search_tools",
+          "specifiers": [
+            "get_web_search"
+          ]
+        }
+      ],
+      "exports": [
+        "create_crypto_fundamentals_analyst"
+      ],
+      "totalLines": 112,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/analysts/fundamentals_analyst.py": {
       "filePath": "tradingagents/agents/analysts/fundamentals_analyst.py",
-      "contentHash": "275c879d2f89b9d93db6bc415aa4b34dfc61559e1ad423c4cb5fe32649a4beb0",
+      "contentHash": "da1fca94cd2db7b63d4726a3e4f53dbd89f63c607a404747fce80f4a1d5fc959",
       "functions": [
         {
           "name": "create_fundamentals_analyst",
@@ -3005,7 +4325,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 56
+          "lineCount": 58
         }
       ],
       "classes": [],
@@ -3025,26 +4345,25 @@
             "get_cashflow",
             "get_fundamentals",
             "get_income_statement",
-            "get_insider_transactions",
             "get_language_instruction"
           ]
         },
         {
-          "source": "tradingagents.dataflows.config",
+          "source": "tradingagents.agents.utils.web_search_tools",
           "specifiers": [
-            "get_config"
+            "get_web_search"
           ]
         }
       ],
       "exports": [
         "create_fundamentals_analyst"
       ],
-      "totalLines": 70,
+      "totalLines": 72,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/analysts/market_analyst.py": {
       "filePath": "tradingagents/agents/analysts/market_analyst.py",
-      "contentHash": "81794b38b33269fe2b2bc4534a4cc2012a64bcc1f6f6526e2270eb4998ade459",
+      "contentHash": "ded9a9fc84400170b7b3e14421fd296794ea797cb3880ae2e4f5de7f20618fb4",
       "functions": [
         {
           "name": "create_market_analyst",
@@ -3052,7 +4371,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 81
+          "lineCount": 87
         }
       ],
       "classes": [],
@@ -3072,23 +4391,17 @@
             "get_language_instruction",
             "get_stock_data"
           ]
-        },
-        {
-          "source": "tradingagents.dataflows.config",
-          "specifiers": [
-            "get_config"
-          ]
         }
       ],
       "exports": [
         "create_market_analyst"
       ],
-      "totalLines": 92,
+      "totalLines": 98,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/analysts/news_analyst.py": {
       "filePath": "tradingagents/agents/analysts/news_analyst.py",
-      "contentHash": "a73f931a94f747918946bf2ee585038b2b9d312a2ddd09b62c1efba21b9d5f7a",
+      "contentHash": "96d383484c7cde035a6815ab8e906eae30aadd75654cacc649b537e26dee72d6",
       "functions": [
         {
           "name": "create_news_analyst",
@@ -3096,7 +4409,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 56
+          "lineCount": 57
         }
       ],
       "classes": [],
@@ -3118,21 +4431,21 @@
           ]
         },
         {
-          "source": "tradingagents.dataflows.config",
+          "source": "tradingagents.agents.utils.web_search_tools",
           "specifiers": [
-            "get_config"
+            "get_web_search"
           ]
         }
       ],
       "exports": [
         "create_news_analyst"
       ],
-      "totalLines": 67,
+      "totalLines": 69,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/analysts/sentiment_analyst.py": {
       "filePath": "tradingagents/agents/analysts/sentiment_analyst.py",
-      "contentHash": "2fe1f76b18db74b99b9f62af648585f76b612109b62f3b624089ef49a0b6b3d2",
+      "contentHash": "28ee161c1b5542397bde3208e10951ccfcdd3ad10dadb463d7b350f849a9f7dd",
       "functions": [
         {
           "name": "_seven_days_back",
@@ -3149,7 +4462,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 59
+          "lineCount": 109
         },
         {
           "name": "_build_system_message",
@@ -3159,11 +4472,15 @@
             "end_date",
             "news_block",
             "stocktwits_block",
-            "reddit_block"
+            "reddit_block",
+            "bluesky_block",
+            "mastodon_block",
+            "fear_greed_block",
+            "community_context"
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 64
+          "lineCount": 96
         },
         {
           "name": "create_social_media_analyst",
@@ -3184,10 +4501,23 @@
           ]
         },
         {
+          "source": "langchain_core.messages",
+          "specifiers": [
+            "AIMessage"
+          ]
+        },
+        {
           "source": "langchain_core.prompts",
           "specifiers": [
             "ChatPromptTemplate",
             "MessagesPlaceholder"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.schemas",
+          "specifiers": [
+            "SentimentReport",
+            "render_sentiment_report"
           ]
         },
         {
@@ -3196,6 +4526,31 @@
             "build_instrument_context",
             "get_language_instruction",
             "get_news"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.structured",
+          "specifiers": [
+            "bind_structured",
+            "invoke_structured_or_freetext"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.bluesky",
+          "specifiers": [
+            "fetch_bluesky_posts"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.fear_greed",
+          "specifiers": [
+            "get_fear_greed_index"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.mastodon",
+          "specifiers": [
+            "fetch_mastodon_posts"
           ]
         },
         {
@@ -3217,7 +4572,7 @@
         "_build_system_message",
         "create_social_media_analyst"
       ],
-      "totalLines": 185,
+      "totalLines": 281,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/analysts/social_media_analyst.py": {
@@ -3246,7 +4601,7 @@
     },
     "tradingagents/agents/managers/portfolio_manager.py": {
       "filePath": "tradingagents/agents/managers/portfolio_manager.py",
-      "contentHash": "ff07300aa1b0fee9780b7850ca2ca38db478a70323e521dfa1ffe0deab635694",
+      "contentHash": "d79a9f1bc4e5db340545a20c5273cd7d4908bb20d320d9acbdfa044f3702e7d3",
       "functions": [
         {
           "name": "create_portfolio_manager",
@@ -3289,7 +4644,7 @@
     },
     "tradingagents/agents/managers/research_manager.py": {
       "filePath": "tradingagents/agents/managers/research_manager.py",
-      "contentHash": "c92644d46a5c4359bca2137e2b4ffd658df048e7f1964565043eaf502bc678cc",
+      "contentHash": "cfc95e22380c859c051071174536ca0e7a1fa7236a23c9e88c4bca2f74a7615a",
       "functions": [
         {
           "name": "create_research_manager",
@@ -3332,7 +4687,7 @@
     },
     "tradingagents/agents/researchers/bear_researcher.py": {
       "filePath": "tradingagents/agents/researchers/bear_researcher.py",
-      "contentHash": "ae243ef5567c598b71746e373ff42183061acf44a881413e3d49ca5f1c760472",
+      "contentHash": "825b3120cdeb9ed67f81b15b7089e8df157c669c3d91fac9053b603542f20f24",
       "functions": [
         {
           "name": "create_bear_researcher",
@@ -3360,7 +4715,7 @@
     },
     "tradingagents/agents/researchers/bull_researcher.py": {
       "filePath": "tradingagents/agents/researchers/bull_researcher.py",
-      "contentHash": "9d6c98733869e75c5ab2965a65a425dd9725d85e36a5bc27c386bc96f195b987",
+      "contentHash": "6404ebcc17e79bee435852ae2c4ac84048eeb19cb6ed4e91699ca982f972d501",
       "functions": [
         {
           "name": "create_bull_researcher",
@@ -3388,7 +4743,7 @@
     },
     "tradingagents/agents/risk_mgmt/aggressive_debator.py": {
       "filePath": "tradingagents/agents/risk_mgmt/aggressive_debator.py",
-      "contentHash": "8f4b7f634ad5b081a284e0fab18507070a5e490a068a8b74286bddb1d5fc381c",
+      "contentHash": "f626ba3378aa4e2039c8f03f68317c033e852b2d0d3cbfb543e27353f62f6c95",
       "functions": [
         {
           "name": "create_aggressive_debator",
@@ -3396,7 +4751,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 51
+          "lineCount": 54
         }
       ],
       "classes": [],
@@ -3411,12 +4766,12 @@
       "exports": [
         "create_aggressive_debator"
       ],
-      "totalLines": 55,
+      "totalLines": 58,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/risk_mgmt/conservative_debator.py": {
       "filePath": "tradingagents/agents/risk_mgmt/conservative_debator.py",
-      "contentHash": "b5afc686e2de6d92545bc15a4ca692dc564487b8b74878d30b2bf913f2a04a1a",
+      "contentHash": "3a1c5074ade9fcbd861cda69d39edc2bc4f3702ef3988c6e7ca206eacee08466",
       "functions": [
         {
           "name": "create_conservative_debator",
@@ -3424,7 +4779,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 53
+          "lineCount": 56
         }
       ],
       "classes": [],
@@ -3439,12 +4794,12 @@
       "exports": [
         "create_conservative_debator"
       ],
-      "totalLines": 57,
+      "totalLines": 60,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/risk_mgmt/neutral_debator.py": {
       "filePath": "tradingagents/agents/risk_mgmt/neutral_debator.py",
-      "contentHash": "8511496d5cb504fe05c4e4aa19de0cc207735da56697e25cb69826e3d996dd82",
+      "contentHash": "08bb10b57f67c96196d780231b141edc5e8ca98ef8061dc1afd3064be2ebebf6",
       "functions": [
         {
           "name": "create_neutral_debator",
@@ -3452,7 +4807,7 @@
             "llm"
           ],
           "exported": true,
-          "lineCount": 51
+          "lineCount": 54
         }
       ],
       "classes": [],
@@ -3467,12 +4822,12 @@
       "exports": [
         "create_neutral_debator"
       ],
-      "totalLines": 55,
+      "totalLines": 58,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/schemas.py": {
       "filePath": "tradingagents/agents/schemas.py",
-      "contentHash": "1e0782006274bf4829c47d81be66e23feb8d674213d4471c4f1042d69464d272",
+      "contentHash": "1e40ae58973f8cb9ef6bb02b32e9a4e88862d903c912f5870e10534ecf0ecd1c",
       "functions": [
         {
           "name": "render_research_plan",
@@ -3500,6 +4855,15 @@
           "returnType": "str",
           "exported": true,
           "lineCount": 20
+        },
+        {
+          "name": "render_sentiment_report",
+          "params": [
+            "report"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 14
         }
       ],
       "classes": [
@@ -3553,6 +4917,25 @@
           ],
           "exported": true,
           "lineCount": 36
+        },
+        {
+          "name": "SentimentBand",
+          "methods": [],
+          "properties": [],
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "SentimentReport",
+          "methods": [],
+          "properties": [
+            "overall_band",
+            "overall_score",
+            "confidence",
+            "narrative"
+          ],
+          "exported": true,
+          "lineCount": 55
         }
       ],
       "imports": [
@@ -3565,6 +4948,7 @@
         {
           "source": "typing",
           "specifiers": [
+            "Literal",
             "Optional"
           ]
         },
@@ -3584,9 +4968,12 @@
         "TraderProposal",
         "render_trader_proposal",
         "PortfolioDecision",
-        "render_pm_decision"
+        "render_pm_decision",
+        "SentimentBand",
+        "SentimentReport",
+        "render_sentiment_report"
       ],
-      "totalLines": 229,
+      "totalLines": 321,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/trader/trader.py": {
@@ -3646,7 +5033,7 @@
     },
     "tradingagents/agents/utils/agent_states.py": {
       "filePath": "tradingagents/agents/utils/agent_states.py",
-      "contentHash": "4b9111a8dcad13b924cd43f8a9572f9c1c98ffab7f134c5a0ac6de77027a4175",
+      "contentHash": "16a5838d2bcd96c309971f6025b2b024e7bb6db283b73dfb6c9416e88380267f",
       "functions": [],
       "classes": [
         {
@@ -3712,15 +5099,15 @@
           ]
         },
         {
-          "source": "typing_extensions",
-          "specifiers": [
-            "TypedDict"
-          ]
-        },
-        {
           "source": "langgraph.graph",
           "specifiers": [
             "MessagesState"
+          ]
+        },
+        {
+          "source": "typing_extensions",
+          "specifiers": [
+            "TypedDict"
           ]
         }
       ],
@@ -3729,12 +5116,12 @@
         "RiskDebateState",
         "AgentState"
       ],
-      "totalLines": 75,
+      "totalLines": 76,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/utils/agent_utils.py": {
       "filePath": "tradingagents/agents/utils/agent_utils.py",
-      "contentHash": "e8de2524e709bf0eff0621fc7e80b9464523146ca088b0c959bbd7dece9cfb36",
+      "contentHash": "e05e1d01bc97e92acabfeb6dc62997da3ee95a91dddf89996162b45de59890bc",
       "functions": [
         {
           "name": "get_language_instruction",
@@ -3776,26 +5163,26 @@
           ]
         },
         {
-          "source": "tradingagents.agents.utils.technical_indicators_tools",
-          "specifiers": [
-            "get_indicators"
-          ]
-        },
-        {
           "source": "tradingagents.agents.utils.fundamental_data_tools",
           "specifiers": [
-            "get_fundamentals",
             "get_balance_sheet",
             "get_cashflow",
+            "get_fundamentals",
             "get_income_statement"
           ]
         },
         {
           "source": "tradingagents.agents.utils.news_data_tools",
           "specifiers": [
-            "get_news",
+            "get_global_news",
             "get_insider_transactions",
-            "get_global_news"
+            "get_news"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.technical_indicators_tools",
+          "specifiers": [
+            "get_indicators"
           ]
         }
       ],
@@ -3804,12 +5191,12 @@
         "build_instrument_context",
         "create_msg_delete"
       ],
-      "totalLines": 71,
+      "totalLines": 67,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/utils/core_stock_tools.py": {
       "filePath": "tradingagents/agents/utils/core_stock_tools.py",
-      "contentHash": "a91f2e1ce18c293edd598a338b82a067f65e8dc1421dabe6d319713c2444bf85",
+      "contentHash": "3c0ed4d0758ce20551bac0232c4642ece9c7962c307f30432aa20d5d74f77d28",
       "functions": [
         {
           "name": "get_stock_data",
@@ -3826,15 +5213,15 @@
       "classes": [],
       "imports": [
         {
-          "source": "langchain_core.tools",
-          "specifiers": [
-            "tool"
-          ]
-        },
-        {
           "source": "typing",
           "specifiers": [
             "Annotated"
+          ]
+        },
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
           ]
         },
         {
@@ -3847,12 +5234,99 @@
       "exports": [
         "get_stock_data"
       ],
-      "totalLines": 23,
+      "totalLines": 25,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/crypto_fundamental_tools.py": {
+      "filePath": "tradingagents/agents/utils/crypto_fundamental_tools.py",
+      "contentHash": "c566724ec39369d33c031ef14aeebc74a2c5481df9bf860b1d6bfc99c9699c37",
+      "functions": [
+        {
+          "name": "get_crypto_tokenomics",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "get_crypto_dev_activity",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "get_crypto_network_metrics",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "get_crypto_market_sentiment",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "get_crypto_onchain_news",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated"
+          ]
+        },
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.coingecko",
+          "specifiers": [
+            "get_tokenomics"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.fear_greed",
+          "specifiers": [
+            "get_fear_greed_index"
+          ]
+        }
+      ],
+      "exports": [
+        "get_crypto_tokenomics",
+        "get_crypto_dev_activity",
+        "get_crypto_network_metrics",
+        "get_crypto_market_sentiment",
+        "get_crypto_onchain_news"
+      ],
+      "totalLines": 82,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/utils/fundamental_data_tools.py": {
       "filePath": "tradingagents/agents/utils/fundamental_data_tools.py",
-      "contentHash": "65ab501f0b5503cb8f0a3f63e3f9964b1f060d00be56cd3c72706ef2aac2254b",
+      "contentHash": "28b06ae8f82ccb6e7a8d4456d4f3fd519b04e82270e280893c02db94a5ce2cd1",
       "functions": [
         {
           "name": "get_fundamentals",
@@ -3901,15 +5375,15 @@
       "classes": [],
       "imports": [
         {
-          "source": "langchain_core.tools",
-          "specifiers": [
-            "tool"
-          ]
-        },
-        {
           "source": "typing",
           "specifiers": [
             "Annotated"
+          ]
+        },
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
           ]
         },
         {
@@ -3925,12 +5399,12 @@
         "get_cashflow",
         "get_income_statement"
       ],
-      "totalLines": 77,
+      "totalLines": 79,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/utils/memory.py": {
       "filePath": "tradingagents/agents/utils/memory.py",
-      "contentHash": "3acd7ce641120452c551d92417f177a80df8537e89a05808c2d0b37fe3908c9e",
+      "contentHash": "29c0602379fb55108e636959d44fffc20544adad4dcee18e8e0abdb1fccf5d95",
       "functions": [],
       "classes": [
         {
@@ -3955,10 +5429,9 @@
       ],
       "imports": [
         {
-          "source": "typing",
+          "source": "re",
           "specifiers": [
-            "List",
-            "Optional"
+            "re"
           ]
         },
         {
@@ -3968,9 +5441,10 @@
           ]
         },
         {
-          "source": "re",
+          "source": "typing",
           "specifiers": [
-            "re"
+            "List",
+            "Optional"
           ]
         },
         {
@@ -3988,7 +5462,7 @@
     },
     "tradingagents/agents/utils/news_data_tools.py": {
       "filePath": "tradingagents/agents/utils/news_data_tools.py",
-      "contentHash": "4cf0cbbb354fc4d3ec1203ec306bc10745da4a4c3ba73f7033f5dc6efe80fe24",
+      "contentHash": "6cf239e7df41c7f45faa7528bc3dbe31e0d242b059e47a87314a5f3241428e19",
       "functions": [
         {
           "name": "get_news",
@@ -4025,16 +5499,16 @@
       "classes": [],
       "imports": [
         {
-          "source": "langchain_core.tools",
-          "specifiers": [
-            "tool"
-          ]
-        },
-        {
           "source": "typing",
           "specifiers": [
             "Annotated",
             "Optional"
+          ]
+        },
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
           ]
         },
         {
@@ -4049,12 +5523,12 @@
         "get_global_news",
         "get_insider_transactions"
       ],
-      "totalLines": 58,
+      "totalLines": 61,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/utils/rating.py": {
       "filePath": "tradingagents/agents/utils/rating.py",
-      "contentHash": "87d8e5e1e2a4c49b01ab43e908a5540db4efde08f69d62f3fd1530f9eb9b6e44",
+      "contentHash": "66b835d63ffcb26b77b7d1cc62a9e06e8e3e89669194c403098fdf3a791cfc2f",
       "functions": [
         {
           "name": "parse_rating",
@@ -4085,7 +5559,7 @@
       "exports": [
         "parse_rating"
       ],
-      "totalLines": 51,
+      "totalLines": 50,
       "hasStructuralAnalysis": true
     },
     "tradingagents/agents/utils/structured.py": {
@@ -4150,7 +5624,7 @@
     },
     "tradingagents/agents/utils/technical_indicators_tools.py": {
       "filePath": "tradingagents/agents/utils/technical_indicators_tools.py",
-      "contentHash": "7bb35b4db42244c97c24bb83fa13d0f5c59823ef5e5520db2e03db023d3f5613",
+      "contentHash": "5097b06c9cc73246eb88ab8633493c15b04cb45da03b69d0cc11f16a7a459025",
       "functions": [
         {
           "name": "get_indicators",
@@ -4168,15 +5642,15 @@
       "classes": [],
       "imports": [
         {
-          "source": "langchain_core.tools",
-          "specifiers": [
-            "tool"
-          ]
-        },
-        {
           "source": "typing",
           "specifiers": [
             "Annotated"
+          ]
+        },
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
           ]
         },
         {
@@ -4189,7 +5663,50 @@
       "exports": [
         "get_indicators"
       ],
-      "totalLines": 32,
+      "totalLines": 35,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/agents/utils/web_search_tools.py": {
+      "filePath": "tradingagents/agents/utils/web_search_tools.py",
+      "contentHash": "ca6a9a4640ac3b542b50b9c249889c03e4208e240aecac1196d962a05a4e1e2c",
+      "functions": [
+        {
+          "name": "get_web_search",
+          "params": [
+            "query",
+            "category"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "typing",
+          "specifiers": [
+            "Annotated",
+            "Literal"
+          ]
+        },
+        {
+          "source": "langchain_core.tools",
+          "specifiers": [
+            "tool"
+          ]
+        },
+        {
+          "source": "tradingagents.dataflows.searxng",
+          "specifiers": [
+            "search"
+          ]
+        }
+      ],
+      "exports": [
+        "get_web_search"
+      ],
+      "totalLines": 37,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/__init__.py": {
@@ -4202,49 +5719,9 @@
       "totalLines": 1,
       "hasStructuralAnalysis": true
     },
-    "tradingagents/dataflows/alpha_vantage.py": {
-      "filePath": "tradingagents/dataflows/alpha_vantage.py",
-      "contentHash": "12e6d9d97375fb3c3f94f49fb0eb861e0b09517d7fb2ceff83c11493517e3c69",
-      "functions": [],
-      "classes": [],
-      "imports": [
-        {
-          "source": ".alpha_vantage_stock",
-          "specifiers": [
-            "get_stock"
-          ]
-        },
-        {
-          "source": ".alpha_vantage_indicator",
-          "specifiers": [
-            "get_indicator"
-          ]
-        },
-        {
-          "source": ".alpha_vantage_fundamentals",
-          "specifiers": [
-            "get_fundamentals",
-            "get_balance_sheet",
-            "get_cashflow",
-            "get_income_statement"
-          ]
-        },
-        {
-          "source": ".alpha_vantage_news",
-          "specifiers": [
-            "get_news",
-            "get_global_news",
-            "get_insider_transactions"
-          ]
-        }
-      ],
-      "exports": [],
-      "totalLines": 5,
-      "hasStructuralAnalysis": true
-    },
     "tradingagents/dataflows/alpha_vantage_common.py": {
       "filePath": "tradingagents/dataflows/alpha_vantage_common.py",
-      "contentHash": "58dcb3b7f86ae84100ced2979ebf7e2da895316d569e04dd5c1f69bb798c0150",
+      "contentHash": "9ce45b09d9927f129032b594a13326516a79a786d74ba6d124952604da11f0d4",
       "functions": [
         {
           "name": "get_api_key",
@@ -4295,27 +5772,15 @@
       ],
       "imports": [
         {
-          "source": "os",
-          "specifiers": [
-            "os"
-          ]
-        },
-        {
-          "source": "requests",
-          "specifiers": [
-            "requests"
-          ]
-        },
-        {
-          "source": "pandas",
-          "specifiers": [
-            "pd"
-          ]
-        },
-        {
           "source": "json",
           "specifiers": [
             "json"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
           ]
         },
         {
@@ -4329,6 +5794,18 @@
           "specifiers": [
             "StringIO"
           ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
         }
       ],
       "exports": [
@@ -4338,7 +5815,7 @@
         "_make_api_request",
         "_filter_csv_by_date_range"
       ],
-      "totalLines": 123,
+      "totalLines": 124,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/alpha_vantage_fundamentals.py": {
@@ -4416,7 +5893,7 @@
     },
     "tradingagents/dataflows/alpha_vantage_indicator.py": {
       "filePath": "tradingagents/dataflows/alpha_vantage_indicator.py",
-      "contentHash": "4e6403337e97252f7ec615c8713c91bd39f29781c2fe181240a02c72cc85376f",
+      "contentHash": "f67970167b2615dad3961ca663585dad29b9717cd78fb01d3e877b1bffeb4f93",
       "functions": [
         {
           "name": "get_indicator",
@@ -4431,7 +5908,7 @@
           ],
           "returnType": "str",
           "exported": true,
-          "lineCount": 220
+          "lineCount": 221
         }
       ],
       "classes": [],
@@ -4446,12 +5923,12 @@
       "exports": [
         "get_indicator"
       ],
-      "totalLines": 223,
+      "totalLines": 225,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/alpha_vantage_news.py": {
       "filePath": "tradingagents/dataflows/alpha_vantage_news.py",
-      "contentHash": "f4922cdfdb72d3ceac173ea44aceeb0057a675721278183b7291f1a96841a782",
+      "contentHash": "0c8ccf9486506d1660f47d9991794233a7e8dfebf430d43c4c0f1fc57f77f561",
       "functions": [
         {
           "name": "get_news",
@@ -4500,12 +5977,12 @@
         "get_global_news",
         "get_insider_transactions"
       ],
-      "totalLines": 71,
+      "totalLines": 72,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/alpha_vantage_stock.py": {
       "filePath": "tradingagents/dataflows/alpha_vantage_stock.py",
-      "contentHash": "530f96d6bf7be00273222fd5e3cb18e8093ef61a1ae20ae6b36f3789e82a4f8b",
+      "contentHash": "52c5e7f4a96e011284df04cbc2c22522a2e39fce5802ce26d8407868e3da2bde",
       "functions": [
         {
           "name": "get_stock",
@@ -4530,15 +6007,199 @@
         {
           "source": ".alpha_vantage_common",
           "specifiers": [
-            "_make_api_request",
-            "_filter_csv_by_date_range"
+            "_filter_csv_by_date_range",
+            "_make_api_request"
           ]
         }
       ],
       "exports": [
         "get_stock"
       ],
-      "totalLines": 38,
+      "totalLines": 40,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/alpha_vantage.py": {
+      "filePath": "tradingagents/dataflows/alpha_vantage.py",
+      "contentHash": "40c95c419c73f380d983e8d9c3adb891396f4910c24f7d8f1a99b13fc6e19e8a",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": ".alpha_vantage_fundamentals",
+          "specifiers": [
+            "get_balance_sheet",
+            "get_cashflow",
+            "get_fundamentals",
+            "get_income_statement"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_indicator",
+          "specifiers": [
+            "get_indicator"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_news",
+          "specifiers": [
+            "get_global_news",
+            "get_insider_transactions",
+            "get_news"
+          ]
+        },
+        {
+          "source": ".alpha_vantage_stock",
+          "specifiers": [
+            "get_stock"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/bluesky.py": {
+      "filePath": "tradingagents/dataflows/bluesky.py",
+      "contentHash": "78dea970400fefc1f813d3649d41e2b8b9688afccec4c4ddedadddcdc66a774c",
+      "functions": [
+        {
+          "name": "fetch_bluesky_posts",
+          "params": [
+            "query",
+            "limit",
+            "timeout"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 33
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "HTTPError",
+            "URLError"
+          ]
+        },
+        {
+          "source": "urllib.parse",
+          "specifiers": [
+            "urlencode"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "Request",
+            "urlopen"
+          ]
+        }
+      ],
+      "exports": [
+        "fetch_bluesky_posts"
+      ],
+      "totalLines": 63,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/coingecko.py": {
+      "filePath": "tradingagents/dataflows/coingecko.py",
+      "contentHash": "366bbd0e43da2a5d383f13e5b55dd1ee0dbc869a1904981b12aaa6438450cf44",
+      "functions": [
+        {
+          "name": "_get",
+          "params": [
+            "path",
+            "params"
+          ],
+          "returnType": "Optional[dict]",
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "get_tokenomics",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 85
+        },
+        {
+          "name": "get_market_data",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "functools",
+          "specifiers": [
+            "lru_cache"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": ".crypto_id_map",
+          "specifiers": [
+            "ticker_to_coingecko_id"
+          ]
+        }
+      ],
+      "exports": [
+        "_get",
+        "get_tokenomics",
+        "get_market_data"
+      ],
+      "totalLines": 160,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/config.py": {
@@ -4597,9 +6258,438 @@
       "totalLines": 43,
       "hasStructuralAnalysis": true
     },
+    "tradingagents/dataflows/crypto_id_map.py": {
+      "filePath": "tradingagents/dataflows/crypto_id_map.py",
+      "contentHash": "419c679aee8ba547e7d8cfc6e9d680d5d513fb33aa3e0971d5908de47172caad",
+      "functions": [
+        {
+          "name": "ticker_to_coingecko_id",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_lookup_from_list",
+          "params": [
+            "symbol"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 23
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        }
+      ],
+      "exports": [
+        "ticker_to_coingecko_id",
+        "_lookup_from_list"
+      ],
+      "totalLines": 104,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/crypto_news.py": {
+      "filePath": "tradingagents/dataflows/crypto_news.py",
+      "contentHash": "421ee3542b4e3e8304d4f40c9b81675e5c50e57eac15ca4b2517100a71f11bba",
+      "functions": [
+        {
+          "name": "_fetch_feed",
+          "params": [
+            "url"
+          ],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 29
+        },
+        {
+          "name": "_get_keywords",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "list[str]",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "get_crypto_news",
+          "params": [
+            "ticker",
+            "limit"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 59
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "xml.etree.ElementTree",
+          "specifiers": [
+            "ET"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        }
+      ],
+      "exports": [
+        "_fetch_feed",
+        "_get_keywords",
+        "get_crypto_news"
+      ],
+      "totalLines": 160,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/defillama.py": {
+      "filePath": "tradingagents/dataflows/defillama.py",
+      "contentHash": "9bb85097480373252043400aba708ad370fa0a4e9beaa1464b094b41256a7031",
+      "functions": [
+        {
+          "name": "_load_protocols",
+          "params": [],
+          "returnType": "list[dict]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_resolve_defillama_slug",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 73
+        },
+        {
+          "name": "_fetch_protocol",
+          "params": [
+            "slug"
+          ],
+          "returnType": "Optional[dict]",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "_fmt_usd",
+          "params": [
+            "n"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_pct_change",
+          "params": [
+            "current",
+            "previous"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "get_tvl",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 62
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": ".crypto_id_map",
+          "specifiers": [
+            "ticker_to_coingecko_id"
+          ]
+        }
+      ],
+      "exports": [
+        "_load_protocols",
+        "_resolve_defillama_slug",
+        "_fetch_protocol",
+        "_fmt_usd",
+        "_pct_change",
+        "get_tvl"
+      ],
+      "totalLines": 236,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/fear_greed.py": {
+      "filePath": "tradingagents/dataflows/fear_greed.py",
+      "contentHash": "9226c68a4d62c5597fcbe84c44ff121fed07b43220dec1c6d293e2884715e851",
+      "functions": [
+        {
+          "name": "get_fear_greed_index",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 53
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        }
+      ],
+      "exports": [
+        "get_fear_greed_index"
+      ],
+      "totalLines": 72,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/github_activity.py": {
+      "filePath": "tradingagents/dataflows/github_activity.py",
+      "contentHash": "f89b59fd2f61ef7066b6a81e13092fcdd5127edf63e46eb5a3b772ff10e18c0b",
+      "functions": [
+        {
+          "name": "_gh_headers",
+          "params": [],
+          "returnType": "dict[str, str]",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "_cached_get",
+          "params": [
+            "url",
+            "ttl"
+          ],
+          "returnType": "Optional[dict | list]",
+          "exported": true,
+          "lineCount": 17
+        },
+        {
+          "name": "_fetch_repo_url",
+          "params": [
+            "coin_id"
+          ],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "_parse_owner_repo",
+          "params": [
+            "repo_url"
+          ],
+          "returnType": "tuple[str, str] | None",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "_fetch_github_stats",
+          "params": [
+            "repo_url"
+          ],
+          "returnType": "Optional[dict]",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "_fetch_commit_count_4w",
+          "params": [
+            "owner",
+            "repo"
+          ],
+          "returnType": "Optional[int]",
+          "exported": true,
+          "lineCount": 28
+        },
+        {
+          "name": "_relative_time",
+          "params": [
+            "iso_date"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "get_dev_activity",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 58
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "datetime",
+          "specifiers": [
+            "datetime",
+            "timedelta",
+            "timezone"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Any",
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": ".crypto_id_map",
+          "specifiers": [
+            "ticker_to_coingecko_id"
+          ]
+        }
+      ],
+      "exports": [
+        "_gh_headers",
+        "_cached_get",
+        "_fetch_repo_url",
+        "_parse_owner_repo",
+        "_fetch_github_stats",
+        "_fetch_commit_count_4w",
+        "_relative_time",
+        "get_dev_activity"
+      ],
+      "totalLines": 193,
+      "hasStructuralAnalysis": true
+    },
     "tradingagents/dataflows/interface.py": {
       "filePath": "tradingagents/dataflows/interface.py",
-      "contentHash": "41ff6e892c2d77a804d035c8c9e976ae3b4626ae564f2ec8994f5c8a8a173bcc",
+      "contentHash": "2c5757b8cea31efb6dd44a213c8c84f05b3b86e25f52eb460bacfb9bcc816feb",
       "functions": [
         {
           "name": "get_category_for_method",
@@ -4640,36 +6730,57 @@
           ]
         },
         {
-          "source": ".y_finance",
+          "source": ".alpha_vantage",
           "specifiers": [
-            "get_YFin_data_online",
-            "get_stock_stats_indicators_window",
-            "get_yfinance_fundamentals",
-            "get_yfinance_balance_sheet",
-            "get_yfinance_cashflow",
-            "get_yfinance_income_statement",
-            "get_yfinance_insider_transactions"
-          ]
-        },
-        {
-          "source": ".yfinance_news",
-          "specifiers": [
-            "get_news_yfinance",
-            "get_global_news_yfinance"
+            "get_alpha_vantage_balance_sheet"
           ]
         },
         {
           "source": ".alpha_vantage",
           "specifiers": [
-            "get_alpha_vantage_stock",
-            "get_alpha_vantage_indicator",
-            "get_alpha_vantage_fundamentals",
-            "get_alpha_vantage_balance_sheet",
-            "get_alpha_vantage_cashflow",
-            "get_alpha_vantage_income_statement",
-            "get_alpha_vantage_insider_transactions",
-            "get_alpha_vantage_news",
+            "get_alpha_vantage_cashflow"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_fundamentals"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
             "get_alpha_vantage_global_news"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_income_statement"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_indicator"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_insider_transactions"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_news"
+          ]
+        },
+        {
+          "source": ".alpha_vantage",
+          "specifiers": [
+            "get_alpha_vantage_stock"
           ]
         },
         {
@@ -4683,6 +6794,50 @@
           "specifiers": [
             "get_config"
           ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_yfinance_balance_sheet"
+          ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_yfinance_cashflow"
+          ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_yfinance_fundamentals"
+          ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_yfinance_income_statement"
+          ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_yfinance_insider_transactions"
+          ]
+        },
+        {
+          "source": ".y_finance",
+          "specifiers": [
+            "get_stock_stats_indicators_window",
+            "get_YFin_data_online"
+          ]
+        },
+        {
+          "source": ".yfinance_news",
+          "specifiers": [
+            "get_global_news_yfinance",
+            "get_news_yfinance"
+          ]
         }
       ],
       "exports": [
@@ -4690,7 +6845,194 @@
         "get_vendor",
         "route_to_vendor"
       ],
-      "totalLines": 162,
+      "totalLines": 189,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/mastodon.py": {
+      "filePath": "tradingagents/dataflows/mastodon.py",
+      "contentHash": "2c5c573401671a11aac36b5212888f5156cc8ff81aef60db297c028403564e72",
+      "functions": [
+        {
+          "name": "_instance",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "fetch_mastodon_posts",
+          "params": [
+            "tag",
+            "limit",
+            "timeout"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 37
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "re",
+          "specifiers": [
+            "re"
+          ]
+        },
+        {
+          "source": "urllib.error",
+          "specifiers": [
+            "HTTPError",
+            "URLError"
+          ]
+        },
+        {
+          "source": "urllib.parse",
+          "specifiers": [
+            "urlencode"
+          ]
+        },
+        {
+          "source": "urllib.request",
+          "specifiers": [
+            "Request",
+            "urlopen"
+          ]
+        }
+      ],
+      "exports": [
+        "_instance",
+        "fetch_mastodon_posts"
+      ],
+      "totalLines": 70,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/dataflows/onchain_metrics.py": {
+      "filePath": "tradingagents/dataflows/onchain_metrics.py",
+      "contentHash": "48f88afe83b0d3c4cc65cbed4cecdd2adc11ad52acfbd30d0741e56d1d06e384",
+      "functions": [
+        {
+          "name": "_get_api_key",
+          "params": [],
+          "returnType": "Optional[str]",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "_resolve_contract_address",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "Optional[tuple[str, str]]",
+          "exported": true,
+          "lineCount": 56
+        },
+        {
+          "name": "_etherscan_get",
+          "params": [
+            "params",
+            "chainid"
+          ],
+          "returnType": "Optional[dict]",
+          "exported": true,
+          "lineCount": 22
+        },
+        {
+          "name": "get_onchain_metrics",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 34
+        },
+        {
+          "name": "_get_eth_native_metrics",
+          "params": [
+            "ticker"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "_get_erc20_metrics",
+          "params": [
+            "ticker",
+            "contract",
+            "chain"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 44
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "typing",
+          "specifiers": [
+            "Optional"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        },
+        {
+          "source": ".crypto_id_map",
+          "specifiers": [
+            "ticker_to_coingecko_id"
+          ]
+        }
+      ],
+      "exports": [
+        "_get_api_key",
+        "_resolve_contract_address",
+        "_etherscan_get",
+        "get_onchain_metrics",
+        "_get_eth_native_metrics",
+        "_get_erc20_metrics"
+      ],
+      "totalLines": 235,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/reddit.py": {
@@ -4777,9 +7119,66 @@
       "totalLines": 107,
       "hasStructuralAnalysis": true
     },
+    "tradingagents/dataflows/searxng.py": {
+      "filePath": "tradingagents/dataflows/searxng.py",
+      "contentHash": "cb9a974aef4bf97952ebf5804a6369675d3fecac3f891dda6f3ac5696d1a1bea",
+      "functions": [
+        {
+          "name": "_get_base_url",
+          "params": [],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 2
+        },
+        {
+          "name": "search",
+          "params": [
+            "query",
+            "num_results",
+            "category"
+          ],
+          "returnType": "str",
+          "exported": true,
+          "lineCount": 51
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
+          "source": "time",
+          "specifiers": [
+            "time"
+          ]
+        },
+        {
+          "source": "requests",
+          "specifiers": [
+            "requests"
+          ]
+        }
+      ],
+      "exports": [
+        "_get_base_url",
+        "search"
+      ],
+      "totalLines": 77,
+      "hasStructuralAnalysis": true
+    },
     "tradingagents/dataflows/stockstats_utils.py": {
       "filePath": "tradingagents/dataflows/stockstats_utils.py",
-      "contentHash": "5b1340e39277790c42fc8cfbfd837023996d4f2b288b60dae38355a5a5b4fb0e",
+      "contentHash": "291c04b3646088709f3ca9700dd4b4e2a2f0a63942c1986bf30207bc109b7962",
       "functions": [
         {
           "name": "yf_retry",
@@ -4834,15 +7233,27 @@
       ],
       "imports": [
         {
+          "source": "logging",
+          "specifiers": [
+            "logging"
+          ]
+        },
+        {
+          "source": "os",
+          "specifiers": [
+            "os"
+          ]
+        },
+        {
           "source": "time",
           "specifiers": [
             "time"
           ]
         },
         {
-          "source": "logging",
+          "source": "typing",
           "specifiers": [
-            "logging"
+            "Annotated"
           ]
         },
         {
@@ -4858,27 +7269,15 @@
           ]
         },
         {
-          "source": "yfinance.exceptions",
-          "specifiers": [
-            "YFRateLimitError"
-          ]
-        },
-        {
           "source": "stockstats",
           "specifiers": [
             "wrap"
           ]
         },
         {
-          "source": "typing",
+          "source": "yfinance.exceptions",
           "specifiers": [
-            "Annotated"
-          ]
-        },
-        {
-          "source": "os",
-          "specifiers": [
-            "os"
+            "YFRateLimitError"
           ]
         },
         {
@@ -4901,7 +7300,7 @@
         "filter_financials_by_date",
         "StockstatsUtils"
       ],
-      "totalLines": 134,
+      "totalLines": 135,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/stocktwits.py": {
@@ -4970,7 +7369,7 @@
     },
     "tradingagents/dataflows/utils.py": {
       "filePath": "tradingagents/dataflows/utils.py",
-      "contentHash": "cbe6492b85d46f4252cd4653c1d4ababdaaf99bcdecf903b508c5c3c6885c295",
+      "contentHash": "ec8ebefa8a929f5e5524d6a14efb70a860ea72d63dd9b37196c31a885d13b8f1",
       "functions": [
         {
           "name": "safe_ticker_component",
@@ -5019,6 +7418,12 @@
       "classes": [],
       "imports": [
         {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
+        {
           "source": "os",
           "specifiers": [
             "os"
@@ -5031,29 +7436,23 @@
           ]
         },
         {
-          "source": "json",
-          "specifiers": [
-            "json"
-          ]
-        },
-        {
-          "source": "pandas",
-          "specifiers": [
-            "pd"
-          ]
-        },
-        {
           "source": "datetime",
           "specifiers": [
             "date",
-            "timedelta",
-            "datetime"
+            "datetime",
+            "timedelta"
           ]
         },
         {
           "source": "typing",
           "specifiers": [
             "Annotated"
+          ]
+        },
+        {
+          "source": "pandas",
+          "specifiers": [
+            "pd"
           ]
         }
       ],
@@ -5064,12 +7463,12 @@
         "decorate_all_methods",
         "get_next_weekday"
       ],
-      "totalLines": 75,
+      "totalLines": 76,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/y_finance.py": {
       "filePath": "tradingagents/dataflows/y_finance.py",
-      "contentHash": "d57d3e9a95e1e4e2f76d6736d0a444b759f12117a0b7987ce28ee355198639d9",
+      "contentHash": "ea4dc3fe0ef01f956868136e845def5aadcf08d783fdf53be4a52518791d7e50",
       "functions": [
         {
           "name": "get_YFin_data_online",
@@ -5166,9 +7565,9 @@
       "classes": [],
       "imports": [
         {
-          "source": "typing",
+          "source": "os",
           "specifiers": [
-            "Annotated"
+            "os"
           ]
         },
         {
@@ -5178,9 +7577,9 @@
           ]
         },
         {
-          "source": "dateutil.relativedelta",
+          "source": "typing",
           "specifiers": [
-            "relativedelta"
+            "Annotated"
           ]
         },
         {
@@ -5196,9 +7595,9 @@
           ]
         },
         {
-          "source": "os",
+          "source": "dateutil.relativedelta",
           "specifiers": [
-            "os"
+            "relativedelta"
           ]
         },
         {
@@ -5206,9 +7605,9 @@
           "specifiers": [
             "StockstatsUtils",
             "_clean_dataframe",
-            "yf_retry",
+            "filter_financials_by_date",
             "load_ohlcv",
-            "filter_financials_by_date"
+            "yf_retry"
           ]
         }
       ],
@@ -5223,12 +7622,12 @@
         "get_income_statement",
         "get_insider_transactions"
       ],
-      "totalLines": 422,
+      "totalLines": 431,
       "hasStructuralAnalysis": true
     },
     "tradingagents/dataflows/yfinance_news.py": {
       "filePath": "tradingagents/dataflows/yfinance_news.py",
-      "contentHash": "b4bfa521ceb91f0bf80ff52318be0f0b92cf7fcc842eea9db1841dd5e63d37f0",
+      "contentHash": "de5024d65371f22224e0586f42329a61e742aeb15abb393cc6bbd97a67522a6b",
       "functions": [
         {
           "name": "_extract_article_data",
@@ -5265,6 +7664,12 @@
       "classes": [],
       "imports": [
         {
+          "source": "datetime",
+          "specifiers": [
+            "datetime"
+          ]
+        },
+        {
           "source": "typing",
           "specifiers": [
             "Optional"
@@ -5274,12 +7679,6 @@
           "source": "yfinance",
           "specifiers": [
             "yf"
-          ]
-        },
-        {
-          "source": "datetime",
-          "specifiers": [
-            "datetime"
           ]
         },
         {
@@ -5311,7 +7710,7 @@
     },
     "tradingagents/default_config.py": {
       "filePath": "tradingagents/default_config.py",
-      "contentHash": "cb72033e4dd7f7ee6ae9eaa0304a866cf903302623e73ee4c6c3159a67cfa38f",
+      "contentHash": "102c59d36428d588facc569758da8899207effde0c8659828f63131226967d69",
       "functions": [
         {
           "name": "_coerce",
@@ -5345,31 +7744,19 @@
         "_coerce",
         "_apply_env_overrides"
       ],
-      "totalLines": 123,
+      "totalLines": 124,
       "hasStructuralAnalysis": true
     },
     "tradingagents/graph/__init__.py": {
       "filePath": "tradingagents/graph/__init__.py",
-      "contentHash": "49cba98adcc760000c00d57442169ea822cfbb4b5ec59fa7363b1983f40a16a9",
+      "contentHash": "b0d7d4a257b5a546cb2718d5d2c252e33449463d15f4b14e43db0ea456cc2eab",
       "functions": [],
       "classes": [],
       "imports": [
         {
-          "source": ".trading_graph",
-          "specifiers": [
-            "TradingAgentsGraph"
-          ]
-        },
-        {
           "source": ".conditional_logic",
           "specifiers": [
             "ConditionalLogic"
-          ]
-        },
-        {
-          "source": ".setup",
-          "specifiers": [
-            "GraphSetup"
           ]
         },
         {
@@ -5385,9 +7772,21 @@
           ]
         },
         {
+          "source": ".setup",
+          "specifiers": [
+            "GraphSetup"
+          ]
+        },
+        {
           "source": ".signal_processing",
           "specifiers": [
             "SignalProcessor"
+          ]
+        },
+        {
+          "source": ".trading_graph",
+          "specifiers": [
+            "TradingAgentsGraph"
           ]
         }
       ],
@@ -5673,7 +8072,7 @@
     },
     "tradingagents/graph/propagation.py": {
       "filePath": "tradingagents/graph/propagation.py",
-      "contentHash": "a4268ddb54961356508e97e835f74b1190456d763a0d570756da897aeb87d955",
+      "contentHash": "0e1b98b75c37067f98b6d09fbecaa12cf1bbc88f3247b30ba3b03d2823399d82",
       "functions": [],
       "classes": [
         {
@@ -5692,8 +8091,8 @@
         {
           "source": "typing",
           "specifiers": [
-            "Dict",
             "Any",
+            "Dict",
             "List",
             "Optional"
           ]
@@ -5710,7 +8109,7 @@
       "exports": [
         "Propagator"
       ],
-      "totalLines": 76,
+      "totalLines": 77,
       "hasStructuralAnalysis": true
     },
     "tradingagents/graph/reflection.py": {
@@ -5746,7 +8145,7 @@
     },
     "tradingagents/graph/setup.py": {
       "filePath": "tradingagents/graph/setup.py",
-      "contentHash": "3029728fd9979d989f084b82fe5262e21efa2d0750ab726c49595fec2c94a1d7",
+      "contentHash": "5ada066872c8e3895b2df18b61c0695cd4a257610fb7ed5debf5090576a17490",
       "functions": [],
       "classes": [
         {
@@ -5757,7 +8156,7 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 144
+          "lineCount": 159
         }
       ],
       "imports": [
@@ -5810,7 +8209,7 @@
       "exports": [
         "GraphSetup"
       ],
-      "totalLines": 158,
+      "totalLines": 174,
       "hasStructuralAnalysis": true
     },
     "tradingagents/graph/signal_processing.py": {
@@ -5851,7 +8250,7 @@
     },
     "tradingagents/graph/trading_graph.py": {
       "filePath": "tradingagents/graph/trading_graph.py",
-      "contentHash": "3f7ee2e8ee21b8983def1574bfa354837f3d67b132e75c83f0670b60af9265c5",
+      "contentHash": "f128151b3592dcf8f61407da9e86226e486f67e567a6cf54de934ebd70099c0c",
       "functions": [],
       "classes": [
         {
@@ -5870,10 +8269,16 @@
           ],
           "properties": [],
           "exported": true,
-          "lineCount": 382
+          "lineCount": 409
         }
       ],
       "imports": [
+        {
+          "source": "json",
+          "specifiers": [
+            "json"
+          ]
+        },
         {
           "source": "logging",
           "specifiers": [
@@ -5887,18 +8292,6 @@
           ]
         },
         {
-          "source": "pathlib",
-          "specifiers": [
-            "Path"
-          ]
-        },
-        {
-          "source": "json",
-          "specifiers": [
-            "json"
-          ]
-        },
-        {
           "source": "datetime",
           "specifiers": [
             "datetime",
@@ -5906,13 +8299,19 @@
           ]
         },
         {
+          "source": "pathlib",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
           "source": "typing",
           "specifiers": [
-            "Dict",
             "Any",
-            "Tuple",
+            "Dict",
             "List",
-            "Optional"
+            "Optional",
+            "Tuple"
           ]
         },
         {
@@ -5928,33 +8327,9 @@
           ]
         },
         {
-          "source": "tradingagents.llm_clients",
-          "specifiers": [
-            "create_llm_client"
-          ]
-        },
-        {
           "source": "tradingagents.agents",
           "specifiers": [
             "*"
-          ]
-        },
-        {
-          "source": "tradingagents.default_config",
-          "specifiers": [
-            "DEFAULT_CONFIG"
-          ]
-        },
-        {
-          "source": "tradingagents.agents.utils.memory",
-          "specifiers": [
-            "TradingMemoryLog"
-          ]
-        },
-        {
-          "source": "tradingagents.dataflows.utils",
-          "specifiers": [
-            "safe_ticker_component"
           ]
         },
         {
@@ -5966,23 +8341,53 @@
           ]
         },
         {
+          "source": "tradingagents.agents.utils.agent_utils",
+          "specifiers": [
+            "get_balance_sheet",
+            "get_cashflow",
+            "get_fundamentals",
+            "get_global_news",
+            "get_income_statement",
+            "get_indicators",
+            "get_insider_transactions",
+            "get_news",
+            "get_stock_data"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.memory",
+          "specifiers": [
+            "TradingMemoryLog"
+          ]
+        },
+        {
+          "source": "tradingagents.agents.utils.web_search_tools",
+          "specifiers": [
+            "get_web_search"
+          ]
+        },
+        {
           "source": "tradingagents.dataflows.config",
           "specifiers": [
             "set_config"
           ]
         },
         {
-          "source": "tradingagents.agents.utils.agent_utils",
+          "source": "tradingagents.dataflows.utils",
           "specifiers": [
-            "get_stock_data",
-            "get_indicators",
-            "get_fundamentals",
-            "get_balance_sheet",
-            "get_cashflow",
-            "get_income_statement",
-            "get_news",
-            "get_insider_transactions",
-            "get_global_news"
+            "safe_ticker_component"
+          ]
+        },
+        {
+          "source": "tradingagents.default_config",
+          "specifiers": [
+            "DEFAULT_CONFIG"
+          ]
+        },
+        {
+          "source": "tradingagents.llm_clients",
+          "specifiers": [
+            "create_llm_client"
           ]
         },
         {
@@ -6001,12 +8406,6 @@
           ]
         },
         {
-          "source": ".setup",
-          "specifiers": [
-            "GraphSetup"
-          ]
-        },
-        {
           "source": ".propagation",
           "specifiers": [
             "Propagator"
@@ -6019,6 +8418,12 @@
           ]
         },
         {
+          "source": ".setup",
+          "specifiers": [
+            "GraphSetup"
+          ]
+        },
+        {
           "source": ".signal_processing",
           "specifiers": [
             "SignalProcessor"
@@ -6028,17 +8433,7 @@
       "exports": [
         "TradingAgentsGraph"
       ],
-      "totalLines": 432,
-      "hasStructuralAnalysis": true
-    },
-    "tradingagents/llm_clients/TODO.md": {
-      "filePath": "tradingagents/llm_clients/TODO.md",
-      "contentHash": "d25dc3de35be6b0638460786023c6f8bc9ef86637f8769a40d33fadbc444c935",
-      "functions": [],
-      "classes": [],
-      "imports": [],
-      "exports": [],
-      "totalLines": 16,
+      "totalLines": 459,
       "hasStructuralAnalysis": true
     },
     "tradingagents/llm_clients/__init__.py": {
@@ -6144,7 +8539,7 @@
     },
     "tradingagents/llm_clients/api_key_env.py": {
       "filePath": "tradingagents/llm_clients/api_key_env.py",
-      "contentHash": "95844ca11c08d6477b46a776e21ea1d83950779dbf26573b4437f50767d0d19b",
+      "contentHash": "2fe887dd8dced7cf6115c2c21548f4aadec7b59daefbefc4357edf36e30befbb",
       "functions": [
         {
           "name": "get_api_key_env",
@@ -6168,7 +8563,7 @@
       "exports": [
         "get_api_key_env"
       ],
-      "totalLines": 45,
+      "totalLines": 46,
       "hasStructuralAnalysis": true
     },
     "tradingagents/llm_clients/azure_client.py": {
@@ -6240,7 +8635,7 @@
     },
     "tradingagents/llm_clients/base_client.py": {
       "filePath": "tradingagents/llm_clients/base_client.py",
-      "contentHash": "b1931c1b97d348e4a67f97d77d4e391055e091e8d777f15bc49968f3803a3826",
+      "contentHash": "9defe4d5a7facb87404a182a7df02450748567dc7df0e3d02e2794447ba073f0",
       "functions": [
         {
           "name": "normalize_content",
@@ -6268,6 +8663,12 @@
       ],
       "imports": [
         {
+          "source": "warnings",
+          "specifiers": [
+            "warnings"
+          ]
+        },
+        {
           "source": "abc",
           "specifiers": [
             "ABC",
@@ -6280,12 +8681,6 @@
             "Any",
             "Optional"
           ]
-        },
-        {
-          "source": "warnings",
-          "specifiers": [
-            "warnings"
-          ]
         }
       ],
       "exports": [
@@ -6297,7 +8692,7 @@
     },
     "tradingagents/llm_clients/capabilities.py": {
       "filePath": "tradingagents/llm_clients/capabilities.py",
-      "contentHash": "e9b8b467be101cf5502a325c1a7f5e7cf684d31966047c93960181e38bc58015",
+      "contentHash": "636eac7f88ed9b9fc4ba15402cda372da73c293c6e2d5aafb58a98236bebb717",
       "functions": [
         {
           "name": "get_capabilities",
@@ -6349,12 +8744,12 @@
         "ModelCapabilities",
         "get_capabilities"
       ],
-      "totalLines": 128,
+      "totalLines": 127,
       "hasStructuralAnalysis": true
     },
     "tradingagents/llm_clients/factory.py": {
       "filePath": "tradingagents/llm_clients/factory.py",
-      "contentHash": "864bb5bc6c9fe86c139253c7915832158adbf559cfd45b65bb7f73a289215647",
+      "contentHash": "296ca53b68e4b14f82daae739370bb47da65388b7f470341db36003dcbb103f4",
       "functions": [
         {
           "name": "create_llm_client",
@@ -6387,7 +8782,7 @@
       "exports": [
         "create_llm_client"
       ],
-      "totalLines": 58,
+      "totalLines": 59,
       "hasStructuralAnalysis": true
     },
     "tradingagents/llm_clients/google_client.py": {
@@ -6453,7 +8848,7 @@
     },
     "tradingagents/llm_clients/model_catalog.py": {
       "filePath": "tradingagents/llm_clients/model_catalog.py",
-      "contentHash": "7d4168ee06ca39d707e7cda3ee2a4244b50afca882bbe9e306e0a440a00d64e9",
+      "contentHash": "036bd37715830c0f4639cfa1c70b5c5ede8364ef85d367c683f24141c356937e",
       "functions": [
         {
           "name": "get_model_options",
@@ -6488,12 +8883,12 @@
         "get_model_options",
         "get_known_models"
       ],
-      "totalLines": 198,
+      "totalLines": 211,
       "hasStructuralAnalysis": true
     },
     "tradingagents/llm_clients/openai_client.py": {
       "filePath": "tradingagents/llm_clients/openai_client.py",
-      "contentHash": "aa3079feba5f8aefaccf421e2dcd8ed5145128ddcef9db0dd651d8b3cdbf420d",
+      "contentHash": "3437077dd810ff7c901a2856cd2b7157c199cb105290908741a0827708a97701",
       "functions": [
         {
           "name": "_input_to_messages",
@@ -6616,12 +9011,22 @@
         "_resolve_provider_base_url",
         "OpenAIClient"
       ],
-      "totalLines": 248,
+      "totalLines": 249,
+      "hasStructuralAnalysis": true
+    },
+    "tradingagents/llm_clients/TODO.md": {
+      "filePath": "tradingagents/llm_clients/TODO.md",
+      "contentHash": "d25dc3de35be6b0638460786023c6f8bc9ef86637f8769a40d33fadbc444c935",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
       "hasStructuralAnalysis": true
     },
     "tradingagents/llm_clients/validators.py": {
       "filePath": "tradingagents/llm_clients/validators.py",
-      "contentHash": "4cc597d1189c4207fe02f049bba6f1c978490ed1ab235ee227fe20465d1222fd",
+      "contentHash": "3fd987086856ae2793a5964283d327615b68430b92dcf6f490378553a57ffc2d",
       "functions": [
         {
           "name": "validate_model",
@@ -6646,7 +9051,7 @@
       "exports": [
         "validate_model"
       ],
-      "totalLines": 27,
+      "totalLines": 26,
       "hasStructuralAnalysis": true
     }
   }
