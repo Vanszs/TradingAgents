@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import re
+
 import pytest
 
 _ANSI = re.compile(r'\x1b\[[0-9;]*m')
@@ -22,8 +23,8 @@ def _resync_reloaded_modules():
     doesn't leak across test modules.
     """
     yield
-    import cli.utils
     import cli.main
+    import cli.utils
     importlib.reload(cli.utils)
     importlib.reload(cli.main)
 

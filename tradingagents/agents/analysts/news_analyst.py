@@ -1,8 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
     get_global_news,
+    get_instrument_context_from_state,
     get_language_instruction,
     get_news,
 )

@@ -28,10 +28,10 @@ from .alpha_vantage import (
     get_stock as get_alpha_vantage_stock,
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError
-from .symbol_utils import NoMarketDataError
 
 # Configuration and routing logic
 from .config import get_config
+from .symbol_utils import NoMarketDataError
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
 )

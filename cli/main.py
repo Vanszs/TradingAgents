@@ -1,38 +1,39 @@
-from typing import Optional
-import os
 import datetime
-import typer
-import questionary
-from pathlib import Path
-from functools import wraps
-from rich.console import Console
-from rich.panel import Panel
-from rich.spinner import Spinner
-from rich.live import Live
-from rich.columns import Columns
-from rich.markdown import Markdown
-from rich.layout import Layout
-from rich.text import Text
-from rich.table import Table
-from collections import deque
+import os
 import time
-from rich.tree import Tree
+from collections import deque
+from functools import wraps
+from pathlib import Path
+from typing import Optional
+
+import questionary
+import typer
 from rich import box
 from rich.align import Align
+from rich.columns import Columns
+from rich.console import Console
+from rich.layout import Layout
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.rule import Rule
+from rich.spinner import Spinner
+from rich.table import Table
+from rich.text import Text
+from rich.tree import Tree
 
-from tradingagents.graph.trading_graph import TradingAgentsGraph
+from cli.announcements import display_announcements, fetch_announcements
+from cli.models import AnalystType
+from cli.stats_handler import StatsCallbackHandler
+from cli.utils import *
+from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
     build_analyst_execution_plan,
     get_initial_analyst_node,
     sync_analyst_tracker_from_chunk,
 )
-from tradingagents.default_config import DEFAULT_CONFIG
-from cli.models import AnalystType
-from cli.utils import *
-from cli.announcements import fetch_announcements, display_announcements
-from cli.stats_handler import StatsCallbackHandler
+from tradingagents.graph.trading_graph import TradingAgentsGraph
 
 console = Console()
 
@@ -1271,7 +1272,7 @@ def run_analysis(checkpoint: bool = False):
             "Save path (press Enter for default)",
             default=str(default_path)
         ).strip()
-        save_path = Path(save_path_str)
+        save_path = Path(save_path_str).expanduser().resolve()
         try:
             report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
             console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")

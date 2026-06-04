@@ -23,7 +23,6 @@ from tradingagents.agents.utils.agent_states import (
 # Import the new abstract tool methods from agent_utils
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
-    resolve_instrument_identity,
     get_balance_sheet,
     get_cashflow,
     get_fundamentals,
@@ -33,6 +32,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_insider_transactions,
     get_news,
     get_stock_data,
+    resolve_instrument_identity,
 )
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.agents.utils.web_search_tools import get_web_search
