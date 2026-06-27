@@ -21,7 +21,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Shared rating types
@@ -125,16 +125,39 @@ class TraderProposal(BaseModel):
     )
     entry_price: Optional[float] = Field(
         default=None,
-        description="Optional entry price target in the instrument's quote currency.",
+        description=(
+            "Entry price target in quote currency. "
+            "Provide a specific number. "
+            "Omit or set to null ONLY if no clear entry level."
+        ),
     )
     stop_loss: Optional[float] = Field(
         default=None,
-        description="Optional stop-loss price in the instrument's quote currency.",
+        description=(
+            "Stop-loss price in quote currency. "
+            "Provide a specific number. "
+            "Omit or set to null ONLY if no clear stop level."
+        ),
+    )
+    take_profit: Optional[float] = Field(
+        default=None,
+        description=(
+            "Take-profit target price in quote currency. "
+            "Provide a specific number. "
+            "Omit or set to null ONLY if no clear target."
+        ),
     )
     position_sizing: Optional[str] = Field(
         default=None,
         description="Optional sizing guidance, e.g. '5% of portfolio'.",
     )
+
+    @field_validator("entry_price", "stop_loss", "take_profit", mode="before")
+    @classmethod
+    def _coerce_none_strings(cls, v):
+        if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
+            return None
+        return v
 
 
 def render_trader_proposal(proposal: TraderProposal) -> str:
@@ -153,6 +176,8 @@ def render_trader_proposal(proposal: TraderProposal) -> str:
         parts.extend(["", f"**Entry Price**: {proposal.entry_price}"])
     if proposal.stop_loss is not None:
         parts.extend(["", f"**Stop Loss**: {proposal.stop_loss}"])
+    if proposal.take_profit is not None:
+        parts.extend(["", f"**Take Profit**: {proposal.take_profit}"])
     if proposal.position_sizing:
         parts.extend(["", f"**Position Sizing**: {proposal.position_sizing}"])
     parts.extend([
@@ -195,6 +220,10 @@ class PortfolioDecision(BaseModel):
             "incorporate them; otherwise rely solely on the current analysis."
         ),
     )
+    stop_loss: Optional[float] = Field(
+        default=None,
+        description="Optional stop-loss price in the instrument's quote currency.",
+    )
     price_target: Optional[float] = Field(
         default=None,
         description="Optional target price in the instrument's quote currency.",
@@ -203,6 +232,28 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Optional recommended holding period, e.g. '3-6 months'.",
     )
+    next_review_date: str = Field(
+        description=(
+            "REQUIRED: Specific date (YYYY-MM-DD) for the next full re-analysis. "
+            "Calculate relative to current trade date: Buy/Overweight = 7-14 days, "
+            "Hold = 14-30 days, Underweight/Sell = 7-14 days. "
+            "The backtester skips the analyst pipeline until this date."
+        ),
+    )
+
+    @field_validator("price_target", mode="before")
+    @classmethod
+    def _coerce_price_target(cls, v):
+        if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
+            return None
+        return v
+
+    @field_validator("stop_loss", mode="before")
+    @classmethod
+    def _coerce_stop_loss(cls, v):
+        if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
+            return None
+        return v
 
 
 def render_pm_decision(decision: PortfolioDecision) -> str:
@@ -220,10 +271,13 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
         "",
         f"**Investment Thesis**: {decision.investment_thesis}",
     ]
+    if decision.stop_loss is not None:
+        parts.extend(["", f"**Stop Loss**: {decision.stop_loss}"])
     if decision.price_target is not None:
         parts.extend(["", f"**Price Target**: {decision.price_target}"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
+    parts.extend(["", f"**Next Review Date**: {decision.next_review_date}"])
     return "\n".join(parts)
 
 

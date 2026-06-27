@@ -1,0 +1,427 @@
+"""
+Snapshot provider for stock backtests.
+
+Flat data layout:
+    <data_root>/<TICKER>/
+        ohlcv.csv          -- date,open,high,low,close,volume
+        news.json          -- optional
+        fundamentals.json  -- optional
+        sentiment.json     -- optional
+        broker_activity.json -- optional
+
+Cutoff guarantees:
+- OHLCV cut at trade_date inclusive
+- News/fundamental/sentiment/broker data cut by their respective timestamps
+
+Window guarantees (when ``lookback_days`` is set):
+- OHLCV further restricted to the last ``lookback_days`` rows
+- News/sentiment/broker_activity restricted to ``[trade_date - lookback_days, trade_date]``
+- Fundamentals restricted by ``available_date`` to the same range
+- ``SnapshotMetadata`` exposes the actual min/max dates inside the window for audit
+"""
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any, Optional, Union
+
+import pandas as pd
+
+from .data_window import (
+    ALLOWED_LOOKBACKS,
+    WindowCutoffs,
+    assert_window_is_valid,
+    compute_window,
+    slice_broker_activity,
+    slice_fundamentals,
+    slice_news,
+    slice_ohlcv,
+    slice_sentiment,
+)
+from .decision_schema import (
+    InstrumentSpec,
+    MarketPoint,
+    SnapshotMetadata,
+    ensure_dir,
+)
+
+
+DateLike = Union[str, int, float, date, datetime, pd.Timestamp]
+
+
+@dataclass
+class DataSnapshot:
+    symbol: str
+    trade_date: str
+    root_path: Path
+    metadata: SnapshotMetadata
+    ohlcv: pd.DataFrame
+    news: list[dict[str, Any]]
+    fundamentals: list[dict[str, Any]]
+    sentiment: list[dict[str, Any]]
+    broker_activity: list[dict[str, Any]]
+    spec: InstrumentSpec
+    lookback_days: Optional[int] = None
+    window_min_ohlcv_date: Optional[str] = None
+    window_max_ohlcv_date: Optional[str] = None
+
+
+class SnapshotDataProvider:
+    """Provider for stock backtests with flat data layout."""
+
+    def __init__(
+        self,
+        data_root: str = "data",
+        snapshot_root: str = "snapshots",
+        report_time: str = "16:30:00",
+        lookback_days: Optional[int] = None,
+    ):
+        self.data_root = Path(data_root)
+        self.snapshot_root = Path(snapshot_root)
+        self.report_time = report_time
+        self.lookback_days = lookback_days
+        if lookback_days is not None and lookback_days not in ALLOWED_LOOKBACKS:
+            raise ValueError(
+                f"lookback_days must be one of {ALLOWED_LOOKBACKS}, got {lookback_days!r}"
+            )
+
+    def _symbol_dir(self, symbol: str) -> Path:
+        return self.data_root / symbol.upper()
+
+    @staticmethod
+    def _normalize_date(value: Any) -> str:
+        return str(value)[:10]
+
+    @staticmethod
+    def _safe_timestamp(value: Any) -> pd.Timestamp:
+        if value is None:
+            raise ValueError("Date value cannot be None.")
+        if pd.isna(value):
+            raise ValueError("Date value cannot be NA/NaN.")
+        if isinstance(value, pd.Timestamp):
+            return value.normalize()
+        if isinstance(value, datetime):
+            return pd.Timestamp(value).normalize()
+        if isinstance(value, date):
+            return pd.Timestamp(value).normalize()
+        if isinstance(value, str):
+            return pd.Timestamp(value).normalize()
+        if isinstance(value, (int, float)):
+            return pd.Timestamp(value).normalize()
+        return pd.Timestamp(str(value)).normalize()
+
+    # ------------------------------------------------------------------
+    # Instrument spec loading
+    # ------------------------------------------------------------------
+    def load_instrument_spec(
+        self,
+        symbol: str,
+        ohlcv_df: Optional[pd.DataFrame] = None,
+    ) -> InstrumentSpec:
+        """Load or auto-generate an InstrumentSpec from OHLCV data."""
+        if ohlcv_df is None:
+            ohlcv_df = self.load_full_ohlcv(symbol)
+        return InstrumentSpec.auto_from_ohlcv(symbol, ohlcv_df)
+
+    # ------------------------------------------------------------------
+    # OHLCV / bar access
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _normalize_ohlcv_columns(df: pd.DataFrame) -> pd.DataFrame:
+        rename_map = {
+            "Date": "date",
+            "Open": "open",
+            "High": "high",
+            "Low": "low",
+            "Close": "close",
+            "Volume": "volume",
+        }
+        out = df.rename(columns=rename_map).copy()
+        required = {"date", "open", "high", "low", "close"}
+        missing = required - set(out.columns)
+        if missing:
+            raise ValueError(f"OHLCV missing required columns: {sorted(missing)}")
+        out.loc[:, "date"] = out["date"].map(
+            lambda v: SnapshotDataProvider._safe_timestamp(v).date().isoformat()
+        )
+        for col in ("open", "high", "low", "close", "volume"):
+            if col in out.columns:
+                out.loc[:, col] = pd.to_numeric(out[col], errors="coerce")
+        out = out.sort_values("date").reset_index(drop=True)
+        return pd.DataFrame(out)
+
+    def load_full_ohlcv(self, symbol: str) -> pd.DataFrame:
+        path = self._symbol_dir(symbol) / "ohlcv.csv"
+        if not path.exists():
+            raise FileNotFoundError(f"OHLCV file for {symbol} not found at {path}")
+        raw = pd.read_csv(path)
+        return self._normalize_ohlcv_columns(raw)
+
+    def get_ohlcv(self, symbol: str, trade_date: str) -> pd.DataFrame:
+        trade_date = self._normalize_date(trade_date)
+        df = self.load_full_ohlcv(symbol)
+        cut = df[df["date"].astype(str) <= trade_date].copy()
+        if cut.empty:
+            raise ValueError(f"No OHLCV data available for {symbol} up to {trade_date}")
+        max_date = str(cut["date"].astype(str).max())
+        if max_date > trade_date:
+            raise RuntimeError("Future OHLCV leakage detected.")
+        return cut.reset_index(drop=True)
+
+    def get_market_point(
+        self,
+        symbol: str,
+        trade_date: str,
+        spec: InstrumentSpec,
+    ) -> MarketPoint:
+        trade_date = self._normalize_date(trade_date)
+        df = self.load_full_ohlcv(symbol)
+        df["date"] = df["date"].astype(str)
+        row = df[df["date"] == trade_date]
+        if row.empty:
+            raise ValueError(f"No market point for {symbol} on {trade_date}")
+        r = row.iloc[0]
+        return MarketPoint(
+            date=str(r["date"]),
+            ticker=symbol,
+            open=float(r["open"]),
+            high=float(r["high"]),
+            low=float(r["low"]),
+            close=float(r["close"]),
+            volume=float(r.get("volume", 0.0) or 0.0),
+        )
+
+    def get_market_dates(self, symbol: str) -> list[str]:
+        df = self.load_full_ohlcv(symbol).copy()
+        date_series = df["date"].astype(str)
+        return sorted([str(v) for v in date_series.tolist()])
+
+    # ------------------------------------------------------------------
+    # News / fundamentals / sentiment / broker activity
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _load_json_records(path: Path) -> list[dict[str, Any]]:
+        if not path.exists():
+            return []
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+        if isinstance(data, dict):
+            if "data" in data and isinstance(data["data"], list):
+                return [item for item in data["data"] if isinstance(item, dict)]
+            return [data]
+        return []
+
+    @staticmethod
+    def _cut_by_datetime(
+        records: list[dict[str, Any]],
+        field: str,
+        cutoff: str,
+    ) -> list[dict[str, Any]]:
+        if not records:
+            return []
+        cutoff_ts = pd.Timestamp(cutoff)
+        out: list[dict[str, Any]] = []
+        for item in records:
+            v = item.get(field)
+            if not v:
+                continue
+            ts = pd.Timestamp(v)
+            if ts <= cutoff_ts:
+                out.append(item)
+        return out
+
+    @staticmethod
+    def _cut_by_date(
+        records: list[dict[str, Any]],
+        field: str,
+        cutoff_date: str,
+    ) -> list[dict[str, Any]]:
+        if not records:
+            return []
+        cutoff = pd.Timestamp(cutoff_date).date()
+        out: list[dict[str, Any]] = []
+        for item in records:
+            v = item.get(field)
+            if not v:
+                continue
+            item_date = pd.Timestamp(v).date()
+            if item_date <= cutoff:
+                out.append(item)
+        return out
+
+    def get_news(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
+        trade_date = self._normalize_date(trade_date)
+        path = self._symbol_dir(symbol) / "news.json"
+        records = self._load_json_records(path)
+        cutoff = f"{trade_date} {self.report_time}"
+        return self._cut_by_datetime(records, "published_at", cutoff)
+
+    def get_fundamentals(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
+        trade_date = self._normalize_date(trade_date)
+        path = self._symbol_dir(symbol) / "fundamentals.json"
+        records = self._load_json_records(path)
+        return self._cut_by_date(records, "available_date", trade_date)
+
+    def get_sentiment(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
+        trade_date = self._normalize_date(trade_date)
+        path = self._symbol_dir(symbol) / "sentiment.json"
+        records = self._load_json_records(path)
+        cutoff = f"{trade_date} {self.report_time}"
+        return self._cut_by_datetime(records, "timestamp", cutoff)
+
+    def get_broker_activity(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
+        trade_date = self._normalize_date(trade_date)
+        path = self._symbol_dir(symbol) / "broker_activity.json"
+        records = self._load_json_records(path)
+        cutoff = f"{trade_date} {self.report_time}"
+        return self._cut_by_datetime(records, "timestamp", cutoff)
+
+    # ------------------------------------------------------------------
+    # Snapshot creation
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _max_value(records: list[dict[str, Any]], field: str) -> Optional[str]:
+        timestamps: list[pd.Timestamp] = []
+        for item in records:
+            v = item.get(field)
+            if v is None or pd.isna(v):
+                continue
+            timestamps.append(SnapshotDataProvider._safe_timestamp(v))
+        if not timestamps:
+            return None
+        return max(timestamps).isoformat(sep=" ")
+
+    @staticmethod
+    def _max_date_value(records: list[dict[str, Any]], field: str) -> Optional[str]:
+        dates: list[str] = []
+        for item in records:
+            v = item.get(field)
+            if v is None or pd.isna(v):
+                continue
+            dates.append(
+                SnapshotDataProvider._safe_timestamp(v).date().isoformat()
+            )
+        if not dates:
+            return None
+        return max(dates)
+
+    @staticmethod
+    def _max_date_in_series(series: pd.Series) -> Optional[str]:
+        if series.empty:
+            return None
+        return str(series.max())
+
+    @staticmethod
+    def _write_json(path: Path, data: Any) -> None:
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+
+    def create_snapshot(
+        self,
+        symbol: str,
+        trade_date: str,
+        config: Any = None,
+        lookback_days: Optional[int] = None,
+    ) -> DataSnapshot:
+        trade_date = self._normalize_date(trade_date)
+
+        # Resolve the effective lookback (caller can override provider default).
+        effective_lookback = (
+            lookback_days if lookback_days is not None else self.lookback_days
+        )
+        if effective_lookback is not None and effective_lookback not in ALLOWED_LOOKBACKS:
+            raise ValueError(
+                f"lookback_days must be one of {ALLOWED_LOOKBACKS}, got {effective_lookback!r}"
+            )
+
+        # Pull full time-cut data first (always <= trade_date).
+        full_ohlcv = self.get_ohlcv(symbol, trade_date)
+        full_news = self.get_news(symbol, trade_date)
+        full_fundamentals = self.get_fundamentals(symbol, trade_date)
+        full_sentiment = self.get_sentiment(symbol, trade_date)
+        full_broker = self.get_broker_activity(symbol, trade_date)
+
+        # Apply the lookback window if requested.
+        cutoffs = compute_window(trade_date, effective_lookback)
+        ohlcv = slice_ohlcv(full_ohlcv, cutoffs)
+        news = slice_news(full_news, cutoffs, report_time=self.report_time)
+        fundamentals = slice_fundamentals(full_fundamentals, cutoffs)
+        sentiment = slice_sentiment(full_sentiment, cutoffs, report_time=self.report_time)
+        broker_activity = slice_broker_activity(full_broker, cutoffs, report_time=self.report_time)
+
+        # Audit: hard anti-leakage check (actual max must be <= trade_date).
+        actual_min_ohlcv_date = (
+            str(ohlcv["date"].astype(str).min()) if not ohlcv.empty else None
+        )
+        actual_max_ohlcv_date = (
+            str(ohlcv["date"].astype(str).max()) if not ohlcv.empty else None
+        )
+        assert_window_is_valid(
+            cutoffs,
+            actual_min_ohlcv_date,
+            actual_max_ohlcv_date=actual_max_ohlcv_date,
+        )
+
+        spec = self.load_instrument_spec(symbol, ohlcv)
+
+        snapshot_dir = ensure_dir(
+            self.snapshot_root / symbol / trade_date
+        )
+
+        ohlcv.to_csv(snapshot_dir / "ohlcv.csv", index=False)
+        self._write_json(snapshot_dir / "news.json", news)
+        self._write_json(snapshot_dir / "fundamentals.json", fundamentals)
+        self._write_json(snapshot_dir / "sentiment.json", sentiment)
+        self._write_json(snapshot_dir / "broker_activity.json", broker_activity)
+
+        ohlcv_dates = ohlcv["date"].astype(str)
+        max_ohlcv_date = self._max_date_in_series(ohlcv_dates)
+        min_ohlcv_date = (
+            self._max_date_in_series(ohlcv_dates) and
+            str(ohlcv_dates.min())
+        )
+        # Re-derive min explicitly (the expression above is a guard, not a value).
+        min_ohlcv_date = str(ohlcv_dates.min()) if not ohlcv.empty else None
+
+        metadata = SnapshotMetadata(
+            ticker=symbol,
+            trade_date=trade_date,
+            snapshot_created_at=f"{trade_date} {self.report_time}",
+            max_ohlcv_date=max_ohlcv_date,
+            max_news_time=self._max_value(news, "published_at"),
+            max_fundamental_available_date=self._max_date_value(
+                fundamentals, "available_date"
+            ),
+            max_sentiment_time=self._max_value(sentiment, "timestamp"),
+            max_broker_activity_time=self._max_value(broker_activity, "timestamp"),
+            provider_mode="snapshot",
+            path=str(snapshot_dir),
+        )
+
+        # Augment metadata with window audit fields.
+        meta_dict = metadata.to_dict()
+        meta_dict["lookback_days"] = effective_lookback
+        meta_dict["window_min_ohlcv_date"] = min_ohlcv_date
+        meta_dict["window_max_ohlcv_date"] = max_ohlcv_date
+        meta_dict["window_expected_min_ohlcv_date"] = cutoffs.min_ohlcv_date_in_window
+        self._write_json(snapshot_dir / "metadata.json", meta_dict)
+
+        return DataSnapshot(
+            symbol=symbol,
+            trade_date=trade_date,
+            root_path=snapshot_dir,
+            metadata=metadata,
+            ohlcv=ohlcv,
+            news=news,
+            fundamentals=fundamentals,
+            sentiment=sentiment,
+            broker_activity=broker_activity,
+            spec=spec,
+            lookback_days=effective_lookback,
+            window_min_ohlcv_date=min_ohlcv_date,
+            window_max_ohlcv_date=max_ohlcv_date,
+        )

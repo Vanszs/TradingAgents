@@ -1,4 +1,6 @@
+import logging
 import os
+import time
 from typing import Any, Optional
 
 from langchain_core.messages import AIMessage
@@ -8,6 +10,8 @@ from .api_key_env import get_api_key_env
 from .base_client import BaseLLMClient, normalize_content
 from .capabilities import get_capabilities
 from .validators import validate_model
+
+logger = logging.getLogger(__name__)
 
 
 class NormalizedChatOpenAI(ChatOpenAI):
@@ -30,7 +34,19 @@ class NormalizedChatOpenAI(ChatOpenAI):
     """
 
     def invoke(self, input, config=None, **kwargs):
-        return normalize_content(super().invoke(input, config, **kwargs))
+        invoke_start = time.time()
+        model_name = getattr(self, 'model_name', 'unknown')
+        logger.debug(f"[LLM] Invoking {model_name}...")
+        
+        result = super().invoke(input, config, **kwargs)
+        
+        invoke_duration = time.time() - invoke_start
+        # Get content length for logging
+        content = getattr(result, 'content', '')
+        content_length = len(content) if isinstance(content, str) else 0
+        logger.info(f"[LLM] {model_name} completed in {invoke_duration:.3f}s | response length: {content_length}")
+        
+        return normalize_content(result)
 
     def with_structured_output(self, schema, *, method=None, **kwargs):
         caps = get_capabilities(self.model_name)
@@ -159,6 +175,8 @@ _PROVIDER_BASE_URL = {
     "openrouter": "https://openrouter.ai/api/v1",
     "ollama":     "http://localhost:11434/v1",
     "bluesmind":  "https://api.bluesminds.com/v1",
+    "sumopod":   "https://ai.sumopod.com/v1",
+    "tokenrouter": "https://api.tokenrouter.com/v1",
 }
 
 
@@ -227,6 +245,16 @@ class OpenAIClient(BaseLLMClient):
         for key in _PASSTHROUGH_KWARGS:
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
+
+        # Add default timeout if not specified (prevent indefinite hangs)
+        llm_kwargs.setdefault("timeout", 1080)  # 18 minutes
+
+        llm_kwargs.setdefault("max_retries", 3)
+
+        logger.info(
+            f"[LLM] Creating {self.provider} client for model={self.model} "
+            f"with timeout={llm_kwargs.get('timeout')}s"
+        )
 
         # Native OpenAI: use Responses API for consistent behavior across
         # all model families. Third-party providers use Chat Completions.

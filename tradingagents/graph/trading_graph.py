@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -362,19 +363,27 @@ class TradingAgentsGraph:
 
     def _run_graph(self, company_name, trade_date, asset_type: str = "stock"):
         """Execute the graph and write the resulting state to disk and memory log."""
+        graph_start_time = time.time()
+        logger.info(f"[GRAPH] Starting _run_graph for {company_name} on {trade_date}")
+
         # Initialize state — inject memory log context for PM.
+        step_start = time.time()
         past_context = self.memory_log.get_past_context(company_name)
         init_agent_state = self.propagator.create_initial_state(
             company_name, trade_date, asset_type=asset_type, past_context=past_context
         )
         args = self.propagator.get_graph_args()
+        logger.info(f"[GRAPH] Initial state created in {time.time() - step_start:.3f}s")
+        logger.info(f"[GRAPH] State keys: {list(init_agent_state.keys())}")
 
         # Inject thread_id so same ticker+date resumes, different date starts fresh.
         if self.config.get("checkpoint_enabled"):
             tid = thread_id(company_name, str(trade_date))
             args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = tid
 
+        step_start = time.time()
         if self.debug:
+            logger.info(f"[GRAPH] Running in debug/stream mode...")
             trace = []
             for chunk in self.graph.stream(init_agent_state, **args):
                 if len(chunk["messages"]) == 0:
@@ -388,7 +397,11 @@ class TradingAgentsGraph:
             for chunk in trace:
                 final_state.update(chunk)
         else:
+            logger.info(f"[GRAPH] Invoking LangGraph...")
             final_state = self.graph.invoke(init_agent_state, **args)
+        
+        graph_duration = time.time() - step_start
+        logger.info(f"[GRAPH] Graph execution completed in {graph_duration:.3f}s")
 
         # Store current state for reflection.
         self.curr_state = final_state
@@ -408,6 +421,17 @@ class TradingAgentsGraph:
             clear_checkpoint(
                 self.config["data_cache_dir"], company_name, str(trade_date)
             )
+
+        # Log summary of final state
+        logger.info(f"[GRAPH] Final state summary:")
+        logger.info(f"[GRAPH]   - market_report length: {len(final_state.get('market_report', ''))}")
+        logger.info(f"[GRAPH]   - sentiment_report length: {len(final_state.get('sentiment_report', ''))}")
+        logger.info(f"[GRAPH]   - news_report length: {len(final_state.get('news_report', ''))}")
+        logger.info(f"[GRAPH]   - fundamentals_report length: {len(final_state.get('fundamentals_report', ''))}")
+        logger.info(f"[GRAPH]   - final_trade_decision length: {len(final_state.get('final_trade_decision', ''))}")
+
+        total_duration = time.time() - graph_start_time
+        logger.info(f"[GRAPH] Total _run_graph time: {total_duration:.3f}s")
 
         return final_state, self.process_signal(final_state["final_trade_decision"])
 

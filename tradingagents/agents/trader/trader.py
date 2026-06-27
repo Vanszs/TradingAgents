@@ -32,7 +32,11 @@ def create_trader(llm):
                 "content": (
                     "You are a trading agent analyzing market data to make investment decisions. "
                     "Based on your analysis, provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the analysts' reports and the research plan."
+                    "Anchor your reasoning in the analysts' reports and the research plan.\n\n"
+                    "IMPORTANT for price fields (entry_price, stop_loss, take_profit):\n"
+                    "- Always provide specific numerical values when possible.\n"
+                    "- NEVER output the string 'None' — either provide a number or omit the field entirely.\n"
+                    "- If you cannot determine a price, leave the field empty (null), do not write 'None'."
                     + get_language_instruction()
                 ),
             },

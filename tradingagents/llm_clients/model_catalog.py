@@ -188,8 +188,29 @@ MODEL_OPTIONS: ProviderModeOptions = {
             ("Custom model ID", "custom"),
         ],
     },
+    "sumopod": {
+        "quick": [
+            ("MiniMax-M2.7-highspeed", "MiniMax-M2.7-highspeed"),
+            ("mimo-v2.5", "mimo-v2.5"),
+            ("Custom model ID", "custom"),
+        ],
+        "deep": [
+            ("MiniMax-M2.7-highspeed", "MiniMax-M2.7-highspeed"),
+            ("mimo-v2.5", "mimo-v2.5"),
+            ("Custom model ID", "custom"),
+        ],
+    },
+    "tokenrouter": {
+        "quick": [
+            ("MiniMax-M3", "MiniMax-M3"),
+            ("Custom model ID", "custom"),
+        ],
+        "deep": [
+            ("MiniMax-M3", "MiniMax-M3"),
+            ("Custom model ID", "custom"),
+        ],
+    },
 }
-
 
 def get_model_options(provider: str, mode: str) -> List[ModelOption]:
     """Return shared model options for a provider and selection mode."""

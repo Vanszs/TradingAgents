@@ -1252,5 +1252,40 @@ def analyze(
     run_analysis(checkpoint=checkpoint)
 
 
+@app.command(name="backtest")
+def backtest_cmd(
+    config: Path = typer.Option(
+        "backtest.yaml",
+        "--config",
+        "-c",
+        help="Path to the backtest yaml config (default: backtest.yaml).",
+    ),
+    lookback: Optional[int] = typer.Option(
+        None,
+        "--lookback",
+        help=(
+            "Override lookback window in trading days. "
+            "Allowed: 5, 10, 20, 40, 60, 80, 100, 120, 240. "
+            "Single period per run."
+        ),
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate config and print plan, do not execute the backtest.",
+    ),
+):
+    """
+    Run walk-forward backtest.
+
+    5-tier decision mapping (Buy/Overweight/Hold/Underweight/Sell) with
+    trigger-based execution. Uses snapshot data with strict cutoffs to
+    avoid leakage. Single period per invocation.
+    """
+    from cli.commands.backtest import backtest
+
+    backtest(config_path=config, lookback=lookback, dry_run=dry_run)
+
+
 if __name__ == "__main__":
     app()

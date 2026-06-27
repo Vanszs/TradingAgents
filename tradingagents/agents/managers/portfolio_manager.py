@@ -31,6 +31,7 @@ def create_portfolio_manager(llm):
         risk_debate_state = state["risk_debate_state"]
         research_plan = state["investment_plan"]
         trader_plan = state["trader_investment_plan"]
+        trade_date = state["trade_date"]
 
         past_context = state.get("past_context", "")
         lessons_line = (
@@ -53,6 +54,7 @@ def create_portfolio_manager(llm):
 - **Sell**: Exit position or avoid entry
 
 **Context:**
+- Current trade date: {trade_date}
 - Research Manager's investment plan: **{research_plan}**
 - Trader's transaction proposal: **{trader_plan}**
 {lessons_line}
@@ -60,6 +62,17 @@ def create_portfolio_manager(llm):
 {history}
 
 ---
+
+**Next Review Date** (MANDATORY — this line MUST appear in your response):
+- **Buy/Overweight**: 7-14 days from current trade date (volatile, needs close monitoring)
+- **Hold**: 14-30 days from current trade date (stable, less frequent review)
+- **Underweight/Sell**: 7-14 days from current trade date (exit in progress, needs tracking)
+
+FORMAT: `**Next Review Date**: YYYY-MM-DD`
+Example: If current date is 2024-01-15 and rating is Hold, output:
+**Next Review Date**: 2024-02-15
+
+IMPORTANT: The line "**Next Review Date**: YYYY-MM-DD" MUST be the LAST line of your response. Without it, the backtester cannot schedule future analysis.
 
 Be decisive and ground every conclusion in specific evidence from the analysts. Write your entire response in Indonesian (Bahasa Indonesia).{get_language_instruction()}"""
 

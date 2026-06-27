@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 import questionary
 from dotenv import find_dotenv, set_key
 from rich.console import Console
+from rich.panel import Panel
 
 from cli.models import AnalystType, AssetType
 from tradingagents.llm_clients.api_key_env import get_api_key_env
@@ -280,6 +281,8 @@ def select_llm_provider() -> tuple[str, str | None]:
         ("BluesMind", "bluesmind", "https://api.bluesminds.com/v1"),
         ("Azure OpenAI", "azure", None),
         ("Ollama", "ollama", ollama_url),
+        ("Sumopod", "sumopod", "https://ai.sumopod.com/v1"),
+        ("TokenRouter", "tokenrouter", "https://api.tokenrouter.com/v1"),
     ]
 
     choice = questionary.select(
@@ -474,6 +477,7 @@ def confirm_ollama_endpoint(url: str) -> None:
             f"Make sure your remote ollama-serve listens on the port "
             f"shown above.[/yellow]"
         )
+    
 
 
 def ensure_api_key(provider: str) -> Optional[str]:
@@ -535,6 +539,7 @@ def ask_output_language() -> str:
             questionary.Choice("German (Deutsch)", "German"),
             questionary.Choice("Arabic (العربية)", "Arabic"),
             questionary.Choice("Russian (Русский)", "Russian"),
+            questionary.Choice("Indonesian (Bahasa Indonesia)", "Indonesian"),
             questionary.Choice("Custom language", "custom"),
         ],
         style=questionary.Style([
@@ -551,3 +556,4 @@ def ask_output_language() -> str:
         ).ask().strip()
 
     return choice
+
