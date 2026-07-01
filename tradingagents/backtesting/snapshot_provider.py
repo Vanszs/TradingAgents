@@ -22,12 +22,15 @@ Window guarantees (when ``lookback_days`` is set):
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from .data_window import (
     ALLOWED_LOOKBACKS,
@@ -69,7 +72,15 @@ class DataSnapshot:
 
 
 class SnapshotDataProvider:
-    """Provider for stock backtests with flat data layout."""
+    """Provider for stock backtests with flat data layout.
+
+    When ``fetch_from_api=True``, OHLCV, news, and fundamentals are
+    fetched from Yahoo Finance on first access and cached to disk
+    (``api_cache_dir/<TICKER>/``).  Subsequent calls read from cache,
+    preserving reproducibility.  Sentiment data cannot be fetched from
+    APIs because social-media platforms do not provide historical data
+    for arbitrary dates.
+    """
 
     def __init__(
         self,
@@ -77,15 +88,32 @@ class SnapshotDataProvider:
         snapshot_root: str = "snapshots",
         report_time: str = "16:30:00",
         lookback_days: Optional[int] = None,
+        news_cutoff_strategy: str = "previous_day",
+        sentiment_cutoff_strategy: str = "previous_day",
+        broker_activity_cutoff_strategy: str = "previous_day",
+        fundamental_buffer_days: int = 3,
+        fetch_from_api: bool = False,
+        api_cache_dir: str = "api_cache",
     ):
         self.data_root = Path(data_root)
         self.snapshot_root = Path(snapshot_root)
         self.report_time = report_time
         self.lookback_days = lookback_days
+        self.news_cutoff_strategy = news_cutoff_strategy
+        self.sentiment_cutoff_strategy = sentiment_cutoff_strategy
+        self.broker_activity_cutoff_strategy = broker_activity_cutoff_strategy
+        self.fundamental_buffer_days = fundamental_buffer_days
+        self.fetch_from_api = fetch_from_api
+        self.api_cache_dir = Path(api_cache_dir)
         if lookback_days is not None and lookback_days not in ALLOWED_LOOKBACKS:
             raise ValueError(
                 f"lookback_days must be one of {ALLOWED_LOOKBACKS}, got {lookback_days!r}"
             )
+        # Cache for OHLCV DataFrames to avoid repeated CSV reads
+        self._ohlcv_cache: dict[str, pd.DataFrame] = {}
+        # Cache for fetched API data to avoid repeated fetches
+        self._news_cache: dict[str, list[dict]] = {}
+        self._fundamentals_cache: dict[str, list[dict]] = {}
 
     def _symbol_dir(self, symbol: str) -> Path:
         return self.data_root / symbol.upper()
@@ -93,6 +121,27 @@ class SnapshotDataProvider:
     @staticmethod
     def _normalize_date(value: Any) -> str:
         return str(value)[:10]
+
+    def _get_previous_trading_day(self, symbol: str, trade_date: str) -> str:
+        """Find the previous trading day from OHLCV data.
+
+        Uses the actual OHLCV dates so holidays are handled correctly.
+        Falls back to calendar heuristic if the date is not in OHLCV.
+        """
+        trade_date = self._normalize_date(trade_date)
+        try:
+            df = self.load_full_ohlcv(symbol)
+            dates = sorted(df["date"].astype(str).tolist())
+            idx = dates.index(trade_date)
+            if idx > 0:
+                return dates[idx - 1]
+        except (FileNotFoundError, ValueError):
+            pass
+        # Fallback: step back 1 calendar day, skip weekends
+        d = pd.Timestamp(trade_date) - pd.Timedelta(days=1)
+        while d.weekday() >= 5:
+            d -= pd.Timedelta(days=1)
+        return d.strftime("%Y-%m-%d")
 
     @staticmethod
     def _safe_timestamp(value: Any) -> pd.Timestamp:
@@ -153,11 +202,173 @@ class SnapshotDataProvider:
         return pd.DataFrame(out)
 
     def load_full_ohlcv(self, symbol: str) -> pd.DataFrame:
-        path = self._symbol_dir(symbol) / "ohlcv.csv"
-        if not path.exists():
-            raise FileNotFoundError(f"OHLCV file for {symbol} not found at {path}")
-        raw = pd.read_csv(path)
-        return self._normalize_ohlcv_columns(raw)
+        """Load full OHLCV data, with caching and optional API fetch."""
+        sym = symbol.upper()
+        if sym in self._ohlcv_cache:
+            return self._ohlcv_cache[sym]
+
+        if self.fetch_from_api:
+            raw = self._fetch_and_cache_ohlcv(symbol)
+        else:
+            path = self._symbol_dir(symbol) / "ohlcv.csv"
+            if not path.exists():
+                raise FileNotFoundError(f"OHLCV file for {symbol} not found at {path}")
+            raw = pd.read_csv(path)
+
+        df = self._normalize_ohlcv_columns(raw)
+        self._ohlcv_cache[sym] = df
+        return df
+
+    def _fetch_and_cache_ohlcv(self, symbol: str) -> pd.DataFrame:
+        """Fetch OHLCV from yfinance and cache to disk."""
+        import yfinance as yf
+
+        cache_path = self.api_cache_dir / symbol.upper() / "ohlcv.csv"
+        if cache_path.exists():
+            return pd.read_csv(cache_path)
+
+        logger.info(f"[SNAPSHOT] Fetching OHLCV for {symbol} from yfinance...")
+        ticker = yf.Ticker(symbol.upper())
+        data = ticker.history(period="max")
+        if data.empty:
+            raise FileNotFoundError(f"No OHLCV data from yfinance for {symbol}")
+
+        if data.index.tz is not None:
+            data.index = data.index.tz_localize(None)
+        data = data.reset_index()
+        # yfinance may name the date column "Date" or "index" depending on version
+        date_col = None
+        for candidate in ("Date", "date", "index", data.columns[0]):
+            if candidate in data.columns:
+                date_col = candidate
+                break
+        if date_col is None:
+            date_col = data.columns[0]
+
+        data = data.rename(columns={
+            date_col: "date",
+            "Open": "open", "High": "high",
+            "Low": "low", "Close": "close", "Volume": "volume",
+        })
+        data["date"] = pd.to_datetime(data["date"]).dt.strftime("%Y-%m-%d")
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cols = ["date", "open", "high", "low", "close", "volume"]
+        data[cols].to_csv(cache_path, index=False)
+        logger.info(f"[SNAPSHOT] Cached {len(data)} OHLCV bars to {cache_path}")
+        return data[cols]
+
+    def _fetch_and_cache_news(self, symbol: str) -> list[dict[str, Any]]:
+        """Fetch news from yfinance and cache to disk."""
+        import yfinance as yf
+
+        sym = symbol.upper()
+        if sym in self._news_cache:
+            return self._news_cache[sym]
+
+        cache_path = self.api_cache_dir / sym / "news.json"
+        if cache_path.exists():
+            records = self._load_json_records(cache_path)
+            self._news_cache[sym] = records
+            return records
+
+        logger.info(f"[SNAPSHOT] Fetching news for {symbol} from yfinance...")
+        try:
+            ticker = yf.Ticker(sym)
+            raw_news = ticker.get_news(count=100)
+        except Exception as exc:
+            logger.warning(f"[SNAPSHOT] Failed to fetch news for {symbol}: {exc}")
+            return []
+
+        articles = []
+        for article in raw_news or []:
+            content = article.get("content", article)
+            pub_date = content.get("pubDate", content.get("providerPublishTime", ""))
+            articles.append({
+                "title": content.get("title", ""),
+                "summary": content.get("summary", content.get("description", "")),
+                "source": (
+                    content.get("provider", {}).get("displayName", "Unknown")
+                    if isinstance(content.get("provider"), dict)
+                    else str(content.get("provider", "Unknown"))
+                ),
+                "published_at": str(pub_date) if pub_date else "",
+                "url": (
+                    (content.get("canonicalUrl") or {}).get("url", "")
+                    if isinstance(content.get("canonicalUrl"), dict)
+                    else ""
+                ),
+            })
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        self._write_json(cache_path, articles)
+        self._news_cache[sym] = articles
+        logger.info(f"[SNAPSHOT] Cached {len(articles)} news articles to {cache_path}")
+        return articles
+
+    def _fetch_and_cache_fundamentals(self, symbol: str) -> list[dict[str, Any]]:
+        """Fetch fundamentals from yfinance and cache to disk."""
+        import yfinance as yf
+
+        sym = symbol.upper()
+        if sym in self._fundamentals_cache:
+            return self._fundamentals_cache[sym]
+
+        cache_path = self.api_cache_dir / sym / "fundamentals.json"
+        if cache_path.exists():
+            records = self._load_json_records(cache_path)
+            self._fundamentals_cache[sym] = records
+            return records
+
+        logger.info(f"[SNAPSHOT] Fetching fundamentals for {symbol} from yfinance...")
+        ticker = yf.Ticker(sym)
+        records: list[dict[str, Any]] = []
+
+        # Company info
+        try:
+            info = ticker.info or {}
+            skip_keys = {"companyOfficers", "address1", "address2", "city", "state", "zip", "country", "phone", "website"}
+            for key, value in info.items():
+                if value is not None and key not in skip_keys:
+                    records.append({
+                        "metric": key,
+                        "value": value,
+                        "available_date": pd.Timestamp.now().strftime("%Y-%m-%d"),
+                        "period": "latest",
+                        "source": "yfinance_info",
+                    })
+        except Exception as exc:
+            logger.warning(f"[SNAPSHOT] Failed to fetch info for {symbol}: {exc}")
+
+        # Quarterly financial statements
+        for stmt_name, stmt_attr in [
+            ("balance_sheet", "quarterly_balance_sheet"),
+            ("income_statement", "quarterly_income_stmt"),
+            ("cashflow", "quarterly_cashflow"),
+        ]:
+            try:
+                stmt = getattr(ticker, stmt_attr, None)
+                if stmt is not None and not stmt.empty:
+                    for col in stmt.columns:
+                        date_str = col.strftime("%Y-%m-%d") if hasattr(col, "strftime") else str(col)[:10]
+                        for idx in stmt.index:
+                            val = stmt.loc[idx, col]
+                            if pd.notna(val):
+                                records.append({
+                                    "metric": f"{stmt_name}:{idx}",
+                                    "value": float(val) if isinstance(val, (int, float)) else str(val),
+                                    "available_date": date_str,
+                                    "period": "quarterly",
+                                    "source": f"yfinance_{stmt_attr}",
+                                })
+            except Exception as exc:
+                logger.warning(f"[SNAPSHOT] Failed to fetch {stmt_name} for {symbol}: {exc}")
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        self._write_json(cache_path, records)
+        self._fundamentals_cache[sym] = records
+        logger.info(f"[SNAPSHOT] Cached {len(records)} fundamental records to {cache_path}")
+        return records
 
     def get_ohlcv(self, symbol: str, trade_date: str) -> pd.DataFrame:
         trade_date = self._normalize_date(trade_date)
@@ -177,7 +388,7 @@ class SnapshotDataProvider:
         spec: InstrumentSpec,
     ) -> MarketPoint:
         trade_date = self._normalize_date(trade_date)
-        df = self.load_full_ohlcv(symbol)
+        df = self.load_full_ohlcv(symbol).copy()
         df["date"] = df["date"].astype(str)
         row = df[df["date"] == trade_date]
         if row.empty:
@@ -223,13 +434,14 @@ class SnapshotDataProvider:
     ) -> list[dict[str, Any]]:
         if not records:
             return []
-        cutoff_ts = pd.Timestamp(cutoff)
+        from .data_window import _normalize_to_utc
+        cutoff_ts = _normalize_to_utc(cutoff)
         out: list[dict[str, Any]] = []
         for item in records:
             v = item.get(field)
             if not v:
                 continue
-            ts = pd.Timestamp(v)
+            ts = _normalize_to_utc(v)
             if ts <= cutoff_ts:
                 out.append(item)
         return out
@@ -242,42 +454,77 @@ class SnapshotDataProvider:
     ) -> list[dict[str, Any]]:
         if not records:
             return []
-        cutoff = pd.Timestamp(cutoff_date).date()
+        from .data_window import _normalize_to_utc
+        cutoff = _normalize_to_utc(cutoff_date).date()
         out: list[dict[str, Any]] = []
         for item in records:
             v = item.get(field)
             if not v:
                 continue
-            item_date = pd.Timestamp(v).date()
+            item_date = _normalize_to_utc(v).date()
             if item_date <= cutoff:
                 out.append(item)
         return out
 
     def get_news(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
         trade_date = self._normalize_date(trade_date)
-        path = self._symbol_dir(symbol) / "news.json"
-        records = self._load_json_records(path)
-        cutoff = f"{trade_date} {self.report_time}"
+        if self.fetch_from_api:
+            records = self._fetch_and_cache_news(symbol)
+        else:
+            path = self._symbol_dir(symbol) / "news.json"
+            records = self._load_json_records(path)
+        if self.news_cutoff_strategy == "previous_day":
+            prev_day = self._get_previous_trading_day(symbol, trade_date)
+            cutoff = f"{prev_day} {self.report_time}"
+        else:
+            cutoff = f"{trade_date} {self.report_time}"
         return self._cut_by_datetime(records, "published_at", cutoff)
 
     def get_fundamentals(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
         trade_date = self._normalize_date(trade_date)
-        path = self._symbol_dir(symbol) / "fundamentals.json"
-        records = self._load_json_records(path)
-        return self._cut_by_date(records, "available_date", trade_date)
+        if self.fetch_from_api:
+            records = self._fetch_and_cache_fundamentals(symbol)
+        else:
+            path = self._symbol_dir(symbol) / "fundamentals.json"
+            records = self._load_json_records(path)
+        if self.fundamental_buffer_days > 0:
+            cutoff_date = (
+                pd.Timestamp(trade_date) - pd.Timedelta(days=self.fundamental_buffer_days)
+            ).strftime("%Y-%m-%d")
+        else:
+            cutoff_date = trade_date
+        return self._cut_by_date(records, "available_date", cutoff_date)
 
     def get_sentiment(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
+        """Get sentiment data for the given symbol and trade date.
+
+        Note: Even when ``fetch_from_api=True``, sentiment data is NOT
+        fetched from live APIs.  Social-media platforms (StockTwits, Reddit,
+        Bluesky, Mastodon) do not provide historical data for arbitrary
+        dates — live calls would return today's sentiment for every
+        historical trade date, leaking future information and destroying
+        reproducibility.  Users must pre-populate ``sentiment.json`` or
+        accept empty sentiment data in backtests.
+        """
         trade_date = self._normalize_date(trade_date)
         path = self._symbol_dir(symbol) / "sentiment.json"
         records = self._load_json_records(path)
-        cutoff = f"{trade_date} {self.report_time}"
+        if self.sentiment_cutoff_strategy == "previous_day":
+            prev_day = self._get_previous_trading_day(symbol, trade_date)
+            cutoff = f"{prev_day} {self.report_time}"
+        else:
+            cutoff = f"{trade_date} {self.report_time}"
         return self._cut_by_datetime(records, "timestamp", cutoff)
 
     def get_broker_activity(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
         trade_date = self._normalize_date(trade_date)
         path = self._symbol_dir(symbol) / "broker_activity.json"
         records = self._load_json_records(path)
-        cutoff = f"{trade_date} {self.report_time}"
+        if self.broker_activity_cutoff_strategy == "previous_day":
+            prev_day = self._get_previous_trading_day(symbol, trade_date)
+            cutoff = f"{prev_day} {self.report_time}"
+        else:
+            cutoff = f"{trade_date} {self.report_time}"
         return self._cut_by_datetime(records, "timestamp", cutoff)
 
     # ------------------------------------------------------------------
@@ -285,25 +532,27 @@ class SnapshotDataProvider:
     # ------------------------------------------------------------------
     @staticmethod
     def _max_value(records: list[dict[str, Any]], field: str) -> Optional[str]:
+        from .data_window import _normalize_to_utc
         timestamps: list[pd.Timestamp] = []
         for item in records:
             v = item.get(field)
             if v is None or pd.isna(v):
                 continue
-            timestamps.append(SnapshotDataProvider._safe_timestamp(v))
+            timestamps.append(_normalize_to_utc(v))
         if not timestamps:
             return None
         return max(timestamps).isoformat(sep=" ")
 
     @staticmethod
     def _max_date_value(records: list[dict[str, Any]], field: str) -> Optional[str]:
+        from .data_window import _normalize_to_utc
         dates: list[str] = []
         for item in records:
             v = item.get(field)
             if v is None or pd.isna(v):
                 continue
             dates.append(
-                SnapshotDataProvider._safe_timestamp(v).date().isoformat()
+                _normalize_to_utc(v).date().isoformat()
             )
         if not dates:
             return None
@@ -339,6 +588,11 @@ class SnapshotDataProvider:
             )
 
         # Pull full time-cut data first (always <= trade_date).
+        # For news/sentiment/broker with previous_day strategy, get_* already
+        # applies the previous-day cutoff. We compute prev_trading_day once
+        # so the slice functions can use the same upper bound.
+        prev_trading_day = self._get_previous_trading_day(symbol, trade_date)
+
         full_ohlcv = self.get_ohlcv(symbol, trade_date)
         full_news = self.get_news(symbol, trade_date)
         full_fundamentals = self.get_fundamentals(symbol, trade_date)
@@ -348,10 +602,19 @@ class SnapshotDataProvider:
         # Apply the lookback window if requested.
         cutoffs = compute_window(trade_date, effective_lookback)
         ohlcv = slice_ohlcv(full_ohlcv, cutoffs)
-        news = slice_news(full_news, cutoffs, report_time=self.report_time)
+        news = slice_news(
+            full_news, cutoffs, report_time=self.report_time,
+            prev_trading_day=prev_trading_day if self.news_cutoff_strategy == "previous_day" else None,
+        )
         fundamentals = slice_fundamentals(full_fundamentals, cutoffs)
-        sentiment = slice_sentiment(full_sentiment, cutoffs, report_time=self.report_time)
-        broker_activity = slice_broker_activity(full_broker, cutoffs, report_time=self.report_time)
+        sentiment = slice_sentiment(
+            full_sentiment, cutoffs, report_time=self.report_time,
+            prev_trading_day=prev_trading_day if self.sentiment_cutoff_strategy == "previous_day" else None,
+        )
+        broker_activity = slice_broker_activity(
+            full_broker, cutoffs, report_time=self.report_time,
+            prev_trading_day=prev_trading_day if self.broker_activity_cutoff_strategy == "previous_day" else None,
+        )
 
         # Audit: hard anti-leakage check (actual max must be <= trade_date).
         actual_min_ohlcv_date = (

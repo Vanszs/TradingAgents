@@ -66,6 +66,18 @@ def _to_iso_datetime(value: Any) -> Optional[datetime]:
         return None
 
 
+def _normalize_to_utc(ts: Any) -> pd.Timestamp:
+    """Normalize any timestamp to UTC-naive for safe comparison.
+
+    If the input carries timezone info, convert to UTC then strip it.
+    If the input is already naive, return as-is.
+    """
+    result = pd.Timestamp(ts)
+    if result.tzinfo is not None:
+        result = result.tz_convert("UTC").tz_localize(None)
+    return result
+
+
 def compute_window(
     trade_date: str,
     lookback_days: Optional[int],
@@ -141,19 +153,19 @@ def _filter_records_by_field(
             continue
         try:
             if by_date_only:
-                item_date = pd.Timestamp(v).date()
-                upper = pd.Timestamp(max_iso_date).date()
+                item_date = _normalize_to_utc(v).date()
+                upper = _normalize_to_utc(max_iso_date).date()
                 if item_date > upper:
                     continue
-                if min_iso_date is not None and item_date < pd.Timestamp(min_iso_date).date():
+                if min_iso_date is not None and item_date < _normalize_to_utc(min_iso_date).date():
                     continue
                 out.append(rec)
             else:
-                item_dt = pd.Timestamp(v)
-                upper = pd.Timestamp(max_iso_datetime)
+                item_dt = _normalize_to_utc(v)
+                upper = _normalize_to_utc(max_iso_datetime)
                 if item_dt > upper:
                     continue
-                if min_iso_datetime is not None and item_dt < pd.Timestamp(min_iso_datetime):
+                if min_iso_datetime is not None and item_dt < _normalize_to_utc(min_iso_datetime):
                     continue
                 out.append(rec)
         except Exception:
@@ -165,14 +177,19 @@ def slice_news(
     news: list[dict[str, Any]],
     cutoffs: WindowCutoffs,
     report_time: str = "16:30:00",
+    prev_trading_day: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    max_dt = f"{cutoffs.trade_date} {report_time}"
+    """Slice news by lookback window. When prev_trading_day is provided, use
+    it as the upper bound (previous-day cutoff strategy) to prevent leakage
+    from same-day news that could reflect today's price action."""
+    upper_date = prev_trading_day if prev_trading_day else cutoffs.trade_date
+    max_dt = f"{upper_date} {report_time}"
     return _filter_records_by_field(
         news,
         "published_at",
         min_iso_date=None,
         min_iso_datetime=cutoffs.min_event_datetime,
-        max_iso_date=cutoffs.trade_date,
+        max_iso_date=upper_date,
         max_iso_datetime=max_dt,
     )
 
@@ -196,14 +213,18 @@ def slice_sentiment(
     sentiment: list[dict[str, Any]],
     cutoffs: WindowCutoffs,
     report_time: str = "16:30:00",
+    prev_trading_day: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    max_dt = f"{cutoffs.trade_date} {report_time}"
+    """Slice sentiment by lookback window. When prev_trading_day is provided,
+    use it as the upper bound to prevent same-day sentiment leakage."""
+    upper_date = prev_trading_day if prev_trading_day else cutoffs.trade_date
+    max_dt = f"{upper_date} {report_time}"
     return _filter_records_by_field(
         sentiment,
         "timestamp",
         min_iso_date=None,
         min_iso_datetime=cutoffs.min_event_datetime,
-        max_iso_date=cutoffs.trade_date,
+        max_iso_date=upper_date,
         max_iso_datetime=max_dt,
     )
 
@@ -212,14 +233,18 @@ def slice_broker_activity(
     activity: list[dict[str, Any]],
     cutoffs: WindowCutoffs,
     report_time: str = "16:30:00",
+    prev_trading_day: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    max_dt = f"{cutoffs.trade_date} {report_time}"
+    """Slice broker activity by lookback window. When prev_trading_day is
+    provided, use it as the upper bound to prevent same-day leakage."""
+    upper_date = prev_trading_day if prev_trading_day else cutoffs.trade_date
+    max_dt = f"{upper_date} {report_time}"
     return _filter_records_by_field(
         activity,
         "timestamp",
         min_iso_date=None,
         min_iso_datetime=cutoffs.min_event_datetime,
-        max_iso_date=cutoffs.trade_date,
+        max_iso_date=upper_date,
         max_iso_datetime=max_dt,
     )
 

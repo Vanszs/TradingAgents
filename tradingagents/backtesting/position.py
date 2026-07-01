@@ -151,7 +151,7 @@ class DecisionMappingConfig:
     overweight_size_multiplier: float = 0.5
     underweight_size_multiplier: float = 0.5
     default_reduce_pct: float = 0.5
-    base_allocation_pct: float = 0.20
+    base_allocation_pct: float = 0.20  # Deprecated: unused, use initial_entry_pct instead
     # Entry config (FLAT → Buy/Sell)
     initial_entry_pct: float = 0.30
     # Pyramiding config (position exists + rating aligned)
@@ -205,9 +205,10 @@ class LeakageGuardConfig:
     require_snapshot_metadata: bool = True
     require_next_bar_execution: bool = True
     fail_on_future_data: bool = True
-    enforce_cutoff: bool = True
-    block_live_data: bool = True
-    require_snapshot_only: bool = True
+    news_cutoff_strategy: str = "previous_day"
+    sentiment_cutoff_strategy: str = "previous_day"
+    broker_activity_cutoff_strategy: str = "previous_day"
+    fundamental_buffer_days: int = 3
 
 
 @dataclass

@@ -10,7 +10,7 @@ Checks:
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from .decision_schema import ParsedDecision, SnapshotMetadata, parse_date
@@ -21,8 +21,13 @@ class LeakageValidationError(Exception):
 
 
 class DecisionCutoffValidator:
-    def __init__(self, fail_on_future_data: bool = True):
+    def __init__(
+        self,
+        fail_on_future_data: bool = True,
+        fundamental_buffer_days: int = 3,
+    ):
         self.fail_on_future_data = fail_on_future_data
+        self.fundamental_buffer_days = fundamental_buffer_days
         self.audit_checks: dict[str, str] = {}
 
     def _fail(self, check_name: str, message: str) -> None:
@@ -118,17 +123,16 @@ class DecisionCutoffValidator:
         snapshot_metadata: SnapshotMetadata,
     ) -> None:
         max_news = self._parse_dt(snapshot_metadata.max_news_time)
-        report_time = self._parse_dt(decision.report_generated_at)
         if max_news is None:
             self._pass("news_cutoff")
             return
-        if report_time is None:
-            self._fail("news_cutoff", "report_generated_at cannot be parsed.")
-            return
-        if max_news > report_time:
+        trade_date = parse_date(decision.trade_date)
+        max_news_date = max_news.date()
+        if max_news_date >= trade_date:
             self._fail(
                 "news_cutoff",
-                f"Future news detected: {max_news} > report_generated_at {report_time}",
+                f"News from same day detected: {max_news_date} >= trade_date {trade_date}. "
+                f"News must be from previous trading day to prevent leakage.",
             )
         else:
             self._pass("news_cutoff")
@@ -142,10 +146,15 @@ class DecisionCutoffValidator:
         if not max_available:
             self._pass("fundamental_available_date")
             return
-        if parse_date(max_available) > parse_date(decision.trade_date):
+        trade = parse_date(decision.trade_date)
+        avail = parse_date(max_available)
+        buffered_date = avail + timedelta(days=self.fundamental_buffer_days)
+        if buffered_date > trade:
             self._fail(
                 "fundamental_available_date",
-                f"Future fundamental detected: {max_available} > {decision.trade_date}",
+                f"Fundamental too recent: available {max_available} + "
+                f"{self.fundamental_buffer_days} day buffer = {buffered_date} "
+                f"> trade_date {trade}",
             )
         else:
             self._pass("fundamental_available_date")
@@ -156,17 +165,16 @@ class DecisionCutoffValidator:
         snapshot_metadata: SnapshotMetadata,
     ) -> None:
         max_sent = self._parse_dt(snapshot_metadata.max_sentiment_time)
-        report_time = self._parse_dt(decision.report_generated_at)
         if max_sent is None:
             self._pass("sentiment_cutoff")
             return
-        if report_time is None:
-            self._fail("sentiment_cutoff", "report_generated_at cannot be parsed.")
-            return
-        if max_sent > report_time:
+        trade_date = parse_date(decision.trade_date)
+        max_sent_date = max_sent.date()
+        if max_sent_date >= trade_date:
             self._fail(
                 "sentiment_cutoff",
-                f"Future sentiment detected: {max_sent} > {report_time}",
+                f"Sentiment from same day detected: {max_sent_date} >= trade_date {trade_date}. "
+                f"Sentiment must be from previous trading day to prevent leakage.",
             )
         else:
             self._pass("sentiment_cutoff")
