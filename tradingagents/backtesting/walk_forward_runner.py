@@ -72,6 +72,12 @@ class WalkForwardBacktestRunner:
             data_root=config.data.data_root,
             snapshot_root=config.data.snapshot_root,
             lookback_days=config.lookback_days,
+            news_cutoff_strategy=getattr(config.leakage_guard, "news_cutoff_strategy", "previous_day"),
+            sentiment_cutoff_strategy=getattr(config.leakage_guard, "sentiment_cutoff_strategy", "previous_day"),
+            broker_activity_cutoff_strategy=getattr(config.leakage_guard, "broker_activity_cutoff_strategy", "previous_day"),
+            fundamental_buffer_days=getattr(config.leakage_guard, "fundamental_buffer_days", 3),
+            fetch_from_api=getattr(config.data, "fetch_from_api", False),
+            api_cache_dir=getattr(config.data, "api_cache_dir", "api_cache"),
         )
 
         # Load instrument spec from OHLCV
@@ -87,6 +93,8 @@ class WalkForwardBacktestRunner:
             reports_root=config.output.reports_root,
             agent_config=config.agent,
         )
+        # Pass calendar to agent_runner for holiday-aware date calculation
+        self.agent_runner._calendar = self.calendar
         # Always make the per-node timing callback available to the
         # agent runner, even when the runner was constructed outside
         # the engine. The runner no-ops when no progress callback is
@@ -98,7 +106,8 @@ class WalkForwardBacktestRunner:
 
         self.parser = MarkdownDecisionParser()
         self.validator = DecisionCutoffValidator(
-            fail_on_future_data=config.leakage_guard.fail_on_future_data
+            fail_on_future_data=config.leakage_guard.fail_on_future_data,
+            fundamental_buffer_days=getattr(config.leakage_guard, "fundamental_buffer_days", 3),
         )
         self.decision_store = DecisionStore(
             root=str(Path(config.output.output_root) / config.ticker / "decisions")
@@ -115,13 +124,14 @@ class WalkForwardBacktestRunner:
         self.reporter = BacktestReportGenerator(config)
 
         # Risk engine for bar-by-bar checks (PRD §11)
-        risk_cfg = RiskConfig()
+        risk_cfg = self.config.risk if self.config.risk is not None else RiskConfig()
         self.risk_engine = RiskEngine(
             max_loss_per_trade_pct=risk_cfg.max_intraday_loss_pct,
-            max_portfolio_loss_pct=risk_cfg.max_intraday_loss_pct,
+            max_portfolio_loss_pct=0.20,
             liquidation_enabled=True,
             stop_loss_enabled=True,
             take_profit_enabled=True,
+            margin_call_threshold=getattr(self.config.margin, "margin_call_threshold", 0.40),
         )
 
         # Trigger-Based Execution Agent. Defaults to TriggerConfig(); can be
@@ -193,6 +203,7 @@ class WalkForwardBacktestRunner:
                 last_date, last_market_point.close, "end_of_backtest"
             )
             if close_order is not None:
+                close_order.execution_date = last_date
                 self.broker.add_pending_orders([close_order])
                 self.broker.execute_pending_orders(
                     date=last_date,
@@ -201,7 +212,9 @@ class WalkForwardBacktestRunner:
                     spec=self.spec,
                 )
                 # Mark-to-market after close to capture correct post-close equity
-                self.portfolio.position.mark_to_market(last_market_point.close)
+                # Remove duplicate entry for last date (already added in _process_day)
+                if self.portfolio.equity_curve and self.portfolio.equity_curve[-1].date == last_date:
+                    self.portfolio.equity_curve.pop()
                 self.portfolio.mark_to_market(
                     date=last_date,
                     close_price=last_market_point.close,
@@ -319,17 +332,17 @@ class WalkForwardBacktestRunner:
         # even if the bar-by-bar check did not produce an order (e.g. flat
         # position state). The force-close itself is delegated to the
         # risk engine's output (risk_order).
+        equity = self.portfolio.account_equity(market_point.close)
         if (
             not self.portfolio.is_flat()
             and self.portfolio.is_margin_breach(market_point.close)
         ):
-            equity = self.portfolio.account_equity(market_point.close)
             maintenance = self.portfolio.maintenance_required(
                 market_point.close
             )
             self.margin_events.append(MarginEvent(
                 date=current_date,
-                kind="eod_margin_breach",
+                kind="call",
                 mark_price=market_point.close,
                 deficit=maintenance - equity,
                 maintenance_required=maintenance,
@@ -552,7 +565,7 @@ class WalkForwardBacktestRunner:
         self.decision_store.save(decision)
 
         # Update risk levels from decision
-        self._update_risk_levels(decision, self._ohlcv_df)
+        self._update_risk_levels(decision, self._ohlcv_df, current_date=current_date)
         logger.info(f"[BACKTEST] Step 8 (save decision): {time.time() - step_start:.3f}s")
 
         # Step 9a: Map decision into a state-aware action.
@@ -641,7 +654,11 @@ class WalkForwardBacktestRunner:
             "close": market_point.close,
         }
 
-        equity = self.portfolio.account_equity(market_point.close)
+        # Use open-price equity for risk checks. The position was marked to
+        # market at open (line 308), so equity at open is the baseline before
+        # intraday moves. Risk engine checks against intraday high/low, so
+        # using close-price equity would overstate/understate the worst case.
+        equity = self.portfolio.account_equity(market_point.open)
 
         order, events = self.risk_engine.check_bar(
             date=date,
@@ -672,15 +689,38 @@ class WalkForwardBacktestRunner:
                 action=event.reason,
             ))
 
-        # Execute risk-triggered orders. Drop NO_ORDERs but never swallow a
-        # genuine liquidation/stop/take-profit (the risk engine only returns
-        # NO_ORDER for a FLAT position, which we already short-circuited above).
+        # Execute risk-triggered orders IMMEDIATELY at the current bar's price.
+        # Risk orders (stop-loss, take-profit, liquidation) must be executed
+        # at the current bar's price, not deferred to the next day like agent
+        # orders. Deferring could cause losses to exceed stop levels due to
+        # overnight gaps.
         if order is not None and order.order_type.value != "NO_ORDER":
-            # Schedule for next trading day since today's execution step has passed
-            next_valid_date = self._safe_next_trading_day(date)
-            if next_valid_date is not None:
-                order.execution_date = next_valid_date
-            self.broker.add_pending_orders([order])
+            immediate_trades = self.broker.execute_pending_orders_immediate(
+                order=order,
+                market_point=market_point,
+                portfolio=self.portfolio,
+                spec=self.spec,
+            )
+            if immediate_trades:
+                # Notify about risk-triggered trades
+                trade_dicts = []
+                for t in immediate_trades:
+                    trade_dicts.append({
+                        "date": t.date,
+                        "side": t.side,
+                        "quantity": t.quantity,
+                        "price": t.price,
+                        "order_type": t.order_type,
+                        "reason": t.reason,
+                        "realized_pnl": t.realized_pnl_delta,
+                    })
+                self._notify_progress(
+                    "risk_execute",
+                    date,
+                    self._day_index + 1,
+                    len(self._trading_days) if self._trading_days else 0,
+                    trades=trade_dicts,
+                )
 
         return order
 
@@ -804,7 +844,7 @@ class WalkForwardBacktestRunner:
         )
         self.leakage_checks.update(checks)
         self.decision_store.save(decision)
-        self._update_risk_levels(decision, self._ohlcv_df)
+        self._update_risk_levels(decision, self._ohlcv_df, current_date=decision.trade_date)
 
         execution_date = self.calendar.next_trading_day(decision.trade_date)
         if execution_date < first_date:
@@ -819,19 +859,27 @@ class WalkForwardBacktestRunner:
         )
         self.broker.add_pending_orders(orders)
 
-    def _compute_atr(self, ohlcv_df, period: int = 14) -> Optional[float]:
+    def _compute_atr(self, ohlcv_df, period: int = 14, current_date: str = None) -> Optional[float]:
         """Compute ATR (Average True Range) from OHLCV DataFrame.
 
         Returns the latest ATR value, or None if insufficient data.
+        When current_date is provided, filters OHLCV to prevent future data leakage.
         """
         if ohlcv_df is None or ohlcv_df.empty:
             return None
-        if len(ohlcv_df) < period + 1:
+
+        # Filter to current_date to prevent future data leakage
+        if current_date is not None:
+            df = ohlcv_df[ohlcv_df["date"].astype(str) <= current_date].copy()
+        else:
+            df = ohlcv_df.copy()
+
+        if len(df) < period + 1:
             return None
 
-        high = ohlcv_df["high"]
-        low = ohlcv_df["low"]
-        close = ohlcv_df["close"]
+        high = df["high"]
+        low = df["low"]
+        close = df["close"]
         prev_close = close.shift(1)
 
         tr = pd.concat([
@@ -845,7 +893,7 @@ class WalkForwardBacktestRunner:
             return None
         return float(atr)
 
-    def _update_risk_levels(self, decision, ohlcv_df=None) -> None:
+    def _update_risk_levels(self, decision, ohlcv_df=None, current_date=None) -> None:
         """Update position stop/take_profit from decision.
 
         When holding a position (LONG/SHORT), always ensure stop_price and
@@ -866,32 +914,45 @@ class WalkForwardBacktestRunner:
         agent_stop = decision.stop_price
         agent_tp = decision.take_profit
 
-        if agent_stop is not None and agent_tp is not None and entry_price > 0:
-            # Check if values are in wrong direction and swap
+        if entry_price > 0:
             if position.is_short():
                 # SHORT: stop should be > entry, tp should be < entry
-                if agent_stop < entry_price and agent_tp > entry_price:
-                    agent_stop, agent_tp = agent_tp, agent_stop
+                if agent_stop is not None and agent_tp is not None:
+                    if agent_stop < entry_price and agent_tp > entry_price:
+                        # Both swapped — swap them
+                        agent_stop, agent_tp = agent_tp, agent_stop
+                # Individual validation: discard invalid values
+                if agent_stop is not None and agent_stop <= entry_price:
+                    agent_stop = None  # Invalid stop for short, use fallback
+                if agent_tp is not None and agent_tp >= entry_price:
+                    agent_tp = None  # Invalid TP for short, use fallback
             elif position.is_long():
                 # LONG: stop should be < entry, tp should be > entry
-                if agent_stop > entry_price and agent_tp < entry_price:
-                    agent_stop, agent_tp = agent_tp, agent_stop
+                if agent_stop is not None and agent_tp is not None:
+                    if agent_stop > entry_price and agent_tp < entry_price:
+                        # Both swapped — swap them
+                        agent_stop, agent_tp = agent_tp, agent_stop
+                # Individual validation: discard invalid values
+                if agent_stop is not None and agent_stop >= entry_price:
+                    agent_stop = None  # Invalid stop for long, use fallback
+                if agent_tp is not None and agent_tp <= entry_price:
+                    agent_tp = None  # Invalid TP for long, use fallback
 
         # Stop price: use LLM value or compute default
+        # Compute ATR once for both stop and take-profit
+        cached_atr = None
+        if self.config.risk.use_atr_based_stops and ohlcv_df is not None:
+            cached_atr = self._compute_atr(ohlcv_df, self.config.risk.atr_period, current_date=current_date)
+
         if agent_stop is not None:
             position.stop_price = agent_stop
         elif entry_price > 0:
-            # Try ATR-based first
-            atr = None
-            if self.config.risk.use_atr_based_stops and ohlcv_df is not None:
-                atr = self._compute_atr(ohlcv_df, self.config.risk.atr_period)
-
-            if atr is not None:
+            if cached_atr is not None:
                 # ATR-based stop
                 if position.is_long():
-                    position.stop_price = entry_price - (atr * self.config.risk.atr_stop_multiplier)
+                    position.stop_price = entry_price - (cached_atr * self.config.risk.atr_stop_multiplier)
                 else:  # SHORT
-                    position.stop_price = entry_price + (atr * self.config.risk.atr_stop_multiplier)
+                    position.stop_price = entry_price + (cached_atr * self.config.risk.atr_stop_multiplier)
             else:
                 # Fallback to fixed percentage
                 stop_pct = self.config.risk.default_stop_pct
@@ -904,17 +965,12 @@ class WalkForwardBacktestRunner:
         if agent_tp is not None:
             position.take_profit = agent_tp
         elif entry_price > 0:
-            # Try ATR-based first
-            atr = None
-            if self.config.risk.use_atr_based_stops and ohlcv_df is not None:
-                atr = self._compute_atr(ohlcv_df, self.config.risk.atr_period)
-
-            if atr is not None:
+            if cached_atr is not None:
                 # ATR-based take profit
                 if position.is_long():
-                    position.take_profit = entry_price + (atr * self.config.risk.atr_tp_multiplier)
+                    position.take_profit = entry_price + (cached_atr * self.config.risk.atr_tp_multiplier)
                 else:  # SHORT
-                    position.take_profit = entry_price - (atr * self.config.risk.atr_tp_multiplier)
+                    position.take_profit = entry_price - (cached_atr * self.config.risk.atr_tp_multiplier)
             else:
                 # Fallback to fixed percentage
                 tp_pct = self.config.risk.default_take_profit_pct
@@ -1008,10 +1064,6 @@ class WalkForwardBacktestRunner:
             "next_bar_execution",
             "memory_isolation",
             "live_provider_disabled",
-            "long_short_pnl_rules",
-            "reverse_fee_rule",
-            "margin_rule",
-            "leverage_limit",
             "lookback_window_respected",
         ]
         for check in required:

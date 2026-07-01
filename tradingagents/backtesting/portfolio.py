@@ -11,8 +11,11 @@ Tracks:
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from .decision_schema import (
     InstrumentSpec,
@@ -399,33 +402,61 @@ class Portfolio:
         )
         return equity < mm
 
-    def is_intraday_breach(self, open_price: float, intraday_low: float) -> bool:
-        if self.position.quantity <= 0:
+    def is_intraday_breach(self, open_price: float, intraday_low: float, intraday_high: Optional[float] = None) -> bool:
+        if self.position.quantity == 0:
             return False
-        equity_open = self.cash + self.position.unrealized_pnl(open_price)
-        worst_equity = equity_open - (
-            (float(open_price) - float(intraday_low))
-            * self.position.quantity
-            * self.position.multiplier
-        )
-        mm = maintenance_margin(
-            quantity=self.position.quantity,
-            mark_price=intraday_low,
-            multiplier=self.position.multiplier,
-            maintenance_margin_pct=self._maintenance_margin_pct,
-        )
+
+        if self.position.quantity > 0:
+            # Long: worst case is price dropping to intraday_low
+            equity_open = self.cash + self.position.unrealized_pnl(open_price)
+            worst_equity = equity_open - (
+                (float(open_price) - float(intraday_low))
+                * self.position.quantity
+                * self.position.multiplier
+            )
+            mm = maintenance_margin(
+                quantity=self.position.quantity,
+                mark_price=intraday_low,
+                multiplier=self.position.multiplier,
+                maintenance_margin_pct=self._maintenance_margin_pct,
+            )
+        else:
+            # Short: worst case is price rising to intraday_high
+            if intraday_high is None:
+                return False
+            equity_open = self.cash + self.position.unrealized_pnl(open_price)
+            worst_equity = equity_open - (
+                (float(intraday_high) - float(open_price))
+                * abs(self.position.quantity)
+                * self.position.multiplier
+            )
+            mm = maintenance_margin(
+                quantity=self.position.quantity,
+                mark_price=intraday_high,
+                multiplier=self.position.multiplier,
+                maintenance_margin_pct=self._maintenance_margin_pct,
+            )
+
         return worst_equity < mm
 
     # ------------------------------------------------------------------
     # Force liquidation
     # ------------------------------------------------------------------
-    def force_liquidate(self, price: float, reason: str = "margin_liquidation") -> Trade:
+    def force_liquidate(self, price: float, reason: str = "margin_liquidation", date: str = "", slippage_pct: float = 0.0) -> Trade:
         if self.position.quantity == 0:
             raise ValueError("Cannot liquidate: no open position.")
         side = OrderSide.SELL if self.position.quantity > 0 else OrderSide.BUY
         qty = self.abs_qty()
+        # Apply slippage: long liquidation sells at lower price, short covers at higher
+        if slippage_pct > 0:
+            if self.position.quantity > 0:
+                adjusted_price = float(price) * (1 - slippage_pct)
+            else:
+                adjusted_price = float(price) * (1 + slippage_pct)
+        else:
+            adjusted_price = float(price)
         realized = (
-            (float(price) - self.position.avg_price)
+            (adjusted_price - self.position.avg_price)
             * self.position.quantity
             * self.position.multiplier
         )
@@ -435,20 +466,20 @@ class Portfolio:
         self.position.realized_pnl += realized
         self.margin_posted = 0.0
         trade = Trade(
-            date="",
+            date=date,
             ticker=self.ticker,
             side=side,
             quantity=qty,
-            price=float(price),
-            gross_amount=float(price) * qty * self.position.multiplier,
+            price=adjusted_price,
+            gross_amount=adjusted_price * qty * self.position.multiplier,
             fee=0.0,
-            net_amount=float(price) * qty * self.position.multiplier,
+            net_amount=adjusted_price * qty * self.position.multiplier,
             multiplier=self.position.multiplier,
-            notional=float(price) * qty * self.position.multiplier,
+            notional=adjusted_price * qty * self.position.multiplier,
             tick_size=self.position.tick_size,
             slippage_ticks=0,
             realized_pnl_delta=realized,
-            margin_delta=-0.0,
+            margin_delta=0.0,
             open_close=OpenClose.CLOSE,
             reason=reason,
             decision_id="",
@@ -577,6 +608,44 @@ class PortfolioV2:
         )
         return self.account_equity(mark_price) < mm
 
+    def is_intraday_breach(self, open_price: float, intraday_low: float, intraday_high: Optional[float] = None) -> bool:
+        """Check intraday margin breach for both long and short positions.
+
+        Long: worst case is price dropping to intraday_low.
+        Short: worst case is price rising to intraday_high.
+        """
+        if self.position.quantity == 0:
+            return False
+
+        if self.position.quantity > 0:
+            # Long: worst case is price dropping to intraday_low
+            equity_open = self.account_equity(open_price)
+            worst_equity = equity_open - (
+                (float(open_price) - float(intraday_low))
+                * self.position.quantity
+                * self.position.multiplier
+            )
+            mm = MarginAccount.maintenance_margin(
+                abs(self.position.quantity) * float(intraday_low) * self.position.multiplier,
+                self.margin_cfg.maintenance_margin_pct,
+            )
+        else:
+            # Short: worst case is price rising to intraday_high
+            if intraday_high is None:
+                return False
+            equity_open = self.account_equity(open_price)
+            worst_equity = equity_open - (
+                (float(intraday_high) - float(open_price))
+                * abs(self.position.quantity)
+                * self.position.multiplier
+            )
+            mm = MarginAccount.maintenance_margin(
+                abs(self.position.quantity) * float(intraday_high) * self.position.multiplier,
+                self.margin_cfg.maintenance_margin_pct,
+            )
+
+        return worst_equity < mm
+
     # ------------------------------------------------------------------
     # Trade application
     # ------------------------------------------------------------------
@@ -669,6 +738,19 @@ class PortfolioV2:
             OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD
         ) else -fill.quantity
 
+        # 1. Compute margin requirement FIRST (before mutating state)
+        add_notional_val = fill.quantity * fill.price * self.position.multiplier
+        margin_required = MarginAccount.initial_margin(
+            add_notional_val, self.margin_cfg.initial_margin_pct
+        )
+        equity = self.account_equity(fill.price)
+        if margin_required > equity + 1e-9:
+            raise InsufficientMarginError(
+                f"Insufficient equity for margin: need {margin_required:.2f}, "
+                f"have {equity:.2f}."
+            )
+
+        # 2. THEN mutate position (safe — margin already validated)
         if self.position.is_flat():
             self.position.quantity = signed_qty
             self.position.avg_entry_price = fill.price
@@ -686,25 +768,14 @@ class PortfolioV2:
 
             self.position.avg_entry_price = (old_notional + add_notional) / (new_abs_qty * self.position.multiplier)
 
-        # Stock-like cash flow: BUY pays, SELL receives
+        # 3. THEN cash flow
         notional = fill.quantity * fill.price * self.position.multiplier
         if signed_qty > 0:  # Long: BUY_TO_OPEN or BUY_TO_ADD
             self.cash -= (notional + fill.fee)
         else:  # Short: SELL_TO_OPEN or SELL_TO_ADD
             self.cash += (notional - fill.fee)
 
-        # Post margin on INCREMENTAL notional (tracked only, not cash flow)
-        add_notional_val = fill.quantity * fill.price * self.position.multiplier
-        margin_required = MarginAccount.initial_margin(
-            add_notional_val, self.margin_cfg.initial_margin_pct
-        )
-        equity = self.account_equity(fill.price)
-        if margin_required > equity + 1e-9:
-            from .portfolio import InsufficientMarginError
-            raise InsufficientMarginError(
-                f"Insufficient equity for margin: need {margin_required:.2f}, "
-                f"have {equity:.2f}."
-            )
+        # 4. THEN post margin
         self.margin_posted += margin_required
         self.last_mark = fill.price
 
@@ -721,7 +792,9 @@ class PortfolioV2:
 
         close_qty = fill.quantity
         if close_qty > self.abs_qty():
-            close_qty = self.abs_qty()
+            raise ValueError(
+                f"Cannot close {close_qty}: only {self.abs_qty()} open."
+            )
 
         # Capture state BEFORE updating position
         pre_close_abs_qty = self.abs_qty()
@@ -752,11 +825,16 @@ class PortfolioV2:
         self.lifetime_realized_pnl += realized
         self.daily_realized_pnl += realized
         self.position.realized_pnl += realized
+        fill.realized_pnl_delta = realized
 
         if self.position.quantity == 0:
             self.position.avg_entry_price = 0.0
             self.position.stop_price = None
             self.position.take_profit = None
+
+        # Warn if cash went negative after close
+        if self.cash < -1e-9:
+            logger.warning(f"Negative cash after close: {self.cash:.2f}")
 
         self.last_mark = fill.price
 
@@ -784,7 +862,7 @@ class PortfolioV2:
                 side="LONG" if close_type == OrderType.SELL_TO_CLOSE else "SHORT",
                 quantity=close_qty,
                 price=fill.price,
-                fee=fill.fee,
+                fee=fill.fee / 2,
                 slippage_amount=0.0,
                 order_type=close_type,
                 open_close="CLOSE",
@@ -801,7 +879,7 @@ class PortfolioV2:
             side="LONG" if fill.order_type == OrderType.REVERSE_TO_LONG else "SHORT",
             quantity=fill.quantity,
             price=fill.price,
-            fee=fill.fee,
+            fee=fill.fee / 2,
             slippage_amount=0.0,
             order_type=OrderType.BUY_TO_OPEN if fill.order_type == OrderType.REVERSE_TO_LONG else OrderType.SELL_TO_OPEN,
             open_close="OPEN",

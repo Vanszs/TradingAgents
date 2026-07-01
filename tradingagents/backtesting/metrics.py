@@ -66,6 +66,8 @@ class MetricsCalculator:
         returns: pd.Series = (
             df["total_equity"].pct_change().fillna(0.0).astype(float)
         )
+        # Replace infinite returns (e.g., equity goes to 0) with 0
+        returns = returns.replace([float("inf"), float("-inf")], 0.0)
 
         final_equity = float(df["total_equity"].iloc[-1])
         total_return = (
@@ -197,27 +199,19 @@ class MetricsCalculator:
             turnover += trade.notional
             total_slippage += trade.slippage_ticks * trade.tick_size * trade.quantity
 
-            is_long_open = (
-                trade.side == OrderSide.BUY
-                and trade.open_close.value in ("OPEN", "AUTO")
-            )
-            is_long_close = (
-                trade.side == OrderSide.SELL
-                and trade.open_close.value in ("CLOSE", "AUTO")
-            )
-            is_short_open = (
-                trade.side == OrderSide.SELL
-                and trade.open_close.value in ("OPEN", "AUTO")
-            )
-            is_short_close = (
-                trade.side == OrderSide.BUY
-                and trade.open_close.value in ("CLOSE", "AUTO")
-            )
+            # Normalize side and open_close to strings for robust comparison
+            side_str = trade.side.value if hasattr(trade.side, 'value') else str(trade.side)
+            oc_str = trade.open_close.value if hasattr(trade.open_close, 'value') else str(trade.open_close)
 
-            if trade.open_close.value == "CLOSE":
+            is_long_open = (side_str == "BUY" and oc_str in ("OPEN", "AUTO"))
+            is_long_close = (side_str == "SELL" and oc_str in ("CLOSE", "AUTO"))
+            is_short_open = (side_str == "SELL" and oc_str in ("OPEN", "AUTO"))
+            is_short_close = (side_str == "BUY" and oc_str in ("CLOSE", "AUTO"))
+
+            if oc_str == "CLOSE":
                 is_long_open = False
                 is_short_open = False
-            if trade.open_close.value == "OPEN":
+            if oc_str == "OPEN":
                 is_long_close = False
                 is_short_close = False
 
@@ -231,8 +225,8 @@ class MetricsCalculator:
                 qty_to_close = trade.quantity
                 close_price = trade.price
                 is_long = is_long_close or (
-                    trade.side == OrderSide.SELL
-                    and trade.open_close.value == "AUTO"
+                    side_str == "SELL"
+                    and oc_str == "AUTO"
                     and long_lots != []
                     and (sum(q for q, _, _ in long_lots) >= qty_to_close)
                 )

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
+from uuid import uuid4
 
 from .position import (
     Fill,
@@ -47,14 +48,15 @@ class RiskEngine:
 
     def __init__(
         self,
-        max_loss_per_trade_pct: float = 10.0,
-        max_portfolio_loss_pct: float = 20.0,
-        max_exposure_pct: float = 50.0,
-        max_single_trade_risk_pct: float = 2.0,
+        max_loss_per_trade_pct: float = 0.10,
+        max_portfolio_loss_pct: float = 0.20,
+        max_exposure_pct: float = 0.50,
+        max_single_trade_risk_pct: float = 0.02,
         liquidation_enabled: bool = True,
         stop_loss_enabled: bool = True,
         take_profit_enabled: bool = True,
         margin_call_threshold: float = 0.40,
+        auto_liquidate: bool = True,
     ):
         self.max_loss_per_trade_pct = max_loss_per_trade_pct
         self.max_portfolio_loss_pct = max_portfolio_loss_pct
@@ -64,6 +66,7 @@ class RiskEngine:
         self.stop_loss_enabled = stop_loss_enabled
         self.take_profit_enabled = take_profit_enabled
         self.margin_call_threshold = margin_call_threshold
+        self.auto_liquidate = auto_liquidate
 
     def check_bar(
         self,
@@ -95,7 +98,7 @@ class RiskEngine:
         notional = position.abs_qty() * close_price * multiplier
 
         # Step 1: Hard risk rule
-        if self._check_hard_risk(date, position, equity, events):
+        if self._check_hard_risk(date, position, equity, events, close_price):
             order = self._force_close_position(date, position, close_price, "hard_risk")
             return order, events
 
@@ -137,27 +140,35 @@ class RiskEngine:
         position: Position,
         equity: float,
         events: list[RiskEvent],
+        close_price: float = 0.0,
     ) -> bool:
         """PRD §11 step 1 — hard risk rule (max loss per trade, max portfolio loss)."""
         if position.is_flat():
             return False
 
-        # Check max single trade risk
-        unrealized_pnl = position.unrealized_pnl
-        if position.abs_qty() > 0 and equity > 0:
-            trade_risk_pct = abs(unrealized_pnl) / equity * 100
+        # Use fresh PnL calculation from current bar's close price
+        # instead of the cached position.unrealized_pnl field
+        if close_price > 0:
+            unrealized_pnl = position.unrealized_pnl_calc(close_price)
+        else:
+            unrealized_pnl = position.unrealized_pnl
+
+        # Only check max loss when position is LOSING (negative PnL).
+        # Profitable positions should not trigger the "max loss" rule.
+        if position.abs_qty() > 0 and equity > 0 and unrealized_pnl < 0:
+            trade_risk_pct = abs(unrealized_pnl) / equity
             if trade_risk_pct > self.max_loss_per_trade_pct:
                 events.append(RiskEvent(
                     date=date,
                     event_type="hard_risk",
                     side=position.side.value,
                     price=position.avg_entry_price,
-                    reason=f"Max single trade risk exceeded: {trade_risk_pct:.2f}%",
+                    reason=f"Max single trade risk exceeded: {trade_risk_pct * 100:.2f}%",
                 ))
                 return True
 
         # Check max portfolio loss
-        if equity < 0 or (position.unrealized_pnl < 0 and abs(position.unrealized_pnl) / equity > self.max_portfolio_loss_pct / 100):
+        if equity <= 0 or (unrealized_pnl < 0 and equity > 0 and abs(unrealized_pnl) / equity > self.max_portfolio_loss_pct):
             events.append(RiskEvent(
                 date=date,
                 event_type="hard_risk",
@@ -185,6 +196,7 @@ class RiskEngine:
             return None
 
         close_price = float(bar.get("close", 0))
+        open_price = float(bar.get("open", close_price))
         low_price = float(bar.get("low", close_price))
         high_price = float(bar.get("high", close_price))
 
@@ -194,14 +206,16 @@ class RiskEngine:
         else:
             worst_price = high_price
 
-        # Calculate worst-case equity
-        price_move = worst_price - position.avg_entry_price
+        # Calculate worst-case equity from open-price equity.
+        # equity = account_equity(open) = cash + unrealized_pnl_at_open
+        # worst_equity = equity + (worst_price - open_price) * qty * mult
+        # This avoids double-counting the PnL from entry to open.
         if position.side == PositionSide.LONG:
-            worst_pnl = price_move * position.abs_qty() * multiplier
+            worst_pnl_from_open = (worst_price - open_price) * position.abs_qty() * multiplier
         else:
-            worst_pnl = -price_move * position.abs_qty() * multiplier
+            worst_pnl_from_open = (open_price - worst_price) * position.abs_qty() * multiplier
 
-        worst_equity = equity + worst_pnl
+        worst_equity = equity + worst_pnl_from_open
 
         # Check maintenance margin
         notional = position.abs_qty() * worst_price * multiplier
@@ -215,7 +229,9 @@ class RiskEngine:
                 price=worst_price,
                 reason=f"Liquidation triggered: equity {worst_equity:.2f} < maintenance {maintenance:.2f}",
             ))
-            return self._force_close_position(date, position, worst_price, "liquidation")
+            if self.auto_liquidate:
+                return self._force_close_position(date, position, worst_price, "liquidation")
+            return None
 
         # Check margin call
         if MarginAccount.margin_call(worst_equity, maintenance, self.margin_call_threshold):
@@ -329,9 +345,10 @@ class RiskEngine:
         reason: str,
     ) -> Order:
         """Generate a forced close order."""
+        uid = uuid4().hex[:8]
         if position.side == PositionSide.LONG:
             return Order(
-                order_id=f"risk_close_{date}",
+                order_id=f"risk_close_{date}_{reason}_{uid}",
                 decision_id="",
                 ticker=position.ticker,
                 order_type=OrderType.SELL_TO_CLOSE,
@@ -342,7 +359,7 @@ class RiskEngine:
             )
         elif position.side == PositionSide.SHORT:
             return Order(
-                order_id=f"risk_close_{date}",
+                order_id=f"risk_close_{date}_{reason}_{uid}",
                 decision_id="",
                 ticker=position.ticker,
                 order_type=OrderType.BUY_TO_CLOSE,
@@ -353,7 +370,7 @@ class RiskEngine:
             )
         else:
             return Order(
-                order_id=f"risk_noop_{date}",
+                order_id=f"risk_noop_{date}_{uid}",
                 decision_id="",
                 ticker=position.ticker,
                 order_type=OrderType.NO_ORDER,

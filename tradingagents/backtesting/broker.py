@@ -65,6 +65,40 @@ class SimulatedBroker:
             o for o in self.pending_orders if o.status == "PENDING"
         ]
 
+    def execute_pending_orders_immediate(
+        self,
+        order: "Order",
+        market_point: "MarketPoint",
+        portfolio: "Portfolio",
+        spec: "InstrumentSpec",
+    ) -> list["Trade"]:
+        """Execute a single risk order immediately at the current bar's price.
+
+        Used for stop-loss, take-profit, and liquidation orders that must
+        be executed at the current bar's price, not deferred to the next day.
+        The order is NOT added to the pending queue — it's executed directly.
+        """
+        order.execution_date = market_point.date
+        try:
+            if order.is_reverse or order.order_type in (
+                OrderType.REVERSE_TO_LONG, OrderType.REVERSE_TO_SHORT,
+            ):
+                trades = self._execute_reverse(order, market_point, portfolio, spec)
+            else:
+                trades = [self._execute_order(order, market_point, portfolio, spec)]
+
+            for trade in trades:
+                portfolio.apply_trade(trade)
+            order.status = "FILLED"
+            self.filled_orders.append(order)
+            return trades
+        except Exception as exc:
+            order.status = "REJECTED"
+            order.rejection_reason = str(exc)
+            self.rejected_orders.append(order)
+            logger.warning("Risk order rejected: %s -- %s", order.order_id, exc)
+            return []
+
     # ------------------------------------------------------------------
     # Daily settlement
     # ------------------------------------------------------------------
@@ -101,6 +135,7 @@ class SimulatedBroker:
         if portfolio.is_intraday_breach(
             open_price=market_point.open,
             intraday_low=breach_price,
+            intraday_high=market_point.high,
         ):
             ev = MarginEvent(
                 date=market_point.date,
@@ -239,14 +274,10 @@ class SimulatedBroker:
             gross = fill_price * order.quantity * spec.multiplier
             fee = fee_per * order.quantity
         slippage_amount = abs(fill_price - base_price) * order.quantity * spec.multiplier
+        slippage_ticks = round(slippage_amount / (spec.tick_size * order.quantity)) if spec.tick_size > 0 and order.quantity > 0 else 0
 
-        # Realized PnL on closing leg
+        # Portfolio computes realized PnL in _apply_close (single source of truth)
         realized = 0.0
-        if order.order_type in (OrderType.SELL_TO_CLOSE, OrderType.BUY_TO_CLOSE):
-            if portfolio.position.quantity > 0:
-                realized = (fill_price - getattr(portfolio.position, "avg_entry_price", getattr(portfolio.position, "avg_price", 0.0))) * order.quantity * spec.multiplier
-            elif portfolio.position.quantity < 0:
-                realized = (getattr(portfolio.position, "avg_entry_price", getattr(portfolio.position, "avg_price", 0.0)) - fill_price) * order.quantity * spec.multiplier
 
         return LegacyTrade(
             date=market_point.date,
@@ -260,7 +291,7 @@ class SimulatedBroker:
             multiplier=spec.multiplier,
             notional=gross,
             tick_size=spec.tick_size,
-            slippage_ticks=0,
+            slippage_ticks=slippage_ticks,
             realized_pnl_delta=realized,
             margin_delta=0.0,
             open_close=OpenClose(order.open_close),
@@ -281,6 +312,11 @@ class SimulatedBroker:
         """PRD §12.6 — two-leg reverse: close first, then open."""
         from .decision_schema import Trade as LegacyTrade
 
+        if portfolio.is_flat():
+            raise ValueError(
+                "Cannot reverse: position is flat. Use OPEN instead."
+            )
+
         # Leg 1: close existing position
         close_side = "SELL" if portfolio.is_long() else "BUY"
         close_type = (
@@ -298,14 +334,18 @@ class SimulatedBroker:
 
         if close_side == "BUY":
             close_fill = base_price * (1 + slippage_pct)
-            close_fee_pct = self.config.buy_fee
+            close_fee_pct = getattr(self.config, "buy_fee", None)
         else:
             close_fill = base_price * (1 - slippage_pct)
-            close_fee_pct = self.config.sell_fee
+            close_fee_pct = getattr(self.config, "sell_fee", None)
 
         close_gross = close_fill * close_qty * spec.multiplier
-        close_fee = close_gross * close_fee_pct
+        if close_fee_pct is not None:
+            close_fee = close_gross * close_fee_pct
+        else:
+            close_fee = getattr(self.config, "fee_per_contract", 0.0) * close_qty
         close_slippage = abs(close_fill - base_price) * close_qty * spec.multiplier
+        close_slippage_ticks = round(abs(close_fill - base_price) / spec.tick_size) if spec.tick_size > 0 else 0
 
         # Realized PnL on close leg
         realized = 0.0
@@ -326,7 +366,7 @@ class SimulatedBroker:
             multiplier=spec.multiplier,
             notional=close_gross,
             tick_size=spec.tick_size,
-            slippage_ticks=0,
+            slippage_ticks=close_slippage_ticks,
             realized_pnl_delta=realized,
             margin_delta=0.0,
             open_close=OpenClose.CLOSE,
@@ -345,14 +385,18 @@ class SimulatedBroker:
 
         if open_side == "BUY":
             open_fill = base_price * (1 + slippage_pct)
-            open_fee_pct = self.config.buy_fee
+            open_fee_pct = getattr(self.config, "buy_fee", None)
         else:
             open_fill = base_price * (1 - slippage_pct)
-            open_fee_pct = self.config.sell_fee
+            open_fee_pct = getattr(self.config, "sell_fee", None)
 
         open_gross = open_fill * order.quantity * spec.multiplier
-        open_fee = open_gross * open_fee_pct
+        if open_fee_pct is not None:
+            open_fee = open_gross * open_fee_pct
+        else:
+            open_fee = getattr(self.config, "fee_per_contract", 0.0) * order.quantity
         open_slippage = abs(open_fill - base_price) * order.quantity * spec.multiplier
+        open_slippage_ticks = round(abs(open_fill - base_price) / spec.tick_size) if spec.tick_size > 0 else 0
 
         open_trade = LegacyTrade(
             date=market_point.date,
@@ -366,7 +410,7 @@ class SimulatedBroker:
             multiplier=spec.multiplier,
             notional=open_gross,
             tick_size=spec.tick_size,
-            slippage_ticks=0,
+            slippage_ticks=open_slippage_ticks,
             realized_pnl_delta=0.0,
             margin_delta=0.0,
             open_close=OpenClose.OPEN,

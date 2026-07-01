@@ -43,6 +43,7 @@ class OrderGenerator:
         self.config = config
         self.exec_cfg = config.execution
         self.margin_cfg = config.margin
+        self._dsm_config = config.decision_mapping
 
     # ==================================================================
     # New PRD-compliant entry point
@@ -241,9 +242,8 @@ class OrderGenerator:
         delegate to decide().
         """
         from .decision_state_manager import DecisionStateManager
-        from .position import DecisionMappingConfig
 
-        dsm = DecisionStateManager(DecisionMappingConfig())
+        dsm = DecisionStateManager(self._dsm_config)
         ext = dsm.map(decision=decision, current_position=pos)
 
         equity = portfolio.account_equity(reference_point.close)
@@ -353,6 +353,10 @@ class OrderGenerator:
             else:
                 alloc = 0.25
 
+        # Guard against percentage values (e.g., 30 instead of 0.30)
+        if alloc > 1.0:
+            alloc = alloc / 100.0
+
         # For REDUCE: apply percentage to current position quantity
         if decision.position_intent == "reduce" and position.abs_qty() > 0:
             return max(1, int(position.abs_qty() * alloc))
@@ -363,7 +367,10 @@ class OrderGenerator:
 
         # For OPEN: apply percentage to equity
         target_notional = equity * alloc
-        price_ref = reference_price or decision.stop_price or 100.0
+        price_ref = reference_price or decision.stop_price
+        if not price_ref or price_ref <= 0:
+            logger.warning("Cannot size order: no reference price available for %s", decision.ticker)
+            return 0
         multiplier = getattr(self.exec_cfg, "contract_multiplier", 1.0)
         qty = int(target_notional // (price_ref * multiplier))
         return max(0, qty)
