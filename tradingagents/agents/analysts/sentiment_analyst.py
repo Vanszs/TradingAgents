@@ -38,11 +38,8 @@ from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
-from tradingagents.dataflows.bluesky import fetch_bluesky_posts
-from tradingagents.dataflows.fear_greed import get_fear_greed_index
-from tradingagents.dataflows.mastodon import fetch_mastodon_posts
-from tradingagents.dataflows.reddit import fetch_reddit_posts
-from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
+# Live-API imports are deferred to the else branch of the backtest check
+# so backtest runs don't fail if social-media dependencies are missing.
 
 
 def _seven_days_back(trade_date: str) -> str:
@@ -56,6 +53,8 @@ def create_sentiment_analyst(llm):
     Greed data, injects them into the prompt as structured blocks, and
     produces a deterministic sentiment report via structured output (with a
     free-text fallback for providers that do not support it).
+
+    In backtest mode, reads from snapshot data instead of live APIs.
     """
     structured_llm = bind_structured(llm, SentimentReport, "Sentiment Analyst")
 
@@ -66,46 +65,75 @@ def create_sentiment_analyst(llm):
         asset_type = state.get("asset_type", "stock")
         instrument_context = build_instrument_context(ticker, asset_type=asset_type)
 
-        # Pre-fetch every source. Each fetcher degrades gracefully and
-        # returns a string (no exceptions surface from here), so the LLM
-        # always sees something — either real data or a clear placeholder.
-        news_block = get_news.invoke(
-            {"ticker": ticker, "start_date": start_date, "end_date": end_date}
-        )
+        # Check backtest mode
+        from tradingagents.dataflows.config import get_config
+        runtime_config = get_config()
+        is_backtest = runtime_config.get("backtest_mode", False)
 
-        # Convert crypto ticker format for StockTwits (BTC-USD -> BTC.X)
-        if asset_type == "crypto":
-            st_ticker = ticker.split("-")[0] + ".X"
+        if is_backtest:
+            # Backtest: use snapshot data
+            snapshot_data = runtime_config.get("snapshot_data", {})
+            news_items = snapshot_data.get("news", [])
+            sentiment_items = snapshot_data.get("sentiment", [])
+
+            news_block = _format_snapshot_news_block(news_items)
+            stocktwits_block = _format_snapshot_sentiment_block(sentiment_items, "stocktwits")
+            reddit_block = _format_snapshot_sentiment_block(sentiment_items, "reddit")
+            bluesky_block = _format_snapshot_sentiment_block(sentiment_items, "bluesky")
+            mastodon_block = _format_snapshot_sentiment_block(sentiment_items, "mastodon")
+            fear_greed_block = _format_snapshot_sentiment_block(sentiment_items, "fear_greed")
+
+            if asset_type == "crypto":
+                community_context = (
+                    "Focus on crypto-specific communities. "
+                    "Note: Data from backtest snapshot (previous trading day)."
+                )
+            else:
+                community_context = (
+                    "Focus on stock-specific communities. "
+                    "Note: Data from backtest snapshot (previous trading day)."
+                )
         else:
-            st_ticker = ticker
-        stocktwits_block = fetch_stocktwits_messages(st_ticker, limit=30)
+            # Live mode: pre-fetch from APIs (lazy import to avoid
+            # failing backtest when social-media deps are missing)
+            from tradingagents.dataflows.bluesky import fetch_bluesky_posts
+            from tradingagents.dataflows.fear_greed import get_fear_greed_index
+            from tradingagents.dataflows.mastodon import fetch_mastodon_posts
+            from tradingagents.dataflows.reddit import fetch_reddit_posts
+            from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 
-        if asset_type == "crypto":
-            crypto_subs = ("CryptoCurrency", "Bitcoin", "ethereum", "CryptoMarkets", "altcoin")
-            reddit_block = fetch_reddit_posts(ticker.split("-")[0], subreddits=crypto_subs)
-        else:
-            reddit_block = fetch_reddit_posts(ticker)
-
-        # Bluesky (X/Twitter alternative) + Mastodon: free, no-auth public
-        # endpoints. Use the bare symbol/name as the search term/hashtag.
-        base = ticker.split("-")[0] if asset_type == "crypto" else ticker
-        bluesky_block = fetch_bluesky_posts(f"${base}")
-        mastodon_block = fetch_mastodon_posts(base)
-        # Fear & Greed Index: aggregate market mood (crypto index also serves
-        # as a broad risk-on/risk-off proxy for equities).
-        fear_greed_block = get_fear_greed_index()
-
-        if asset_type == "crypto":
-            community_context = (
-                "Focus on crypto-specific communities: Reddit (r/CryptoCurrency, r/Bitcoin, r/ethereum, "
-                "r/CryptoMarkets), Twitter/X crypto hashtags, and Telegram sentiment. "
-                "Note: StockTwits data may still be available for some crypto tickers."
+            news_block = get_news.invoke(
+                {"ticker": ticker, "start_date": start_date, "end_date": end_date}
             )
-        else:
-            community_context = (
-                "Focus on stock-specific communities: StockTwits cashtag streams, "
-                "Reddit (r/wallstreetbets, r/stocks, r/investing), and financial Twitter."
-            )
+
+            if asset_type == "crypto":
+                st_ticker = ticker.split("-")[0] + ".X"
+            else:
+                st_ticker = ticker
+            stocktwits_block = fetch_stocktwits_messages(st_ticker, limit=30)
+
+            if asset_type == "crypto":
+                crypto_subs = ("CryptoCurrency", "Bitcoin", "ethereum", "CryptoMarkets", "altcoin")
+                reddit_block = fetch_reddit_posts(ticker.split("-")[0], subreddits=crypto_subs)
+            else:
+                reddit_block = fetch_reddit_posts(ticker)
+
+            base = ticker.split("-")[0] if asset_type == "crypto" else ticker
+            bluesky_block = fetch_bluesky_posts(f"${base}")
+            mastodon_block = fetch_mastodon_posts(base)
+            fear_greed_block = get_fear_greed_index()
+
+            if asset_type == "crypto":
+                community_context = (
+                    "Focus on crypto-specific communities: Reddit (r/CryptoCurrency, r/Bitcoin, r/ethereum, "
+                    "r/CryptoMarkets), Twitter/X crypto hashtags, and Telegram sentiment. "
+                    "Note: StockTwits data may still be available for some crypto tickers."
+                )
+            else:
+                community_context = (
+                    "Focus on stock-specific communities: StockTwits cashtag streams, "
+                    "Reddit (r/wallstreetbets, r/stocks, r/investing), and financial Twitter."
+                )
 
         system_message = _build_system_message(
             ticker=ticker,
@@ -278,3 +306,61 @@ def create_social_media_analyst(llm):
         stacklevel=2,
     )
     return create_sentiment_analyst(llm)
+
+
+# ---------------------------------------------------------------------------
+# Snapshot formatting helpers for backtest mode
+# ---------------------------------------------------------------------------
+
+def _format_snapshot_news_block(items: list) -> str:
+    """Format snapshot news items into a readable block for the LLM."""
+    if not items:
+        return "No news data available in backtest snapshot."
+    lines = []
+    for item in items:
+        pub = item.get("published_at", item.get("date", ""))
+        title = item.get("title", "")
+        summary = item.get("summary", item.get("description", ""))
+        source = item.get("source", "")
+        line = f"[{pub}] {source}: {title}" if source else f"[{pub}] {title}"
+        lines.append(line)
+        if summary:
+            lines.append(f"  {summary}")
+    return "\n\n".join(lines)
+
+
+def _format_snapshot_sentiment_block(items: list, source_filter: str = "") -> str:
+    """Format snapshot sentiment items filtered by source type."""
+    if not items:
+        return "Not available in backtest mode."
+
+    # Filter by source if specified
+    filtered = items
+    if source_filter:
+        filtered = [
+            it for it in items
+            if source_filter.lower() in it.get("source", "").lower()
+            or source_filter.lower() in it.get("provider", "").lower()
+        ]
+
+    if not filtered:
+        return f"No {source_filter} data available in backtest snapshot."
+
+    lines = []
+    for item in filtered[:30]:
+        ts = item.get("timestamp", item.get("date", ""))
+        score = item.get("score", item.get("sentiment_score", ""))
+        source = item.get("source", item.get("provider", ""))
+        label = item.get("label", item.get("sentiment_label", ""))
+        text = item.get("text", item.get("headline", ""))
+        parts = [f"[{ts}]"]
+        if source:
+            parts.append(f"{source}:")
+        if label:
+            parts.append(f"({label})")
+        if score:
+            parts.append(f"score={score}")
+        if text:
+            parts.append(f"— {text}")
+        lines.append(" ".join(parts))
+    return "\n".join(lines)

@@ -181,6 +181,12 @@ class TradingAgentsRunner:
                 "disable_live_web_search": True,
                 "disable_live_fundamentals": True,
                 "require_fundamental_available_date": True,
+                "data_vendors": {
+                    "core_stock_apis": "snapshot",
+                    "technical_indicators": "snapshot",
+                    "fundamental_data": "snapshot",
+                    "news_data": "snapshot",
+                },
             }
         )
 
@@ -193,6 +199,14 @@ class TradingAgentsRunner:
                     "snapshot_root": str(snapshot.root_path.parent.parent),
                     "instrument_multiplier": snapshot.spec.multiplier,
                     "instrument_tick_size": snapshot.spec.tick_size,
+                    "snapshot_data": {
+                        "ohlcv": snapshot.ohlcv,
+                        "news": snapshot.news,
+                        "fundamentals": snapshot.fundamentals,
+                        "sentiment": snapshot.sentiment,
+                        "broker_activity": snapshot.broker_activity,
+                        "spec": snapshot.spec,
+                    },
                 }
             )
 
@@ -283,6 +297,15 @@ class TradingAgentsRunner:
             if actual != expected:
                 raise ValueError(
                     f"Unsafe backtest config: {key} must be {expected}, got {actual}"
+                )
+
+        # Validate data_vendors — all categories must point to snapshot
+        data_vendors = config.get("data_vendors", {})
+        for category, vendor in data_vendors.items():
+            if vendor != "snapshot":
+                raise ValueError(
+                    f"Unsafe backtest config: data_vendors['{category}'] "
+                    f"must be 'snapshot', got '{vendor}'"
                 )
 
     def _call_tradingagents_repo(
@@ -380,7 +403,7 @@ class TradingAgentsRunner:
         safe_config: dict[str, Any],
         agent_callback: Optional[Any] = None,
     ) -> Any:
-        selected_analysts = ["market"]
+        selected_analysts = ["market", "news", "social", "fundamentals"]
         asset_type = safe_config.get("asset_type", "stock")
         # Callback list passed to TradingAgentsGraph; the LLM client
         # constructor forwards it to ChatOpenAI / ChatAnthropic / etc.
@@ -538,7 +561,7 @@ class TradingAgentsRunner:
         report = self._ensure_rating_header(report)
 
         last_data_date = snapshot.metadata.max_ohlcv_date or trade_date
-        decision_valid_from = self._next_valid_placeholder(trade_date)
+        decision_valid_from = self._next_valid_placeholder(trade_date, getattr(self, '_calendar', None))
         required_markers = [
             "Generated:",
             "Trade Date:",
@@ -584,11 +607,22 @@ Decision Valid From: {decision_valid_from}
         return f"**Rating**: {rating}\n\n{report.strip()}"
 
     @staticmethod
-    def _next_valid_placeholder(trade_date: str) -> str:
-        from datetime import timedelta
+    def _next_valid_placeholder(trade_date: str, calendar=None) -> str:
+        """Return the next valid trading day after trade_date.
 
-        d = Path(trade_date[:10]).parent  # dummy; use dateutil instead
-        from datetime import datetime
+        If a TradingCalendar is provided, uses it to skip holidays.
+        Otherwise falls back to weekend-only skipping.
+        """
+        if calendar is not None:
+            try:
+                next_day = calendar.next_trading_day(trade_date)
+                if next_day:
+                    return next_day
+            except (ValueError, KeyError):
+                pass
+        # Fallback: skip weekends only
+        from datetime import datetime, timedelta
+
         d = datetime.fromisoformat(trade_date[:10]).date()
         d = d + timedelta(days=1)
         while d.weekday() >= 5:

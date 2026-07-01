@@ -39,12 +39,15 @@ logger = logging.getLogger(__name__)
 
 
 # Node names that appear in the TradingAgents stock graph when
-# ``selected_analysts=["market"]``. We restrict emission to this
-# allowlist so nested chains (LLM, tool, retriever) don't pollute the
-# log.
+# ``selected_analysts=["market", "news", "social", "fundamentals"]``.
+# We restrict emission to this allowlist so nested chains (LLM, tool,
+# retriever) don't pollute the log.
 KNOWN_NODES: frozenset[str] = frozenset(
     {
         "Market Analyst",
+        "News Analyst",
+        "Sentiment Analyst",
+        "Fundamentals Analyst",
         "Bull Researcher",
         "Bear Researcher",
         "Research Manager",
