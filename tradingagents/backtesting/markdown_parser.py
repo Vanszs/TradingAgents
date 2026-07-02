@@ -161,7 +161,7 @@ class MarkdownDecisionParser:
 
         short_allowed = True
         if re.search(
-            r"(jangan|tidak)\s+(buka|entry|buy|beli|short).{0,40}(posisi|position)",
+            r"(jangan|tidak|no|don't)\s+(short|jual\s+pendek)",
             text,
             re.I,
         ):
