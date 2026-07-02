@@ -21,8 +21,11 @@ def create_news_analyst(llm):
         tools = [
             get_news,
             get_global_news,
-            get_web_search,
         ]
+        # Only add web_search in live mode (not backtest)
+        from tradingagents.dataflows.config import get_config
+        if not get_config().get("backtest_mode", False):
+            tools.append(get_web_search)
 
         system_message = (
             f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for {asset_label}-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Use get_web_search(query) to find the latest real-time information, recent news, and current analysis not covered by other tools. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."

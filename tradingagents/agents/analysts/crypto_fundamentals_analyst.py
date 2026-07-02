@@ -33,8 +33,11 @@ def create_crypto_fundamentals_analyst(llm):
         get_crypto_network_metrics,
         get_crypto_market_sentiment,
         get_crypto_onchain_news,
-        get_web_search,
     ]
+    # Only add web_search in live mode (not backtest)
+    from tradingagents.dataflows.config import get_config
+    if not get_config().get("backtest_mode", False):
+        tools.append(get_web_search)
 
     system_message = (
         "You are a crypto fundamentals researcher analyzing a digital asset. "
