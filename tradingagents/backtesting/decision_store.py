@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-from .decision_schema import ParsedDecision, ensure_dir
+from .position import ParsedDecision, ensure_dir
 
 
 class DecisionStore:

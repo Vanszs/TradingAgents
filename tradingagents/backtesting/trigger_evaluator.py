@@ -220,17 +220,6 @@ class TriggerEvaluator:
         matches = self.SETUP_INVALID_RE.findall(text)
         return len(matches) >= self.config.setup_invalid_keyword_threshold
 
-    def _compute_rr(self, decision: ExtendedDecision) -> Optional[float]:
-        """Reward:risk = (target - entry) / (entry - stop), always positive."""
-        if decision.stop_price is None or decision.take_profit is None:
-            return None
-        entry = decision.decision_valid_from  # not used directly; we need an entry ref
-        # Use a price ref if the decision has a stop_price; for R:R we treat
-        # stop/target as percentages of the most recent close when entry is unknown.
-        # But stop_price/take_profit are absolute; we need an entry ref.
-        # Fall back: if the decision carries no entry, R:R is None.
-        return None  # Without a recorded entry, can't compute R:R from stop/target alone.
-
     def _rr_deteriorated(
         self,
         today: ExtendedDecision,

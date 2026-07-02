@@ -16,7 +16,7 @@ The "notional" is the absolute current market value of the open position:
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 
 def notional_value(
@@ -115,28 +115,19 @@ def is_intraday_margin_breach(
     intraday_low: float,
     multiplier: float,
     maintenance_margin_pct: float,
+    intraday_high: Optional[float] = None,
 ) -> bool:
     """
-    Conservative intraday check: assumes price moved from open to intraday_low.
+    Conservative intraday check: assumes price moved from open to worst-case
+    intraday extreme.
 
-    For long positions, low < open means losses; for shorts, low < open is favorable.
-    We compute the worst-case equity (long loss or short loss depending on side)
-    and check whether maintenance margin would be violated.
+    For longs: worst case is price dropping to intraday_low.
+    For shorts: worst case is price rising to intraday_high.
 
-    To keep this conservative, we always use the side that loses money:
-        - if long:  loss = (open - low) * qty * mult
-        - if short: loss = (low - open) * |qty| * mult is wrong; shorts lose
-                    when price rises. Since we don't have intraday_high, we
-                    conservatively assume the worst side that would have hit
-                    our stop. We use a heuristic: only check the long-loss side
-                    when position is long, only check the short-loss side when
-                    position is short. We do not have intraday_high here, so
-                    for short positions we conservatively check (intraday_low
-                    implies short is *profitable* and is not a breach on this
-                    side). This is a known limitation; for shorts, the EOD
-                    check is the authoritative one. We still flag a breach
-                    if account equity at the close (open) already breaches.
+    When intraday_high is not provided for short positions, falls back to
+    open_price (no intraday breach from the low side; EOD check is authoritative).
     """
+
     if quantity == 0:
         return False
 
@@ -146,9 +137,16 @@ def is_intraday_margin_breach(
             (float(open_price) - worst_price) * quantity * multiplier
         )
     else:
-        # For short, we don't have intraday_high here. Assume no intraday breach
-        # from the low side; rely on EOD check.
-        worst_equity = float(account_equity_open)
+        # Short: worst case is price rising to intraday_high
+        if intraday_high is not None:
+            worst_price = float(intraday_high)
+            worst_equity = float(account_equity_open) - (
+                (worst_price - float(open_price)) * abs(quantity) * multiplier
+            )
+        else:
+            # No high available — conservatively check at open price only
+            worst_price = float(open_price)
+            worst_equity = float(account_equity_open)
 
     return is_margin_call(
         account_equity=worst_equity,
