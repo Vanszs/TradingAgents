@@ -189,14 +189,14 @@ class TestSnapshotProviderWithLookback(unittest.TestCase):
 
         (self.data_dir / "news.json").write_text(json.dumps([
             {"published_at": "2024-06-15 10:00:00", "title": "far_past"},
-            {"published_at": dates[395].date().isoformat() + " 10:00:00", "title": "near"},
+            {"published_at": dates[394].date().isoformat() + " 10:00:00", "title": "near"},
         ]))
         (self.data_dir / "fundamentals.json").write_text(json.dumps([
             {"available_date": "2024-03-31", "metric": "q1_old"},
-            {"available_date": dates[395].date().isoformat(), "metric": "q_near"},
+            {"available_date": dates[390].date().isoformat(), "metric": "q_near"},
         ]))
         (self.data_dir / "sentiment.json").write_text(json.dumps([
-            {"timestamp": dates[395].date().isoformat() + " 12:00:00", "score": 0.1},
+            {"timestamp": dates[394].date().isoformat() + " 12:00:00", "score": 0.1},
         ]))
         (self.data_dir / "broker_activity.json").write_text(json.dumps([]))
 

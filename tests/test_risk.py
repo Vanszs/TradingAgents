@@ -103,11 +103,13 @@ class TestRiskEngine:
 
     def test_liquidation_long(self):
         """PRD §15.3: Liquidation if equity < maintenance margin."""
+        # Use high thresholds so hard risk doesn't trigger first
+        engine = RiskEngine(max_loss_per_trade_pct=100.0, max_portfolio_loss_pct=100.0)
         position = Position(ticker="TEST", quantity=1000, avg_entry_price=100)
         # notional = 1000 * 80 * 1 = 80000, maintenance = 80000 * 0.35 = 28000
         # equity = 25000 < 28000 → liquidation
         bar = {"open": 82, "high": 83, "low": 79, "close": 80}
-        order, events = self.engine.check_bar(
+        order, events = engine.check_bar(
             "2026-01-01", bar, position, equity=25000,
             margin_rate=0.5, maintenance_rate=0.35, max_leverage=2.0,
         )
@@ -117,11 +119,13 @@ class TestRiskEngine:
 
     def test_liquidation_short(self):
         """PRD §15.3: Short liquidation check uses high price."""
+        # Use high thresholds so hard risk doesn't trigger first
+        engine = RiskEngine(max_loss_per_trade_pct=100.0, max_portfolio_loss_pct=100.0)
         position = Position(ticker="TEST", quantity=-1000, avg_entry_price=100)
         # notional = 1000 * 120 * 1 = 120000, maintenance = 120000 * 0.35 = 42000
         # equity = 40000 < 42000 → liquidation
         bar = {"open": 118, "high": 121, "low": 117, "close": 119}
-        order, events = self.engine.check_bar(
+        order, events = engine.check_bar(
             "2026-01-01", bar, position, equity=40000,
             margin_rate=0.5, maintenance_rate=0.35, max_leverage=2.0,
         )

@@ -42,13 +42,15 @@ def _make_decision(
 
 
 def _make_config() -> BacktestConfig:
-    return BacktestConfig(
+    cfg = BacktestConfig(
         ticker="AAPL",
         start_date="2024-01-02",
         end_date="2024-01-08",
         initial_cash=100_000.0,
         max_risk_per_trade_pct=0.01,
     )
+    cfg.execution.lot_size = 1
+    return cfg
 
 
 def _make_spec() -> InstrumentSpec:

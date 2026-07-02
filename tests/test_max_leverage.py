@@ -96,9 +96,9 @@ class TestMaxLeverage(unittest.TestCase):
         pos = Position(ticker="AAPL", quantity=500, avg_entry_price=150.0, mark_price=150.0)
         d = _make_decision("BUY_TO_ADD", allocation_pct=0.10, side="LONG")
         orders = og.decide(d, pos, 100_000.0, reference_price=150.0)
-        # 10% of 100k = 10k notional / 150 = 66 shares
+        # BUY_TO_ADD with 10% pyramiding of existing 500 shares = 50 shares
         self.assertEqual(len(orders), 1)
-        self.assertEqual(orders[0].quantity, 66)
+        self.assertEqual(orders[0].quantity, 50)
 
     def test_close_order_not_capped(self):
         """Close orders are not affected by max leverage cap."""
