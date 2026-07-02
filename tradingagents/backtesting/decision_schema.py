@@ -1,17 +1,25 @@
 """
 Core data structures for the stock margin backtester.
 
-All schemas are kept framework-agnostic (no LLM or broker coupling here).
-Supports:
-- Long + short positions with signed quantities
-- Margin (initial + maintenance) with auto-liquidation
-- Daily mark-to-market settlement at close
-- Snapshot-only historical data, next-session-open execution
+DEPRECATED TYPES: The following classes are LEGACY definitions kept for
+backward compatibility. New code should import from ``position.py`` instead:
 
-New PRD-compliant types (PositionSide, OrderType, etc.) live in position.py.
-This module keeps the legacy types (Action, Rating, etc.) for backward
-compatibility with existing code. When Phase 2-3 refactors portfolio.py,
-broker.py, and order_generator.py, they should migrate to the new types.
+- ``BacktestConfig``      → use ``position.BacktestConfig``
+- ``ExecutionConfig``     → use ``position.ExecutionConfig``
+- ``MarginConfig``        → use ``position.MarginConfig``
+- ``AgentConfig``         → use ``position.AgentConfig``
+- ``LeakageGuardConfig``  → use ``position.LeakageGuardConfig``
+- ``OutputConfig``        → use ``position.OutputConfig``
+- ``DataConfig``          → use ``position.DataConfig``
+- ``Order``               → use ``position.Order``
+- ``Trade``               → use ``position.Trade``
+- ``InstrumentSpec``      → use ``position.InstrumentSpec``
+- ``MarketPoint``         → use ``position.MarketPoint``
+- ``SnapshotMetadata``    → use ``position.SnapshotMetadata``
+- ``PortfolioSnapshot``   → use ``position.PortfolioSnapshot``
+- ``MarginEvent``         → use ``position.MarginEvent``
+
+The ``__init__.py`` re-exports both sets with V2 aliases for the new types.
 """
 from __future__ import annotations
 
@@ -170,12 +178,14 @@ class DataConfig:
     disable_live_web_search: bool = True
     disable_live_fundamentals: bool = True
     require_fundamental_available_date: bool = True
+    fetch_from_api: bool = False
+    api_cache_dir: str = "api_cache"
 
 
 @dataclass
 class AgentConfig:
     run_frequency: str = "daily"
-    report_language: str = "Indonesian"
+    report_language: str = "English"
     cache_reports: bool = True
     memory_enabled: bool = False
     backtest_mode: bool = True
@@ -189,6 +199,10 @@ class LeakageGuardConfig:
     require_snapshot_metadata: bool = True
     require_next_bar_execution: bool = True
     fail_on_future_data: bool = True
+    news_cutoff_strategy: str = "previous_day"
+    sentiment_cutoff_strategy: str = "previous_day"
+    broker_activity_cutoff_strategy: str = "previous_day"
+    fundamental_buffer_days: int = 3
 
 
 @dataclass
