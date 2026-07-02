@@ -86,11 +86,11 @@ backtest:
     overweight_size_multiplier: 0.5
     underweight_size_multiplier: 0.5
     default_reduce_pct: 0.5
-    base_allocation_pct: 0.30
+    base_allocation_pct: 0.30  # deprecated, use initial_entry_pct
+    initial_entry_pct: 0.30
 
   execution:
-    rule: next_open
-    lot_size: 100
+    lot_size: 1
     contract_multiplier: 1
     buy_fee: 0.0015
     sell_fee: 0.0025
@@ -117,6 +117,11 @@ backtest:
     disable_live_web_search: true
     disable_live_fundamentals: true
     require_fundamental_available_date: true
+    # Auto-fetch: when true, OHLCV/news/fundamentals are fetched from
+    # Yahoo Finance on first access and cached to api_cache_dir.
+    # Sentiment cannot be auto-fetched (no historical social-media data).
+    fetch_from_api: true
+    api_cache_dir: api_cache
 
   agent:
     report_language: English
@@ -130,6 +135,16 @@ backtest:
     require_snapshot_metadata: true
     require_next_bar_execution: true
     fail_on_future_data: true
+    # Anti-leakage hardened cutoffs:
+    # news/sentiment/broker_activity: "previous_day" = data from day BEFORE
+    #   trade_date only (prevents same-day information leakage).
+    #   "same_day" = data up to 16:30 on trade_date (legacy behavior).
+    # fundamental_buffer_days: fundamental data must be available at least
+    #   N days before trade_date (ensures public dissemination).
+    news_cutoff_strategy: previous_day
+    sentiment_cutoff_strategy: previous_day
+    broker_activity_cutoff_strategy: previous_day
+    fundamental_buffer_days: 3
 
   output:
     output_root: backtest_results
