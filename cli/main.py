@@ -1,5 +1,4 @@
 import datetime
-import os
 from functools import wraps
 from pathlib import Path
 from typing import Optional
@@ -15,30 +14,49 @@ import time
 from collections import deque
 
 from rich import box
+from rich.align import Align
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
+from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
 from cli.announcements import display_announcements, fetch_announcements
-from cli.models import AnalystType
 from cli.progress_contract import (
     ALL_TEAMS,
     ANALYST_AGENT_NAMES,
     ANALYST_MAPPING,
-    ANALYST_ORDER,
+    ANALYST_ORDER as PROGRESS_ANALYST_ORDER,
     ANALYST_REPORT_MAP,
     FIXED_AGENTS,
     REPORT_SECTIONS,
     classify_message_type,
-    extract_content_string,
     format_tool_args,
     short_agent_label,
 )
 from cli.stats_handler import StatsCallbackHandler
-from cli.utils import *
+from cli.utils import (
+    ask_anthropic_effort,
+    ask_gemini_thinking_config,
+    ask_glm_region,
+    ask_minimax_region,
+    ask_openai_reasoning_effort,
+    ask_output_language,
+    ask_qwen_region,
+    confirm_ollama_endpoint,
+    create_cli_layout,
+    detect_asset_type,
+    ensure_api_key,
+    get_analysis_date,
+    get_ticker,
+    select_analysts,
+    select_deep_thinking_agent,
+    select_llm_provider,
+    select_research_depth,
+    select_shallow_thinking_agent,
+)
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
@@ -738,7 +756,7 @@ def update_analyst_statuses(message_buffer, chunk, wall_time_tracker=None):
     if wall_time_tracker is not None:
         sync_analyst_tracker_from_chunk(wall_time_tracker, chunk)
 
-    for analyst_key in ANALYST_ORDER:
+    for analyst_key in PROGRESS_ANALYST_ORDER:
         if analyst_key not in selected:
             continue
 
@@ -789,7 +807,7 @@ def run_analysis(checkpoint: bool = False):
 
     # Normalize analyst selection to predefined order (selection is a 'set', order is fixed)
     selected_set = {analyst.value for analyst in selections["analysts"]}
-    selected_analyst_keys = [a for a in ANALYST_ORDER if a in selected_set]
+    selected_analyst_keys = [a for a in PROGRESS_ANALYST_ORDER if a in selected_set]
     analyst_execution_plan = build_analyst_execution_plan(
         selected_analyst_keys,
         concurrency_limit=config["analyst_concurrency_limit"],
@@ -1160,7 +1178,7 @@ def main_menu(ctx: typer.Context):
     if ctx.invoked_subcommand is not None:
         return
 
-    display_announcements(fetch_announcements())
+    display_announcements(console, fetch_announcements())
 
     choices = [
         questionary.Choice("📊 Analisis Saham Hari Ini (Live Interactive Analysis)", value="live"),
