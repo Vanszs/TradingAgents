@@ -324,45 +324,13 @@ class SnapshotDataProvider:
         ticker = yf.Ticker(sym)
         records: list[dict[str, Any]] = []
 
-        # Company info
+        # Current yfinance info has no historical publication timestamp.
         try:
-            info = ticker.info or {}
-            skip_keys = {"companyOfficers", "address1", "address2", "city", "state", "zip", "country", "phone", "website"}
-            for key, value in info.items():
-                if value is not None and key not in skip_keys:
-                    records.append({
-                        "metric": key,
-                        "value": value,
-                        "available_date": pd.Timestamp.now().strftime("%Y-%m-%d"),
-                        "period": "latest",
-                        "source": "yfinance_info",
-                    })
+            ticker.info
         except Exception as exc:
             logger.warning(f"[SNAPSHOT] Failed to fetch info for {symbol}: {exc}")
 
-        # Quarterly financial statements
-        for stmt_name, stmt_attr in [
-            ("balance_sheet", "quarterly_balance_sheet"),
-            ("income_statement", "quarterly_income_stmt"),
-            ("cashflow", "quarterly_cashflow"),
-        ]:
-            try:
-                stmt = getattr(ticker, stmt_attr, None)
-                if stmt is not None and not stmt.empty:
-                    for col in stmt.columns:
-                        date_str = col.strftime("%Y-%m-%d") if hasattr(col, "strftime") else str(col)[:10]
-                        for idx in stmt.index:
-                            val = stmt.loc[idx, col]
-                            if pd.notna(val):
-                                records.append({
-                                    "metric": f"{stmt_name}:{idx}",
-                                    "value": float(val) if isinstance(val, (int, float)) else str(val),
-                                    "available_date": date_str,
-                                    "period": "quarterly",
-                                    "source": f"yfinance_{stmt_attr}",
-                                })
-            except Exception as exc:
-                logger.warning(f"[SNAPSHOT] Failed to fetch {stmt_name} for {symbol}: {exc}")
+        # yfinance statement period ends are not publication dates; omit them.
 
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         self._write_json(cache_path, records)

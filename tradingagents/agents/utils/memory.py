@@ -68,9 +68,18 @@ class TradingMemoryLog:
         """Return entries with outcome:pending (for Phase B)."""
         return [e for e in self.load_entries() if e.get("pending")]
 
-    def get_past_context(self, ticker: str, n_same: int = 5, n_cross: int = 3) -> str:
+    def get_past_context(
+        self,
+        ticker: str,
+        n_same: int = 5,
+        n_cross: int = 3,
+        as_of: Optional[str] = None,
+    ) -> str:
         """Return formatted past context string for agent prompt injection."""
-        entries = [e for e in self.load_entries() if not e.get("pending")]
+        entries = [
+            e for e in self.load_entries()
+            if not e.get("pending") and (as_of is None or e.get("date", "") <= str(as_of))
+        ]
         if not entries:
             return ""
 

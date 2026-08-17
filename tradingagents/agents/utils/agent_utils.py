@@ -1,5 +1,3 @@
-from langchain_core.messages import HumanMessage, RemoveMessage
-
 # Import tools from separate utility files
 from tradingagents.agents.utils.core_stock_tools import get_stock_data
 from tradingagents.agents.utils.fundamental_data_tools import (
@@ -47,20 +45,55 @@ def build_instrument_context(ticker: str, asset_type: str = "stock") -> str:
         + extra_hint
     )
 
-def create_msg_delete():
-    def delete_messages(state):
-        """Clear messages and add placeholder for Anthropic compatibility"""
-        messages = state["messages"]
 
-        # Remove all messages
-        removal_operations = [RemoveMessage(id=m.id) for m in messages]
+def build_exchange_filing_context(ticker: str, asset_type: str = "stock") -> str:
+    """Return filing and regulatory disclosure guidance based on ticker and asset type."""
+    ticker_clean = ticker.strip()
+    ticker_upper = ticker_clean.upper()
 
-        # Add a minimal placeholder message
-        placeholder = HumanMessage(content="Continue")
+    if asset_type == "crypto" or ticker_upper.endswith("-USD"):
+        return (
+            "Exchange & Regulatory Context: On-chain metrics, tokenomics, protocol whitepapers, "
+            "developer GitHub activity, and analytics from platforms like CoinGecko and DeFiLlama."
+        )
 
-        return {"messages": removal_operations + [placeholder]}
+    if ticker_upper.endswith(".JK"):
+        return (
+            "Exchange & Regulatory Context: Indonesia Stock Exchange (IDX / Bursa Efek Indonesia - BEI) "
+            "regulated by OJK (Otoritas Jasa Keuangan). Key disclosures include Quarterly Financial Statements "
+            "(Q1, Semester I / Q2, Q3), Audited Annual Financial Statements, Keterbukaan Informasi BEI, "
+            "and domestic financial media (CNBC Indonesia, Bisnis.com, Kontan)."
+        )
 
-    return delete_messages
+    if ticker_upper.endswith(".TO"):
+        return (
+            "Exchange & Regulatory Context: Toronto Stock Exchange (TSX / TSX Venture), regulated by CIRO/CSA. "
+            "Disclosures on SEDAR+ (Annual Information Forms, Quarterly MD&A, Financial Statements)."
+        )
+
+    if ticker_upper.endswith(".L"):
+        return (
+            "Exchange & Regulatory Context: London Stock Exchange (LSE), regulated by the FCA. "
+            "Regulatory News Service (RNS) announcements, Annual Reports, and Half-Yearly Results."
+        )
+
+    if ticker_upper.endswith(".HK"):
+        return (
+            "Exchange & Regulatory Context: Hong Kong Exchanges and Clearing (HKEX), regulated by SFC. "
+            "HKEXnews announcements, Interim and Annual Reports."
+        )
+
+    if ticker_upper.endswith(".T"):
+        return (
+            "Exchange & Regulatory Context: Tokyo Stock Exchange (TSE / JPX), regulated by the FSA/SESC. "
+            "TDnet disclosures, Yuho (Yukashoken Hokokusho) Annual Securities Reports, and Tanshin quarterly summaries."
+        )
+
+    # US stocks or standard ticker without non-US dot suffix
+    return (
+        "Exchange & Regulatory Context: US Securities and Exchange Commission (SEC) EDGAR filings "
+        "(Form 10-K Annual Reports, Form 10-Q Quarterly Reports, Form 8-K Material Events) "
+        "and Investor Relations disclosures."
+    )
 
 
-        

@@ -38,8 +38,12 @@ from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
-# Live-API imports are deferred to the else branch of the backtest check
-# so backtest runs don't fail if social-media dependencies are missing.
+from tradingagents.dataflows.bluesky import fetch_bluesky_posts
+from tradingagents.dataflows.exa_search import ExaTimeTravelSearch
+from tradingagents.dataflows.fear_greed import get_fear_greed_index
+from tradingagents.dataflows.mastodon import fetch_mastodon_posts
+from tradingagents.dataflows.reddit import fetch_reddit_posts
+from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
 
 
 def _seven_days_back(trade_date: str) -> str:
@@ -66,12 +70,12 @@ def create_sentiment_analyst(llm):
         instrument_context = build_instrument_context(ticker, asset_type=asset_type)
 
         # Check backtest mode
-        from tradingagents.dataflows.config import get_config
+        from tradingagents.dataflows.config import get_config, is_point_in_time_mode
         runtime_config = get_config()
-        is_backtest = runtime_config.get("backtest_mode", False)
+        is_backtest = is_point_in_time_mode(runtime_config)
 
         if is_backtest:
-            # Backtest: use snapshot data
+            # Historical mode is snapshot-only and fails closed when absent.
             snapshot_data = runtime_config.get("snapshot_data", {})
             news_items = snapshot_data.get("news", [])
             sentiment_items = snapshot_data.get("sentiment", [])
@@ -82,46 +86,54 @@ def create_sentiment_analyst(llm):
             bluesky_block = _format_snapshot_sentiment_block(sentiment_items, "bluesky")
             mastodon_block = _format_snapshot_sentiment_block(sentiment_items, "mastodon")
             fear_greed_block = _format_snapshot_sentiment_block(sentiment_items, "fear_greed")
+            if not fear_greed_block:
+                fear_greed_block = "Historical Fear & Greed data unavailable in snapshot."
+            web_search_block = "Historical web-search data unavailable in snapshot."
 
             if asset_type == "crypto":
                 community_context = (
                     "Focus on crypto-specific communities. "
-                    "Note: Data from backtest snapshot (previous trading day)."
+                    "Snapshot-only historical data; missing sources are unavailable."
                 )
             else:
                 community_context = (
                     "Focus on stock-specific communities. "
-                    "Note: Data from backtest snapshot (previous trading day)."
+                    "Snapshot-only historical data; missing sources are unavailable."
                 )
         else:
-            # Live mode: pre-fetch from APIs (lazy import to avoid
-            # failing backtest when social-media deps are missing)
-            from tradingagents.dataflows.bluesky import fetch_bluesky_posts
-            from tradingagents.dataflows.fear_greed import get_fear_greed_index
-            from tradingagents.dataflows.mastodon import fetch_mastodon_posts
-            from tradingagents.dataflows.reddit import fetch_reddit_posts
-            from tradingagents.dataflows.stocktwits import fetch_stocktwits_messages
+            # Point-in-Time Live / Time-Travel mode:
+            # 1. Historical or live Fear & Greed index (clamped <= end_date)
+            fear_greed_block = get_fear_greed_index(trade_date=end_date)
 
+            # 2. News headlines
             news_block = get_news.invoke(
                 {"ticker": ticker, "start_date": start_date, "end_date": end_date}
             )
 
-            if asset_type == "crypto":
-                st_ticker = ticker.split("-")[0] + ".X"
+            # 3. Targeted Time-Travel Web Search for retail sentiment
+            exa_searcher = ExaTimeTravelSearch()
+            if ticker.endswith(".JK") or ticker.endswith(".jk"):
+                query = f"diskusi sentimen ritel saham {ticker} forum investasi komunitas Stockbit X"
+                community_context = (
+                    "Focus on Indonesian retail investment communities (Stockbit stream, Twitter/X #saham, forum lokal)."
+                )
+            elif asset_type == "crypto":
+                query = f"{ticker} crypto community sentiment retail mood discussions"
+                community_context = (
+                    "Focus on crypto communities (Reddit r/CryptoCurrency, crypto Twitter/X, Telegram sentiment)."
+                )
             else:
-                st_ticker = ticker
-            stocktwits_block = fetch_stocktwits_messages(st_ticker, limit=30)
+                query = f"{ticker} retail investor sentiment discussion forum Reddit StockTwits"
+                community_context = (
+                    "Focus on stock communities: StockTwits streams, Reddit (r/wallstreetbets, r/stocks), and financial Twitter."
+                )
 
-            if asset_type == "crypto":
-                crypto_subs = ("CryptoCurrency", "Bitcoin", "ethereum", "CryptoMarkets", "altcoin")
-                reddit_block = fetch_reddit_posts(ticker.split("-")[0], subreddits=crypto_subs)
-            else:
-                reddit_block = fetch_reddit_posts(ticker)
-
-            base = ticker.split("-")[0] if asset_type == "crypto" else ticker
-            bluesky_block = fetch_bluesky_posts(f"${base}")
-            mastodon_block = fetch_mastodon_posts(base)
-            fear_greed_block = get_fear_greed_index()
+            web_search_block = exa_searcher.search(query=query, trade_date=end_date, num_results=4)
+            stocktwits_block = fetch_stocktwits_messages(ticker)
+            reddit_block = fetch_reddit_posts(ticker)
+            bluesky_query = ticker if asset_type == "crypto" else f"${ticker}"
+            bluesky_block = fetch_bluesky_posts(bluesky_query)
+            mastodon_block = fetch_mastodon_posts(ticker)
 
             if asset_type == "crypto":
                 community_context = (
@@ -145,6 +157,7 @@ def create_sentiment_analyst(llm):
             bluesky_block=bluesky_block,
             mastodon_block=mastodon_block,
             fear_greed_block=fear_greed_block,
+            web_search_block=web_search_block,
             community_context=community_context,
         )
 
@@ -153,8 +166,7 @@ def create_sentiment_analyst(llm):
                 (
                     "system",
                     "You are a helpful AI assistant, collaborating with other assistants."
-                    " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                    " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
+                    " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
                     "\n{system_message}\n"
                     "For your reference, the current date is {current_date}. {instrument_context}",
                 ),
@@ -199,6 +211,7 @@ def _build_system_message(
     bluesky_block: str = "",
     mastodon_block: str = "",
     fear_greed_block: str = "",
+    web_search_block: str = "",
     community_context: str = "",
 ) -> str:
     """Assemble the sentiment-analyst system message with structured data blocks."""
@@ -248,6 +261,13 @@ Macro risk-on/risk-off proxy. Extreme readings can be contrarian signals. (Crypt
 {fear_greed_block}
 <end_of_fear_greed>
 
+### Web search — Exa time-travel retail research
+Historical web results, kept separate from direct social-source blocks.
+
+<start_of_web_search>
+{web_search_block}
+<end_of_web_search>
+
 ## How to analyze this data (best practices)
 
 1. **Read the StockTwits Bullish/Bearish ratio as a leading retail-sentiment signal.** A 70/30 bullish/bearish split is moderately bullish; ≥90/10 may indicate over-extension and contrarian risk; 50/50 is uncertainty. Sample size matters — base rates on the actual message count, not percentages alone.
@@ -275,7 +295,7 @@ Fill the following fields:
 - **overall_score**: A number from 0 (maximally bearish) to 10 (maximally bullish). 5 is neutral.
   Must be consistent with overall_band.
 - **confidence**: low / medium / high, based on data quality and sample size across the six sources.
-- **narrative**: Full source-by-source breakdown (news / StockTwits / Reddit / Bluesky / Mastodon / Fear & Greed)
+- **narrative**: Full source-by-source breakdown (news / StockTwits / Reddit / Bluesky / Mastodon / Fear & Greed / Exa web search)
   with specific evidence, cross-source divergences and alignments, dominant narrative themes, catalysts and risks,
   and a markdown summary table of key sentiment signals (direction, source, supporting evidence).
 
@@ -284,28 +304,6 @@ Fill the following fields:
 {community_context}
 
 {get_language_instruction()}"""
-
-
-# ---------------------------------------------------------------------------
-# Backwards-compatibility shim
-# ---------------------------------------------------------------------------
-def create_social_media_analyst(llm):
-    """Deprecated alias for :func:`create_sentiment_analyst`.
-
-    Kept so existing code that imports ``create_social_media_analyst``
-    continues to work.
-
-    .. deprecated::
-        Import :func:`create_sentiment_analyst` directly instead.
-    """
-    import warnings
-    warnings.warn(
-        "create_social_media_analyst is deprecated and will be removed in a "
-        "future version. Use create_sentiment_analyst instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return create_sentiment_analyst(llm)
 
 
 # ---------------------------------------------------------------------------

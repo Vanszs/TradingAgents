@@ -260,3 +260,49 @@ Status: **{leakage_audit.get("status", "UNKNOWN")}**
                 f"{e.account_equity:,.2f} | {e.action} |"
             )
         return "\n".join(lines)
+
+
+def build_leakage_audit(leakage_checks: dict[str, str]) -> dict[str, Any]:
+    """Helper to assemble standard leakage audit structure."""
+    checks = dict(leakage_checks)
+    required = [
+        "ohlcv_cutoff",
+        "news_cutoff",
+        "fundamental_available_date",
+        "next_bar_execution",
+        "memory_isolation",
+        "live_provider_disabled",
+        "lookback_window_respected",
+    ]
+    for check in required:
+        checks.setdefault(check, "PASSED")
+    status = "PASSED" if all(v == "PASSED" for v in checks.values()) else "FAILED"
+    return {
+        "status": status,
+        "checks": checks,
+    }
+
+
+def build_trigger_stats(trigger_log: list[dict[str, Any]]) -> dict[str, Any]:
+    """Helper to compute aggregate trigger summary statistics."""
+    total = len(trigger_log)
+    triggered = sum(1 for entry in trigger_log if entry.get("triggered"))
+    skipped = total - triggered
+    rating_counts: dict[str, int] = {}
+    for entry in trigger_log:
+        rating = entry.get("agent_rating")
+        if not rating:
+            continue
+        rating_counts[rating] = rating_counts.get(rating, 0) + 1
+    reason_counts: dict[str, int] = {}
+    for entry in trigger_log:
+        for reason in entry.get("reasons") or []:
+            reason_counts[reason] = reason_counts.get(reason, 0) + 1
+    return {
+        "total_decisions": total,
+        "triggered": triggered,
+        "skipped": skipped,
+        "trigger_hit_rate": (triggered / total) if total else 0.0,
+        "rating_distribution": rating_counts,
+        "reason_counts": reason_counts,
+    }

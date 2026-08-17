@@ -515,6 +515,7 @@ class ParsedDecision:
     stop_price: Optional[float] = None
     take_profit: Optional[float] = None
     time_horizon_days: Optional[int] = None
+    time_horizon_label: Optional[str] = None
     thesis_summary: str = ""
     source_report_path: Optional[str] = None
     raw_text_excerpt: Optional[str] = None

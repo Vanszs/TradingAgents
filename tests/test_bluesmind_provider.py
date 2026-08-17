@@ -131,6 +131,17 @@ class TestOpenAIClient:
         llm = client.get_llm()
         assert getattr(llm, "use_responses_api", False) is True
 
+    def test_openai_compatible_gateway_uses_chat_completions(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-gateway-key")
+        mod = _reload_client()
+        client = mod.OpenAIClient(
+            model="ag/gemini-3.7-flash-high",
+            provider="openai",
+            base_url="https://gateway.example/v1",
+        )
+        llm = client.get_llm()
+        assert not getattr(llm, "use_responses_api", False)
+
 
 # ---------------------------------------------------------------------------
 # 4. model_catalog

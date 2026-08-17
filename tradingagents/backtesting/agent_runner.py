@@ -165,6 +165,7 @@ class TradingAgentsRunner:
             {
                 "asset_type": AssetClass.STOCK.value,
                 "backtest_mode": True,
+                "point_in_time_mode": True,
                 "memory_enabled": False,
                 "web_search_enabled": False,
                 "data_provider": "snapshot",
@@ -278,6 +279,7 @@ class TradingAgentsRunner:
 
         required_values = {
             "backtest_mode": True,
+            "point_in_time_mode": True,
             "memory_enabled": False,
             "web_search_enabled": False,
             "disable_live_news": True,

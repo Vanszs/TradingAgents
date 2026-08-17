@@ -26,8 +26,6 @@ from typing import Any, Optional
 
 import pandas as pd
 
-logger = logging.getLogger(__name__)
-
 from .agent_runner import TradingAgentsRunner
 from .broker import SimulatedBroker
 from .calendar import TradingCalendar
@@ -40,19 +38,26 @@ from .decision_schema import (
     OpenClose,
     Order,
 )
-from .position import ParsedDecision
+from .decision_state_manager import DecisionStateManager
 from .decision_store import DecisionStore
+from .margin import MarginAccount
 from .markdown_parser import MarkdownDecisionParser
 from .metrics import MetricsCalculator
 from .order_generator import OrderGenerator
 from .portfolio import PortfolioV2
-from .margin import MarginAccount
-from .risk import RiskEngine
-from .reports import BacktestReportGenerator
+from .position import (
+    DecisionMappingConfig,
+    MarginConfig,
+    ParsedDecision,
+    Position,
+    RiskConfig,
+)
+from .reports import BacktestReportGenerator, build_leakage_audit, build_trigger_stats
+from .risk import RiskEngine, compute_atr, update_position_risk_levels
 from .snapshot_provider import SnapshotDataProvider
-from .position import Position, MarginConfig, RiskConfig, DecisionMappingConfig
-from .decision_state_manager import DecisionStateManager
 from .trigger_evaluator import TriggerConfig, TriggerEvaluator, TriggerResult
+
+logger = logging.getLogger(__name__)
 
 
 class WalkForwardBacktestRunner:
@@ -732,7 +737,8 @@ class WalkForwardBacktestRunner:
         alone tipped the account below maintenance). Returns None for a
         flat position.
         """
-        from .position import Order as PositionOrder, OrderType
+        from .position import Order as PositionOrder
+        from .position import OrderType
 
         if self.portfolio.is_flat():
             return None
@@ -860,124 +866,18 @@ class WalkForwardBacktestRunner:
         self.broker.add_pending_orders(orders)
 
     def _compute_atr(self, ohlcv_df, period: int = 14, current_date: str = None) -> Optional[float]:
-        """Compute ATR (Average True Range) from OHLCV DataFrame.
-
-        Returns the latest ATR value, or None if insufficient data.
-        When current_date is provided, filters OHLCV to prevent future data leakage.
-        """
-        if ohlcv_df is None or ohlcv_df.empty:
-            return None
-
-        # Filter to current_date to prevent future data leakage
-        if current_date is not None:
-            df = ohlcv_df[ohlcv_df["date"].astype(str) <= current_date].copy()
-        else:
-            df = ohlcv_df.copy()
-
-        if len(df) < period + 1:
-            return None
-
-        high = df["high"]
-        low = df["low"]
-        close = df["close"]
-        prev_close = close.shift(1)
-
-        tr = pd.concat([
-            high - low,
-            (high - prev_close).abs(),
-            (low - prev_close).abs(),
-        ], axis=1).max(axis=1)
-
-        atr = tr.rolling(window=period).mean().iloc[-1]
-        if pd.isna(atr):
-            return None
-        return float(atr)
+        """Compute ATR (Average True Range) from OHLCV DataFrame."""
+        return compute_atr(ohlcv_df, period, current_date)
 
     def _update_risk_levels(self, decision, ohlcv_df=None, current_date=None) -> None:
-        """Update position stop/take_profit from decision.
-
-        When holding a position (LONG/SHORT), always ensure stop_price and
-        take_profit are set. Priority:
-        1. LLM-provided values (with direction validation)
-        2. ATR-based computation (if use_atr_based_stops=True and ATR available)
-        3. Fixed percentage fallback
-        """
-        if not decision.valid:
-            return
-        if self.portfolio.is_flat():
-            return
-
-        position = self.portfolio.position
-        entry_price = position.avg_entry_price
-
-        # Validate and fix LLM-provided stop/take_profit direction
-        agent_stop = decision.stop_price
-        agent_tp = decision.take_profit
-
-        if entry_price > 0:
-            if position.is_short():
-                # SHORT: stop should be > entry, tp should be < entry
-                if agent_stop is not None and agent_tp is not None:
-                    if agent_stop < entry_price and agent_tp > entry_price:
-                        # Both swapped — swap them
-                        agent_stop, agent_tp = agent_tp, agent_stop
-                # Individual validation: discard invalid values
-                if agent_stop is not None and agent_stop <= entry_price:
-                    agent_stop = None  # Invalid stop for short, use fallback
-                if agent_tp is not None and agent_tp >= entry_price:
-                    agent_tp = None  # Invalid TP for short, use fallback
-            elif position.is_long():
-                # LONG: stop should be < entry, tp should be > entry
-                if agent_stop is not None and agent_tp is not None:
-                    if agent_stop > entry_price and agent_tp < entry_price:
-                        # Both swapped — swap them
-                        agent_stop, agent_tp = agent_tp, agent_stop
-                # Individual validation: discard invalid values
-                if agent_stop is not None and agent_stop >= entry_price:
-                    agent_stop = None  # Invalid stop for long, use fallback
-                if agent_tp is not None and agent_tp <= entry_price:
-                    agent_tp = None  # Invalid TP for long, use fallback
-
-        # Stop price: use LLM value or compute default
-        # Compute ATR once for both stop and take-profit
-        cached_atr = None
-        if self.config.risk.use_atr_based_stops and ohlcv_df is not None:
-            cached_atr = self._compute_atr(ohlcv_df, self.config.risk.atr_period, current_date=current_date)
-
-        if agent_stop is not None:
-            position.stop_price = agent_stop
-        elif entry_price > 0:
-            if cached_atr is not None:
-                # ATR-based stop
-                if position.is_long():
-                    position.stop_price = entry_price - (cached_atr * self.config.risk.atr_stop_multiplier)
-                else:  # SHORT
-                    position.stop_price = entry_price + (cached_atr * self.config.risk.atr_stop_multiplier)
-            else:
-                # Fallback to fixed percentage
-                stop_pct = self.config.risk.default_stop_pct
-                if position.is_long():
-                    position.stop_price = entry_price * (1 - stop_pct)
-                else:  # SHORT
-                    position.stop_price = entry_price * (1 + stop_pct)
-
-        # Take profit: use LLM value or compute default
-        if agent_tp is not None:
-            position.take_profit = agent_tp
-        elif entry_price > 0:
-            if cached_atr is not None:
-                # ATR-based take profit
-                if position.is_long():
-                    position.take_profit = entry_price + (cached_atr * self.config.risk.atr_tp_multiplier)
-                else:  # SHORT
-                    position.take_profit = entry_price - (cached_atr * self.config.risk.atr_tp_multiplier)
-            else:
-                # Fallback to fixed percentage
-                tp_pct = self.config.risk.default_take_profit_pct
-                if position.is_long():
-                    position.take_profit = entry_price * (1 + tp_pct)
-                else:  # SHORT
-                    position.take_profit = entry_price * (1 - tp_pct)
+        """Update position stop/take_profit from decision."""
+        update_position_risk_levels(
+            position=self.portfolio.position,
+            decision=decision,
+            risk_config=self.config.risk,
+            ohlcv_df=ohlcv_df,
+            current_date=current_date,
+        )
 
     def _safe_next_trading_day(self, current_date: str) -> Optional[str]:
         try:
@@ -1010,7 +910,7 @@ class WalkForwardBacktestRunner:
                 benchmark_curve = None
 
         # Build trigger / rating summary stats.
-        trigger_stats = self._build_trigger_stats()
+        trigger_stats = build_trigger_stats(self.trigger_log)
 
         summary_metrics = self.metrics.calculate(
             equity_curve=equity_df,
@@ -1035,7 +935,7 @@ class WalkForwardBacktestRunner:
             **summary_metrics,
         }
 
-        leakage_audit = self._build_leakage_audit()
+        leakage_audit = build_leakage_audit(self.leakage_checks)
 
         paths = self.reporter.export_all(
             summary=summary,
@@ -1055,46 +955,3 @@ class WalkForwardBacktestRunner:
             "margin_events": [e.to_dict() for e in all_margin_events],
         }
 
-    def _build_leakage_audit(self) -> dict[str, Any]:
-        checks = dict(self.leakage_checks)
-        required = [
-            "ohlcv_cutoff",
-            "news_cutoff",
-            "fundamental_available_date",
-            "next_bar_execution",
-            "memory_isolation",
-            "live_provider_disabled",
-            "lookback_window_respected",
-        ]
-        for check in required:
-            checks.setdefault(check, "PASSED")
-        status = "PASSED" if all(v == "PASSED" for v in checks.values()) else "FAILED"
-        return {
-            "status": status,
-            "checks": checks,
-        }
-
-    def _build_trigger_stats(self) -> dict[str, Any]:
-        total = len(self.trigger_log)
-        triggered = sum(1 for entry in self.trigger_log if entry.get("triggered"))
-        skipped = total - triggered
-        # Rating distribution based on saved decisions' parsed ratings.
-        rating_counts: dict[str, int] = {}
-        for entry in self.trigger_log:
-            rating = entry.get("agent_rating")
-            if not rating:
-                continue
-            rating_counts[rating] = rating_counts.get(rating, 0) + 1
-        # Reason frequency.
-        reason_counts: dict[str, int] = {}
-        for entry in self.trigger_log:
-            for reason in entry.get("reasons") or []:
-                reason_counts[reason] = reason_counts.get(reason, 0) + 1
-        return {
-            "total_decisions": total,
-            "triggered": triggered,
-            "skipped": skipped,
-            "trigger_hit_rate": (triggered / total) if total else 0.0,
-            "rating_distribution": rating_counts,
-            "reason_counts": reason_counts,
-        }

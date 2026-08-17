@@ -1,4 +1,5 @@
-import os
+import logging
+import math
 from datetime import datetime
 from typing import Annotated
 
@@ -6,13 +7,81 @@ import pandas as pd
 import yfinance as yf
 from dateutil.relativedelta import relativedelta
 
+from .config import is_point_in_time_mode
 from .stockstats_utils import (
-    StockstatsUtils,
-    _clean_dataframe,
     filter_financials_by_date,
     load_ohlcv,
     yf_retry,
 )
+
+logger = logging.getLogger(__name__)
+
+_SUPPORTED_INTERVALS = ("1m", "5m", "10m", "15m", "30m", "1h", "2h", "3h", "4h", "1d")
+
+
+def get_intraday_data(
+    symbol: str,
+    start: str,
+    end: str,
+    interval: str,
+    timezone: str = "UTC",
+) -> pd.DataFrame:
+    """Fetch validated timezone-aware OHLCV data for an execution interval."""
+    if interval not in _SUPPORTED_INTERVALS:
+        raise ValueError(f"unsupported execution interval: {interval}")
+    is_daily = interval == "1d"
+    start_dt = pd.Timestamp(start)
+    end_dt = pd.Timestamp(end)
+    if not is_daily and (start_dt.tzinfo is None or end_dt.tzinfo is None):
+        raise ValueError("intraday window must include timezone")
+    if end_dt <= start_dt:
+        raise ValueError("data end must be after start")
+    # yfinance expects date strings YYYY-MM-DD or unix timestamps, not ISO8601 with tz offset.
+    # For daily intervals, yfinance end date is exclusive, so if start and end fall on the same day,
+    # advance end by 1 day to capture that session.
+    if is_daily:
+        start_arg = start_dt.strftime("%Y-%m-%d")
+        end_arg = (
+            (end_dt + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+            if end_dt.date() == start_dt.date()
+            else end_dt.strftime("%Y-%m-%d")
+        )
+    else:
+        start_arg = start_dt.floor("s").to_pydatetime()
+        end_arg = end_dt.floor("s").to_pydatetime()
+    frame = yf_retry(
+        lambda: yf.Ticker(symbol.upper()).history(
+            start=start_arg, end=end_arg, interval=interval,
+            auto_adjust=False,
+        )
+    )
+    if frame.empty:
+        raise ValueError(f"no {interval} data for {symbol}")
+    frame = frame.copy()
+    if frame.index.tz is None:
+        if not is_daily:
+            raise ValueError("intraday provider returned naive timestamps")
+        # Daily bars carry a session date, not an instant. Attach the requested
+        # timezone without shifting the provider's calendar date.
+        frame.index = frame.index.tz_localize(timezone)
+    elif is_daily:
+        frame.index = pd.DatetimeIndex(
+            [timestamp.date() for timestamp in frame.index]
+        ).tz_localize(timezone)
+    else:
+        frame.index = frame.index.tz_convert(timezone)
+    frame = frame.rename(columns={column: column.lower() for column in frame.columns})
+    required = {"open", "high", "low", "close"}
+    if not required.issubset(frame.columns):
+        raise ValueError(f"intraday data missing columns: {sorted(required - set(frame.columns))}")
+    frame = frame.sort_index()
+    if frame.index.duplicated().any():
+        raise ValueError("intraday data contains duplicate timestamps")
+    numeric = frame[list(required)].apply(pd.to_numeric, errors="raise")
+    if not numeric.map(lambda value: math.isfinite(float(value)) and float(value) > 0).all().all():
+        raise ValueError("intraday prices must be finite and positive")
+    frame[list(required)] = numeric
+    return frame
 
 
 def get_YFin_data_online(
@@ -168,21 +237,11 @@ def get_stock_stats_indicators_window(
             current_dt = current_dt - relativedelta(days=1)
         
         # Build the result string
-        ind_string = ""
-        for date_str, value in date_values:
-            ind_string += f"{date_str}: {value}\n"
+        ind_string = "".join(f"{d}: {v}\n" for d, v in date_values)
         
     except Exception as e:
-        print(f"Error getting bulk stockstats data: {e}")
-        # Fallback to original implementation if bulk method fails
+        logger.warning(f"Error getting bulk stockstats data for {symbol} {indicator}: {e}")
         ind_string = ""
-        curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-        while curr_date_dt >= before:
-            indicator_value = get_stockstats_indicator(
-                symbol, indicator, curr_date_dt.strftime("%Y-%m-%d")
-            )
-            ind_string += f"{curr_date_dt.strftime('%Y-%m-%d')}: {indicator_value}\n"
-            curr_date_dt = curr_date_dt - relativedelta(days=1)
 
     result_str = (
         f"## {indicator} values from {before.strftime('%Y-%m-%d')} to {end_date}:\n\n"
@@ -209,49 +268,8 @@ def _get_stock_stats_bulk(
     data = load_ohlcv(symbol, curr_date)
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
-    
-    # Calculate the indicator for all rows at once
-    df[indicator]  # This triggers stockstats to calculate the indicator
-    
-    # Create a dictionary mapping date strings to indicator values
-    result_dict = {}
-    for _, row in df.iterrows():
-        date_str = row["Date"]
-        indicator_value = row[indicator]
-        
-        # Handle NaN/None values
-        if pd.isna(indicator_value):
-            result_dict[date_str] = "N/A"
-        else:
-            result_dict[date_str] = str(indicator_value)
-    
-    return result_dict
-
-
-def get_stockstats_indicator(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    indicator: Annotated[str, "technical indicator to get the analysis and report of"],
-    curr_date: Annotated[
-        str, "The current trading date you are trading on, YYYY-mm-dd"
-    ],
-) -> str:
-
-    curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-    curr_date = curr_date_dt.strftime("%Y-%m-%d")
-
-    try:
-        indicator_value = StockstatsUtils.get_stock_stats(
-            symbol,
-            indicator,
-            curr_date,
-        )
-    except Exception as e:
-        print(
-            f"Error getting stockstats indicator data for indicator {indicator} on {curr_date}: {e}"
-        )
-        return ""
-
-    return str(indicator_value)
+    df[indicator]
+    return dict(zip(df["Date"], df[indicator].fillna("N/A").astype(str)))
 
 
 def get_fundamentals(
@@ -265,6 +283,21 @@ def get_fundamentals(
 
         if not info:
             return f"No fundamentals data found for symbol '{ticker}'"
+
+        if is_point_in_time_mode() and curr_date:
+            publication = next(
+                (info.get(field) for field in (
+                    "available_date", "availableDate", "reportedDate",
+                    "filingDate", "publicationDate", "publishedAt", "published_at",
+                ) if info.get(field)),
+                None,
+            )
+            try:
+                publication_date = pd.Timestamp(publication).date().isoformat() if publication else None
+            except (TypeError, ValueError):
+                publication_date = None
+            if not publication_date or publication_date > curr_date:
+                return f"No fundamentally available data for {ticker} on {curr_date}."
 
         fields = [
             ("Name", info.get("longName")),
@@ -327,6 +360,8 @@ def get_balance_sheet(
 
         data = filter_financials_by_date(data, curr_date)
 
+        if is_point_in_time_mode():
+            data = data.iloc[0:0]
         if data.empty:
             return f"No balance sheet data found for symbol '{ticker}'"
             
@@ -359,6 +394,8 @@ def get_cashflow(
 
         data = filter_financials_by_date(data, curr_date)
 
+        if is_point_in_time_mode():
+            data = data.iloc[0:0]
         if data.empty:
             return f"No cash flow data found for symbol '{ticker}'"
             
@@ -391,6 +428,8 @@ def get_income_statement(
 
         data = filter_financials_by_date(data, curr_date)
 
+        if is_point_in_time_mode():
+            data = data.iloc[0:0]
         if data.empty:
             return f"No income statement data found for symbol '{ticker}'"
             

@@ -5,7 +5,7 @@
   "provider_mode": "snapshot",
   "max_ohlcv_date": "2026-05-26",
   "max_news_time": null,
-  "max_fundamental_available_date": null,
+  "max_fundamental_available_date": "2026-03-31",
   "max_sentiment_time": null,
   "max_broker_activity_time": null,
   "path": "snapshots/DEWA.JK/2026-05-26",

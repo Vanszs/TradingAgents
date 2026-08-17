@@ -1,6 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.utils.agent_utils import (
+    build_exchange_filing_context,
     build_instrument_context,
     get_balance_sheet,
     get_cashflow,
@@ -14,16 +15,14 @@ from tradingagents.agents.utils.web_search_tools import get_web_search
 def create_fundamentals_analyst(llm):
     def fundamentals_analyst_node(state):
         current_date = state["trade_date"]
-        instrument_context = build_instrument_context(state["company_of_interest"])
+        ticker = state["company_of_interest"]
+        asset_type = state.get("asset_type", "stock")
+        instrument_context = build_instrument_context(ticker, asset_type)
+        filing_context = build_exchange_filing_context(ticker, asset_type)
 
-        tools = [
-            get_fundamentals,
-            get_balance_sheet,
-            get_cashflow,
-            get_income_statement,
-        ]
-        # Only add web_search in live mode (not backtest)
         from tradingagents.dataflows.config import get_config
+
+        tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
         if not get_config().get("backtest_mode", False):
             tools.append(get_web_search)
 
@@ -32,6 +31,7 @@ def create_fundamentals_analyst(llm):
             + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
             + " Use the available tools: `get_fundamentals` for comprehensive company analysis, `get_balance_sheet`, `get_cashflow`, and `get_income_statement` for specific financial statements."
             + " Use `get_web_search(query)` for the latest real-time context not in the financial statements — earnings guidance, management changes, analyst ratings, or product news."
+            + f"\n\n{filing_context}"
             + get_language_instruction(),
         )
 
@@ -43,8 +43,7 @@ def create_fundamentals_analyst(llm):
                     " Use the provided tools to progress towards answering the question."
                     " If you are unable to fully answer, that's OK; another assistant with different tools"
                     " will help where you left off. Execute what you can to make progress."
-                    " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                    " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
+                    " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
                     " You have access to the following tools: {tool_names}.\n{system_message}"
                     "For your reference, the current date is {current_date}. {instrument_context}",
                 ),

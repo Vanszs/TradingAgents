@@ -43,5 +43,11 @@ def get_config() -> Dict:
         return deepcopy(_config)
 
 
+def is_point_in_time_mode(config: Optional[Dict] = None) -> bool:
+    """Return whether live vendor data must be rejected."""
+    active = get_config() if config is None else config
+    return bool(active.get("point_in_time_mode") or active.get("backtest_mode"))
+
+
 # Initialize with default config
 initialize_config()

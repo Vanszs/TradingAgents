@@ -16,17 +16,11 @@ Bar-by-bar stop/target processing with intraday ambiguity handling.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
-from .position import (
-    Fill,
-    Order,
-    OrderType,
-    Position,
-    PositionSide,
-)
 from .margin import MarginAccount
+from .position import Order, OrderType, Position, PositionSide
 
 
 @dataclass
@@ -174,7 +168,7 @@ class RiskEngine:
                 event_type="hard_risk",
                 side=position.side.value,
                 price=position.avg_entry_price,
-                reason=f"Max portfolio loss exceeded",
+                reason="Max portfolio loss exceeded",
             ))
             return True
 
@@ -379,3 +373,115 @@ class RiskEngine:
                 price=price,
                 reason="no_position",
             )
+
+
+def compute_atr(ohlcv_df, period: int = 14, current_date: str = None) -> Optional[float]:
+    """Compute ATR (Average True Range) from OHLCV DataFrame.
+
+    Returns the latest ATR value, or None if insufficient data.
+    When current_date is provided, filters OHLCV to prevent future data leakage.
+    """
+    if ohlcv_df is None or ohlcv_df.empty:
+        return None
+
+    import pandas as pd
+    # Filter to current_date to prevent future data leakage
+    if current_date is not None:
+        df = ohlcv_df[ohlcv_df["date"].astype(str) <= current_date].copy()
+    else:
+        df = ohlcv_df.copy()
+
+    if len(df) < period + 1:
+        return None
+
+    high = df["high"]
+    low = df["low"]
+    close = df["close"]
+    prev_close = close.shift(1)
+
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+
+    atr = tr.rolling(window=period).mean().iloc[-1]
+    if pd.isna(atr):
+        return None
+    return float(atr)
+
+
+def update_position_risk_levels(
+    position: Position,
+    decision: Any,
+    risk_config: Any,
+    ohlcv_df: Any = None,
+    current_date: str = None,
+) -> None:
+    """Update position stop/take_profit from decision and risk config.
+
+    When holding a position (LONG/SHORT), always ensure stop_price and
+    take_profit are set.
+    """
+    if not getattr(decision, "valid", True):
+        return
+    if position.is_flat():
+        return
+
+    entry_price = position.avg_entry_price
+    agent_stop = getattr(decision, "stop_price", None)
+    agent_tp = getattr(decision, "take_profit", None)
+
+    if entry_price > 0:
+        if position.is_short():
+            if agent_stop is not None and agent_tp is not None:
+                if agent_stop < entry_price and agent_tp > entry_price:
+                    agent_stop, agent_tp = agent_tp, agent_stop
+            if agent_stop is not None and agent_stop <= entry_price:
+                agent_stop = None
+            if agent_tp is not None and agent_tp >= entry_price:
+                agent_tp = None
+        elif position.is_long():
+            if agent_stop is not None and agent_tp is not None:
+                if agent_stop > entry_price and agent_tp < entry_price:
+                    agent_stop, agent_tp = agent_tp, agent_stop
+            if agent_stop is not None and agent_stop >= entry_price:
+                agent_stop = None
+            if agent_tp is not None and agent_tp <= entry_price:
+                agent_tp = None
+
+    cached_atr = None
+    if getattr(risk_config, "use_atr_based_stops", False) and ohlcv_df is not None:
+        cached_atr = compute_atr(ohlcv_df, getattr(risk_config, "atr_period", 14), current_date=current_date)
+
+    if agent_stop is not None:
+        position.stop_price = agent_stop
+    elif entry_price > 0:
+        if cached_atr is not None:
+            mult = getattr(risk_config, "atr_stop_multiplier", 2.0)
+            if position.is_long():
+                position.stop_price = entry_price - (cached_atr * mult)
+            else:
+                position.stop_price = entry_price + (cached_atr * mult)
+        else:
+            stop_pct = getattr(risk_config, "default_stop_pct", 0.05)
+            if position.is_long():
+                position.stop_price = entry_price * (1 - stop_pct)
+            else:
+                position.stop_price = entry_price * (1 + stop_pct)
+
+    if agent_tp is not None:
+        position.take_profit = agent_tp
+    elif entry_price > 0:
+        if cached_atr is not None:
+            mult = getattr(risk_config, "atr_tp_multiplier", 3.0)
+            if position.is_long():
+                position.take_profit = entry_price + (cached_atr * mult)
+            else:
+                position.take_profit = entry_price - (cached_atr * mult)
+        else:
+            tp_pct = getattr(risk_config, "default_take_profit_pct", 0.10)
+            if position.is_long():
+                position.take_profit = entry_price * (1 + tp_pct)
+            else:
+                position.take_profit = entry_price * (1 - tp_pct)

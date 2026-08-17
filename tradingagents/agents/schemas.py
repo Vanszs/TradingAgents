@@ -18,10 +18,13 @@ so that:
 
 from __future__ import annotations
 
+import math
+import re
+from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Shared rating types
@@ -36,6 +39,13 @@ class PortfolioRating(str, Enum):
     HOLD = "Hold"
     UNDERWEIGHT = "Underweight"
     SELL = "Sell"
+
+
+class EntryMode(str, Enum):
+    """Execution intent for an actionable signal."""
+
+    ASSUMED_AI_ENTRY = "ASSUMED_AI_ENTRY"
+    T1_OPEN = "T1_OPEN"
 
 
 class TraderAction(str, Enum):
@@ -119,8 +129,8 @@ class TraderProposal(BaseModel):
     )
     reasoning: str = Field(
         description=(
-            "The case for this action, anchored in the analysts' reports and "
-            "the research plan. Two to four sentences."
+            "The case for this action, anchored in the Research Manager's "
+            "investment plan. Two to four sentences."
         ),
     )
     entry_price: Optional[float] = Field(
@@ -222,15 +232,33 @@ class PortfolioDecision(BaseModel):
     )
     stop_loss: Optional[float] = Field(
         default=None,
-        description="Optional stop-loss price in the instrument's quote currency.",
+        description="Numeric stop-loss price. Required for Buy, Overweight, Underweight, and Sell.",
+    )
+    take_profit: Optional[float] = Field(
+        default=None,
+        description="Numeric take-profit price. Required for Buy, Overweight, Underweight, and Sell.",
     )
     price_target: Optional[float] = Field(
         default=None,
-        description="Optional target price in the instrument's quote currency.",
+        description="Legacy alias for take-profit price.",
+    )
+    time_horizon_days: int = Field(
+        ge=1,
+        le=252,
+        description=(
+            "Numeric target evaluation horizon in trading days; the agent must choose it. "
+            "When stating a range such as 6-12 months, use the upper bound (252 days)."
+        ),
+    )
+    confidence: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Numeric conviction score from 0.0 to 1.0.",
     )
     time_horizon: Optional[str] = Field(
         default=None,
-        description="Optional recommended holding period, e.g. '3-6 months'.",
+        description="Legacy display field for the recommended holding period.",
     )
     next_review_date: str = Field(
         description=(
@@ -241,18 +269,51 @@ class PortfolioDecision(BaseModel):
         ),
     )
 
-    @field_validator("price_target", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def _coerce_price_target(cls, v):
+    def _use_upper_bound_for_horizon_range(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        label = data.get("time_horizon")
+        if not isinstance(label, str):
+            return data
+        match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)\s*"
+            r"(day|days|week|weeks|month|months|year|years|hari|minggu|bulan|tahun)",
+            label,
+            re.IGNORECASE,
+        )
+        if not match:
+            return data
+        upper = float(match.group(2))
+        unit = match.group(3).lower()
+        multiplier = {
+            "day": 1, "days": 1,
+            "week": 5, "weeks": 5,
+            "month": 21, "months": 21,
+            "year": 252, "years": 252,
+            "hari": 1, "minggu": 5, "bulan": 21, "tahun": 252,
+        }[unit]
+        normalized = dict(data)
+        normalized["time_horizon_days"] = round(upper * multiplier)
+        return normalized
+
+    @field_validator("take_profit", "price_target", "stop_loss", mode="before")
+    @classmethod
+    def _coerce_optional_prices(cls, v):
         if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
             return None
         return v
 
-    @field_validator("stop_loss", mode="before")
+    @field_validator("next_review_date")
     @classmethod
-    def _coerce_stop_loss(cls, v):
-        if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
-            return None
+    def _validate_next_review_date(cls, v):
+        if not isinstance(v, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
+            raise ValueError("next_review_date must use YYYY-MM-DD format")
+        try:
+            datetime.strptime(v, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("next_review_date must use YYYY-MM-DD format") from exc
         return v
 
 
@@ -273,8 +334,9 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     ]
     if decision.stop_loss is not None:
         parts.extend(["", f"**Stop Loss**: {decision.stop_loss}"])
-    if decision.price_target is not None:
-        parts.extend(["", f"**Price Target**: {decision.price_target}"])
+    take_profit = decision.take_profit if decision.take_profit is not None else decision.price_target
+    if take_profit is not None:
+        parts.extend(["", f"**Price Target**: {take_profit}"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
     parts.extend(["", f"**Next Review Date**: {decision.next_review_date}"])
@@ -372,3 +434,125 @@ def render_sentiment_report(report: SentimentReport) -> str:
         "",
         report.narrative,
     ])
+
+
+# ---------------------------------------------------------------------------
+# Signal Contract (Single-Shot Horizon Backtest Contract)
+# ---------------------------------------------------------------------------
+
+
+class SignalContract(BaseModel):
+    """Validated identity and execution fields for a single-shot signal."""
+    ticker: str = Field(min_length=1)
+    signal_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    rating: PortfolioRating
+    action: Literal["BUY", "SELL", "HOLD"]
+    entry_mode: Optional[EntryMode] = None
+    planned_entry_price: Optional[float] = Field(
+        default=None,
+        description="Agent-planned entry level used as the assumed fill in ASSUMED_AI_ENTRY mode.",
+    )
+    signal_timestamp: Optional[str] = None
+    reference_price_at_signal: Optional[float] = Field(default=None, gt=0)
+    reference_price_timestamp: Optional[str] = None
+    reference_timezone: Optional[str] = None
+    take_profit: Optional[float] = Field(default=None, description="Take profit price target")
+    stop_loss: Optional[float] = Field(default=None, description="Stop loss protective boundary")
+    time_horizon_days: int = Field(
+        ge=1,
+        le=252,
+        description=(
+            "Target evaluation horizon in trading days; the agent must choose it. "
+            "For a stated range, use its upper bound."
+        ),
+    )
+    confidence: float = Field(default=0.7, ge=0.0, le=1.0, description="Conviction score")
+    time_horizon_label: Optional[str] = Field(
+        default=None,
+        description="Original agent wording for the holding-period range, preserved for audit display.",
+    )
+    thesis_summary: str = Field(default="", description="Core narrative thesis")
+
+    @model_validator(mode="after")
+    def _validate_entry_contract(self):
+        expected_action = {
+            PortfolioRating.BUY: "BUY",
+            PortfolioRating.OVERWEIGHT: "BUY",
+            PortfolioRating.HOLD: "HOLD",
+            PortfolioRating.UNDERWEIGHT: "SELL",
+            PortfolioRating.SELL: "SELL",
+        }[self.rating]
+        if self.action != expected_action:
+            raise ValueError("rating and action must use the same direction")
+
+        for name in ("signal_timestamp", "reference_price_timestamp"):
+            timestamp = getattr(self, name)
+            if timestamp is not None:
+                try:
+                    parsed = datetime.fromisoformat(timestamp)
+                    if parsed.tzinfo is None or parsed.utcoffset() is None:
+                        raise ValueError("timestamp must include timezone")
+                except ValueError as exc:
+                    raise ValueError(f"{name} must be a timezone-aware ISO timestamp") from exc
+
+        prices = {
+            "planned_entry_price": self.planned_entry_price,
+            "take_profit": self.take_profit,
+            "stop_loss": self.stop_loss,
+        }
+        for name, price in prices.items():
+            if price is not None and (not math.isfinite(price) or price <= 0):
+                raise ValueError(f"{name} must be finite and positive")
+
+        if self.action == "HOLD":
+            return self
+        if self.take_profit is None or self.stop_loss is None:
+            raise ValueError("actionable signals require take_profit and stop_loss")
+        if self.action == "BUY" and self.take_profit <= self.stop_loss:
+            raise ValueError("BUY take_profit must be above stop_loss")
+        if self.action == "SELL" and self.take_profit >= self.stop_loss:
+            raise ValueError("SELL take_profit must be below stop_loss")
+        if self.planned_entry_price is None:
+            if self.entry_mode is None:
+                object.__setattr__(self, "entry_mode", EntryMode.T1_OPEN)
+            return self
+        if self.action == "BUY" and not (self.stop_loss < self.planned_entry_price < self.take_profit):
+            raise ValueError("BUY take_profit and stop_loss must surround planned_entry_price")
+        if self.action == "SELL" and not (self.take_profit < self.planned_entry_price < self.stop_loss):
+            raise ValueError("SELL take_profit and stop_loss must surround planned_entry_price")
+        if self.entry_mode is None:
+            object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
+        return self
+
+
+def portfolio_decision_to_signal_contract(
+    decision: PortfolioDecision,
+    ticker: str,
+    signal_date: str,
+    planned_entry_price: Optional[float] = None,
+) -> SignalContract:
+    """Convert only typed PM fields into the canonical signal contract."""
+    action = {
+        PortfolioRating.BUY: "BUY",
+        PortfolioRating.OVERWEIGHT: "BUY",
+        PortfolioRating.HOLD: "HOLD",
+        PortfolioRating.UNDERWEIGHT: "SELL",
+        PortfolioRating.SELL: "SELL",
+    }[decision.rating]
+    take_profit = decision.take_profit if decision.take_profit is not None else decision.price_target
+    if action != "HOLD" and (take_profit is None or decision.stop_loss is None):
+        raise ValueError("actionable ratings require take_profit and stop_loss")
+    return SignalContract(
+        ticker=ticker,
+        signal_date=signal_date,
+        rating=decision.rating,
+        action=action,
+        entry_mode=EntryMode.ASSUMED_AI_ENTRY if action != "HOLD" and planned_entry_price is not None else EntryMode.T1_OPEN if action != "HOLD" else None,
+        planned_entry_price=planned_entry_price,
+        take_profit=take_profit,
+        stop_loss=decision.stop_loss,
+        time_horizon_days=decision.time_horizon_days,
+        confidence=decision.confidence,
+        time_horizon_label=decision.time_horizon,
+        thesis_summary=decision.investment_thesis,
+    )

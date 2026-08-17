@@ -151,17 +151,26 @@ class MarkdownDecisionParser:
             ],
         )
 
+        time_horizon_label = self._extract_text(
+            text,
+            patterns=[
+                r"\*{0,2}time[_\s-]*horizon\*{0,2}\s*[:=]\s*\*{0,2}(.+?)\*{0,2}\s*$",
+                r"\*{0,2}holding[_\s-]*period\*{0,2}\s*[:=]\s*\*{0,2}(.+?)\*{0,2}\s*$",
+            ],
+        )
         time_horizon_days = self._extract_int(
             text,
             patterns=[
-                r"time[_\s-]*horizon[_\s-]*days\s*[:=]\s*(\d+)",
+                r"\*{0,2}time[_\s-]*horizon[_\s-]*days\*{0,2}\s*[:=]\s*\*{0,2}(\d+)",
                 r"horizon\s*(\d+)\s*hari",
             ],
         )
+        if time_horizon_days is None:
+            time_horizon_days = self._upper_bound_horizon_days(time_horizon_label)
 
         short_allowed = True
         if re.search(
-            r"(jangan|tidak|no|don't)\s+(short|jual\s+pendek)",
+            r"(jangan|tidak|no|don't)\s+(?:buka\s+posisi\s+)?(short|jual\s+pendek)",
             text,
             re.I,
         ):
@@ -196,6 +205,7 @@ class MarkdownDecisionParser:
             stop_price=stop_price,
             take_profit=take_profit,
             time_horizon_days=time_horizon_days,
+            time_horizon_label=time_horizon_label,
             allow_new_position=allow_new_position,
             short_allowed=short_allowed,
             market_mode=market_mode,
@@ -282,6 +292,34 @@ class MarkdownDecisionParser:
         if value is None:
             return None
         return int(value)
+
+    def _extract_text(self, text: str, patterns: list[str]) -> Optional[str]:
+        for pattern in patterns:
+            match = re.search(pattern, text, re.I | re.M)
+            if match:
+                return match.group(1).strip()
+        return None
+
+    def _upper_bound_horizon_days(self, label: Optional[str]) -> Optional[int]:
+        if not label:
+            return None
+        match = re.search(
+            r"(\d+(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d+(?:\.\d+)?)\s*"
+            r"(day|days|week|weeks|month|months|year|years|hari|minggu|bulan|tahun)",
+            label,
+            re.I,
+        )
+        if not match:
+            return None
+        unit = match.group(3).lower()
+        multiplier = {
+            "day": 1, "days": 1,
+            "week": 5, "weeks": 5,
+            "month": 21, "months": 21,
+            "year": 252, "years": 252,
+            "hari": 1, "minggu": 5, "bulan": 21, "tahun": 252,
+        }[unit]
+        return round(float(match.group(2)) * multiplier)
 
     def _extract_pct(
         self,

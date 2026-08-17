@@ -1,8 +1,8 @@
 {
   "asset_class": "stock",
   "ticker": "DEWA.JK",
-  "start_date": "2025-01-25",
-  "end_date": "2025-05-02",
+  "start_date": "2026-05-25",
+  "end_date": "2026-05-29",
   "initial_cash": 100000000,
   "initial_position_qty": 0,
   "initial_position_price": 0.0,
@@ -12,7 +12,7 @@
   "backtest_mode": true,
   "max_risk_per_trade_pct": 0.01,
   "default_reduce_pct": 0.5,
-  "lookback_days": 240,
+  "lookback_days": 60,
   "decision_mapping": {
     "mode": "strict_5tier",
     "legacy_submode": "conservative",
@@ -23,7 +23,7 @@
     "overweight_size_multiplier": 0.5,
     "underweight_size_multiplier": 0.5,
     "default_reduce_pct": 0.5,
-    "base_allocation_pct": 0.3,
+    "base_allocation_pct": 0.2,
     "initial_entry_pct": 0.3,
     "pyramid_pct": 0.1,
     "reduce_step_pct": 0.1
@@ -45,14 +45,14 @@
     "entry_condition_min_hold_streak": 1
   },
   "execution": {
-    "rule": "next_open",
+    "rule": "next_session_open",
     "fill_at": "next_session_open",
     "tick_slippage": 1,
     "fee_per_contract": 0.0,
     "intraday_margin_check": true,
     "liquidation_fill_at": "next_session_open",
     "liquidation_extra_slippage_ticks": 1,
-    "lot_size": 100,
+    "lot_size": 1,
     "contract_multiplier": 1,
     "buy_fee": 0.0015,
     "sell_fee": 0.0025,
@@ -67,7 +67,9 @@
     "disable_live_news": true,
     "disable_live_web_search": true,
     "disable_live_fundamentals": true,
-    "require_fundamental_available_date": true
+    "require_fundamental_available_date": true,
+    "fetch_from_api": true,
+    "api_cache_dir": "api_cache"
   },
   "agent": {
     "run_frequency": "daily",
@@ -82,7 +84,11 @@
     "validate_cutoff": true,
     "require_snapshot_metadata": true,
     "require_next_bar_execution": true,
-    "fail_on_future_data": true
+    "fail_on_future_data": true,
+    "news_cutoff_strategy": "previous_day",
+    "sentiment_cutoff_strategy": "previous_day",
+    "broker_activity_cutoff_strategy": "previous_day",
+    "fundamental_buffer_days": 3
   },
   "output": {
     "output_root": "backtest_results",

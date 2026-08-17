@@ -134,6 +134,7 @@ class TestTraderAgent:
         assert "**Action**: Buy" in plan
         assert "**Entry Price**: 189.5" in plan
         assert "FINAL TRANSACTION PROPOSAL: **BUY**" in plan
+        assert result["trader_proposal"].entry_price == 189.5
         # The same rendered markdown is also added to messages for downstream agents.
         assert plan in result["messages"][0].content
 
@@ -144,7 +145,7 @@ class TestTraderAgent:
         trader(_make_trader_state())
         # The investment plan is in the user message of the captured prompt.
         prompt = captured["prompt"]
-        assert any("Proposed Investment Plan" in m["content"] for m in prompt)
+        assert any("Research Manager Investment Plan" in m["content"] for m in prompt)
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
         plain_response = (

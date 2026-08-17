@@ -30,9 +30,9 @@ def create_trader(llm):
             {
                 "role": "system",
                 "content": (
-                    "You are a trading agent analyzing market data to make investment decisions. "
-                    "Based on your analysis, provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the analysts' reports and the research plan.\n\n"
+                    "You are a trading agent converting the Research Manager's plan into a concrete transaction. "
+                    "Provide a specific recommendation to buy, sell, or hold. "
+                    "Anchor your reasoning in the research plan provided below.\n\n"
                     "IMPORTANT for price fields (entry_price, stop_loss, take_profit):\n"
                     "- Always provide specific numerical values when possible.\n"
                     "- NEVER output the string 'None' — either provide a number or omit the field entirely.\n"
@@ -43,27 +43,32 @@ def create_trader(llm):
             {
                 "role": "user",
                 "content": (
-                    f"Based on a comprehensive analysis by a team of analysts, here is an investment "
-                    f"plan tailored for {company_name}. {instrument_context} This plan incorporates "
-                    f"insights from current technical market trends, macroeconomic indicators, and "
-                    f"social media sentiment. Use this plan as a foundation for evaluating your next "
-                    f"trading decision.\n\nProposed Investment Plan: {investment_plan}\n\n"
-                    f"Leverage these insights to make an informed and strategic decision."
+                    f"The Research Manager provided this investment plan for {company_name}. "
+                    f"{instrument_context} Convert it into an executable transaction proposal.\n\n"
+                    f"Research Manager Investment Plan: {investment_plan}\n\n"
+                    f"Provide the action, reasoning, price levels, and sizing guidance."
                 ),
             },
         ]
 
-        trader_plan = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            messages,
-            render_trader_proposal,
-            "Trader",
-        )
+        typed_proposal = None
+        if structured_llm is not None:
+            try:
+                typed_proposal = structured_llm.invoke(messages)
+                trader_plan = render_trader_proposal(typed_proposal)
+            except Exception:
+                trader_plan = invoke_structured_or_freetext(
+                    None, llm, messages, render_trader_proposal, "Trader"
+                )
+        else:
+            trader_plan = invoke_structured_or_freetext(
+                None, llm, messages, render_trader_proposal, "Trader"
+            )
 
         return {
             "messages": [AIMessage(content=trader_plan)],
             "trader_investment_plan": trader_plan,
+            "trader_proposal": typed_proposal,
             "sender": name,
         }
 

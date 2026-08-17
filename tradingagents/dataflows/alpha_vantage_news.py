@@ -1,4 +1,45 @@
+from datetime import datetime, timezone
+
 from .alpha_vantage_common import _make_api_request, format_datetime_for_api
+from .config import is_point_in_time_mode
+
+
+_PUBLICATION_FIELDS = ("time_published", "published_at", "publishedAt", "publicationDate")
+
+
+def _filter_pit_feed(result, start_date: str, end_date: str):
+    if not is_point_in_time_mode() or not isinstance(result, dict):
+        return result
+    feed = result.get("feed")
+    if not isinstance(feed, list):
+        return f"No news available between {start_date} and {end_date}."
+    start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    end = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    filtered = []
+    for item in feed:
+        raw = next((item.get(field) for field in _PUBLICATION_FIELDS if item.get(field)), None)
+        if not raw:
+            continue
+        try:
+            published = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=timezone.utc)
+            else:
+                published = published.astimezone(timezone.utc)
+        except ValueError:
+            try:
+                published = datetime.strptime(
+                    str(raw)[:15], "%Y%m%dT%H%M%S"
+                ).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+        if start <= published <= end.replace(hour=23, minute=59, second=59):
+            filtered.append(item)
+    if not filtered:
+        return f"No news available between {start_date} and {end_date}."
+    result = dict(result)
+    result["feed"] = filtered
+    return result
 
 
 def get_news(ticker, start_date, end_date) -> dict[str, str] | str:
@@ -21,7 +62,9 @@ def get_news(ticker, start_date, end_date) -> dict[str, str] | str:
         "time_to": format_datetime_for_api(end_date),
     }
 
-    return _make_api_request("NEWS_SENTIMENT", params)
+    return _filter_pit_feed(
+        _make_api_request("NEWS_SENTIMENT", params), start_date, end_date
+    )
 
 def get_global_news(curr_date, look_back_days: int = 7, limit: int = 50) -> dict[str, str] | str:
     """Returns global market news & sentiment data without ticker-specific filtering.
@@ -50,7 +93,9 @@ def get_global_news(curr_date, look_back_days: int = 7, limit: int = 50) -> dict
         "limit": str(limit),
     }
 
-    return _make_api_request("NEWS_SENTIMENT", params)
+    return _filter_pit_feed(
+        _make_api_request("NEWS_SENTIMENT", params), start_date, curr_date
+    )
 
 
 def get_insider_transactions(symbol: str) -> dict[str, str] | str:

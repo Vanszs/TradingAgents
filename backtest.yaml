@@ -86,7 +86,6 @@ backtest:
     overweight_size_multiplier: 0.5
     underweight_size_multiplier: 0.5
     default_reduce_pct: 0.5
-    base_allocation_pct: 0.30  # deprecated, use initial_entry_pct
     initial_entry_pct: 0.30
 
   execution:

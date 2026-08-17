@@ -217,3 +217,12 @@ __marimo__/
 
 # Cache
 **/data_cache/
+
+# Local archives and evaluation artifacts
+archive/
+result_backtest/
+backtest_results/
+api_cache/
+.understand-anything/
+.hermes/
+.kiro/

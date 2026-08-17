@@ -1,17 +1,20 @@
 """
-Margin account management — PRD §15.
-
-Provides:
-- Initial/maintenance margin calculation
-- Leverage cap enforcement
-- Liquidation guard (equity < maintenance)
-- Daily financing accrual (for overnight long positions)
-- Daily borrow fee accrual (for overnight short positions)
+Margin account management — re-exports from margin_engine and provides MarginAccount interface.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
+
+from .margin_engine import (
+    excess_margin as calc_excess_margin,
+    initial_margin as calc_initial_margin,
+    is_margin_call as calc_is_margin_call,
+    leverage as calc_leverage,
+    maintenance_margin as calc_maintenance_margin,
+    margin_utilization as calc_margin_utilization,
+    notional_value as calc_notional_value,
+)
 
 
 @dataclass
@@ -30,7 +33,7 @@ class MarginAccount:
     """
     PRD §15 — margin account with leverage cap and liquidation guard.
 
-    Stateless: all methods take explicit parameters, no internal state.
+    Stateless: delegates to pure margin_engine math functions.
     """
 
     @staticmethod
@@ -76,11 +79,8 @@ class MarginAccount:
         maintenance_margin: float,
         liquidation_equity_pct: float = 0.25,
     ) -> bool:
-        """PRD §15.3 — liquidation if equity < maintenance or equity < liquidation_equity_pct of notional."""
-        if equity < maintenance_margin:
-            return True
-        # Additional guard: equity too low relative to initial margin
-        return False
+        """PRD §15.3 — liquidation if equity < maintenance."""
+        return equity < maintenance_margin
 
     @staticmethod
     def margin_call(

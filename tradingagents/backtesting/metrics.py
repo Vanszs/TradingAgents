@@ -66,8 +66,12 @@ class MetricsCalculator:
         returns: pd.Series = (
             df["total_equity"].pct_change().fillna(0.0).astype(float)
         )
-        # Replace infinite returns (e.g., equity goes to 0) with 0
-        returns = returns.replace([float("inf"), float("-inf")], 0.0)
+        # Handle edge cases in returns (e.g. equity drop to 0 is -1.0, not 0.0)
+        # pct_change() from positive to 0 produces -1.0; 0 to 0 is NaN -> fillna(0.0)
+        # from positive to negative or 0 to negative can produce -inf or large negative.
+        # Clamp -inf to -1.0 (100% loss) and +inf to 0.0.
+        returns = returns.replace([float("-inf")], -1.0)
+        returns = returns.replace([float("inf")], 0.0)
 
         final_equity = float(df["total_equity"].iloc[-1])
         total_return = (

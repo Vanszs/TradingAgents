@@ -1,6 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.utils.agent_utils import (
+    build_exchange_filing_context,
     build_instrument_context,
     get_global_news,
     get_language_instruction,
@@ -14,22 +15,22 @@ def create_news_analyst(llm):
         current_date = state["trade_date"]
         asset_type = state.get("asset_type", "stock")
         asset_label = "company" if asset_type == "stock" else "asset"
+        ticker = state["company_of_interest"]
         instrument_context = build_instrument_context(
-            state["company_of_interest"], asset_type
+            ticker, asset_type
         )
+        filing_context = build_exchange_filing_context(ticker, asset_type)
 
-        tools = [
-            get_news,
-            get_global_news,
-        ]
-        # Only add web_search in live mode (not backtest)
         from tradingagents.dataflows.config import get_config
+
+        tools = [get_news, get_global_news]
         if not get_config().get("backtest_mode", False):
             tools.append(get_web_search)
 
         system_message = (
             f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for {asset_label}-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Use get_web_search(query) to find the latest real-time information, recent news, and current analysis not covered by other tools. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
             + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
+            + f"\n\n{filing_context}"
             + get_language_instruction()
         )
 
@@ -41,8 +42,7 @@ def create_news_analyst(llm):
                     " Use the provided tools to progress towards answering the question."
                     " If you are unable to fully answer, that's OK; another assistant with different tools"
                     " will help where you left off. Execute what you can to make progress."
-                    " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                    " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
+                    " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
                     " You have access to the following tools: {tool_names}.\n{system_message}"
                     "For your reference, the current date is {current_date}. {instrument_context}",
                 ),

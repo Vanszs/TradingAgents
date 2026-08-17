@@ -28,13 +28,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tradingagents.backtesting.agent_callbacks import (
-    KNOWN_NODES,
-    BacktestAgentCallback,
-)
+from tradingagents.backtesting.agent_callbacks import KNOWN_NODES, BacktestAgentCallback
 from tradingagents.backtesting.agent_runner import TradingAgentsRunner
 from tradingagents.backtesting.engine import BacktestEngine
-
 
 # ---------------------------------------------------------------------------
 # Capture helper
@@ -104,6 +100,20 @@ class TestCallbackFires:
             {"name": "ChatOpenAI"}, {}, run_id=rid, parent_run_id=parent,
             metadata={"langgraph_node": "Market Analyst"},
         )
+        h.on_chain_end({}, run_id=rid, parent_run_id=parent)
+        assert cap.events == []
+
+    def test_nested_langgraph_metadata_with_parent_is_ignored(self):
+        cap = _Capture()
+        h = BacktestAgentCallback(cap)
+        rid = uuid.uuid4()
+        parent = uuid.uuid4()
+        metadata = {
+            "langgraph_node": "Market Analyst",
+            "langgraph_step": 1,
+            "langgraph_path": ("__pregel_pull", "Market Analyst"),
+        }
+        h.on_chain_start({"name": "x"}, {}, run_id=rid, parent_run_id=parent, metadata=metadata)
         h.on_chain_end({}, run_id=rid, parent_run_id=parent)
         assert cap.events == []
 
@@ -223,7 +233,9 @@ class TestRunnerPlumbing:
 
         # Build via from_dict so we exercise the real engine path.
         import tempfile
+
         import yaml
+
         with open("backtest.yaml") as f:
             raw = yaml.safe_load(f).get("backtest", {})
         # Use the same 5-day slice the smoke test uses.

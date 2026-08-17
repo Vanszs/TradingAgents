@@ -15,21 +15,28 @@ import time
 from collections import deque
 
 from rich import box
-from rich.align import Align
-from rich.columns import Columns
 from rich.console import Console
-from rich.layout import Layout
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.rule import Rule
-from rich.spinner import Spinner
 from rich.table import Table
 from rich.text import Text
-from rich.tree import Tree
 
 from cli.announcements import display_announcements, fetch_announcements
 from cli.models import AnalystType
+from cli.progress_contract import (
+    ALL_TEAMS,
+    ANALYST_AGENT_NAMES,
+    ANALYST_MAPPING,
+    ANALYST_ORDER,
+    ANALYST_REPORT_MAP,
+    FIXED_AGENTS,
+    REPORT_SECTIONS,
+    classify_message_type,
+    extract_content_string,
+    format_tool_args,
+    short_agent_label,
+)
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import *
 from tradingagents.default_config import DEFAULT_CONFIG
@@ -52,34 +59,9 @@ app = typer.Typer(
 
 # Create a deque to store recent messages with a maximum length
 class MessageBuffer:
-    # Fixed teams that always run (not user-selectable)
-    FIXED_AGENTS = {
-        "Research Team": ["Bull Researcher", "Bear Researcher", "Research Manager"],
-        "Trading Team": ["Trader"],
-        "Risk Management": ["Aggressive Analyst", "Neutral Analyst", "Conservative Analyst"],
-        "Portfolio Management": ["Portfolio Manager"],
-    }
-
-    # Analyst name mapping
-    ANALYST_MAPPING = {
-        "market": "Market Analyst",
-        "social": "Sentiment Analyst",
-        "news": "News Analyst",
-        "fundamentals": "Fundamentals Analyst",
-    }
-
-    # Report section mapping: section -> (analyst_key for filtering, finalizing_agent)
-    # analyst_key: which analyst selection controls this section (None = always included)
-    # finalizing_agent: which agent must be "completed" for this report to count as done
-    REPORT_SECTIONS = {
-        "market_report": ("market", "Market Analyst"),
-        "sentiment_report": ("social", "Sentiment Analyst"),
-        "news_report": ("news", "News Analyst"),
-        "fundamentals_report": ("fundamentals", "Fundamentals Analyst"),
-        "investment_plan": (None, "Research Manager"),
-        "trader_investment_plan": (None, "Trader"),
-        "final_trade_decision": (None, "Portfolio Manager"),
-    }
+    FIXED_AGENTS = FIXED_AGENTS
+    ANALYST_MAPPING = ANALYST_MAPPING
+    REPORT_SECTIONS = REPORT_SECTIONS
 
     def __init__(self, max_length=100):
         self.messages = deque(maxlen=max_length)
@@ -240,22 +222,6 @@ class MessageBuffer:
 message_buffer = MessageBuffer()
 
 
-def create_layout():
-    layout = Layout()
-    layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="main"),
-        Layout(name="footer", size=3),
-    )
-    layout["main"].split_column(
-        Layout(name="upper", ratio=3), Layout(name="analysis", ratio=5)
-    )
-    layout["upper"].split_row(
-        Layout(name="progress", ratio=2), Layout(name="messages", ratio=3)
-    )
-    return layout
-
-
 def format_tokens(n):
     """Format token count for display."""
     if n >= 1000:
@@ -280,13 +246,7 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
     STATUS_ICON = {"completed": "✓", "in_progress": "⟳", "pending": "·", "error": "✗"}
     STATUS_COLOR = {"completed": "green", "in_progress": "cyan", "pending": "dim", "error": "red"}
 
-    all_teams = {
-        "Analyst": ["Market Analyst", "Sentiment Analyst", "News Analyst", "Fundamentals Analyst"],
-        "Research": ["Bull Researcher", "Bear Researcher", "Research Manager"],
-        "Trading": ["Trader"],
-        "Risk": ["Aggressive Analyst", "Conservative Analyst", "Neutral Analyst"],
-        "Portfolio": ["Portfolio Manager"],
-    }
+    all_teams = ALL_TEAMS
 
     from rich.text import Text as RichText
     progress_lines = RichText()
@@ -300,7 +260,7 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
             status = message_buffer.agent_status.get(agent, "pending")
             icon = STATUS_ICON.get(status, "·")
             color = STATUS_COLOR.get(status, "white")
-            short = agent.replace(" Analyst", "").replace(" Researcher", "").replace(" Manager", " Mgr")
+            short = short_agent_label(agent)
             progress_lines.append(f"  {icon} ", style=color)
             progress_lines.append(f"{short}\n", style=color if status != "pending" else "dim")
 
@@ -603,48 +563,6 @@ def get_user_selections():
     }
 
 
-def get_ticker():
-    """Get ticker symbol from user input, preserving exchange suffixes."""
-    # typer.prompt strips trailing dot-suffixes on some shells (e.g. 000404.SH
-    # collapses to 000404). questionary.text reads the raw line.
-    ticker = questionary.text(
-        "",
-        validate=lambda value: (
-            not value.strip()
-            or (
-                all(ch.isalnum() or ch in "._-^" for ch in value.strip())
-                and len(value.strip()) <= 32
-            )
-        )
-        or "Please enter a valid ticker symbol, e.g. AAPL, 000404.SZ, 0700.HK.",
-    ).ask()
-
-    if ticker is None:
-        console.print("\n[red]No ticker symbol provided. Exiting...[/red]")
-        raise typer.Exit(1)
-
-    return (ticker.strip() or "SPY").upper()
-
-
-def get_analysis_date():
-    """Get the analysis date from user input."""
-    while True:
-        date_str = typer.prompt(
-            "", default=datetime.datetime.now().strftime("%Y-%m-%d")
-        )
-        try:
-            # Validate date format and ensure it's not in the future
-            analysis_date = datetime.datetime.strptime(date_str, "%Y-%m-%d")
-            if analysis_date.date() > datetime.datetime.now().date():
-                console.print("[red]Error: Analysis date cannot be in the future[/red]")
-                continue
-            return date_str
-        except ValueError:
-            console.print(
-                "[red]Error: Invalid date format. Please use YYYY-MM-DD[/red]"
-            )
-
-
 def save_report_to_disk(final_state, ticker: str, save_path: Path):
     """Save complete analysis report to disk with organized subfolders."""
     save_path.mkdir(parents=True, exist_ok=True)
@@ -803,22 +721,6 @@ def update_research_team_status(status):
         message_buffer.update_agent_status(agent, status)
 
 
-# Ordered list of analysts for status transitions
-ANALYST_ORDER = ["market", "social", "news", "fundamentals"]
-ANALYST_AGENT_NAMES = {
-    "market": "Market Analyst",
-    "social": "Sentiment Analyst",
-    "news": "News Analyst",
-    "fundamentals": "Fundamentals Analyst",
-}
-ANALYST_REPORT_MAP = {
-    "market": "market_report",
-    "social": "sentiment_report",
-    "news": "news_report",
-    "fundamentals": "fundamentals_report",
-}
-
-
 def update_analyst_statuses(message_buffer, chunk, wall_time_tracker=None):
     """Update analyst statuses based on accumulated report state.
 
@@ -862,81 +764,6 @@ def update_analyst_statuses(message_buffer, chunk, wall_time_tracker=None):
     if not found_active and selected:
         if message_buffer.agent_status.get("Bull Researcher") == "pending":
             message_buffer.update_agent_status("Bull Researcher", "in_progress")
-
-def extract_content_string(content):
-    """Extract string content from various message formats.
-    Returns None if no meaningful text content is found.
-    """
-    import ast
-
-    def is_empty(val):
-        """Check if value is empty using Python's truthiness."""
-        if val is None or val == '':
-            return True
-        if isinstance(val, str):
-            s = val.strip()
-            if not s:
-                return True
-            try:
-                return not bool(ast.literal_eval(s))
-            except (ValueError, SyntaxError):
-                return False  # Can't parse = real text
-        return not bool(val)
-
-    if is_empty(content):
-        return None
-
-    if isinstance(content, str):
-        return content.strip()
-
-    if isinstance(content, dict):
-        text = content.get('text', '')
-        return text.strip() if not is_empty(text) else None
-
-    if isinstance(content, list):
-        text_parts = [
-            item.get('text', '').strip() if isinstance(item, dict) and item.get('type') == 'text'
-            else (item.strip() if isinstance(item, str) else '')
-            for item in content
-        ]
-        result = ' '.join(t for t in text_parts if t and not is_empty(t))
-        return result if result else None
-
-    return str(content).strip() if not is_empty(content) else None
-
-
-def classify_message_type(message) -> tuple[str, str | None]:
-    """Classify LangChain message into display type and extract content.
-
-    Returns:
-        (type, content) - type is one of: User, Agent, Data, Control
-                        - content is extracted string or None
-    """
-    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-
-    content = extract_content_string(getattr(message, 'content', None))
-
-    if isinstance(message, HumanMessage):
-        if content and content.strip() == "Continue":
-            return ("Control", content)
-        return ("User", content)
-
-    if isinstance(message, ToolMessage):
-        return ("Data", content)
-
-    if isinstance(message, AIMessage):
-        return ("Agent", content)
-
-    # Fallback for unknown types
-    return ("System", content)
-
-
-def format_tool_args(args, max_length=80) -> str:
-    """Format tool arguments for terminal display."""
-    result = str(args)
-    if len(result) > max_length:
-        return result[:max_length - 3] + "..."
-    return result
 
 def run_analysis(checkpoint: bool = False):
     # First get all user selections
@@ -1037,7 +864,7 @@ def run_analysis(checkpoint: bool = False):
     message_buffer.update_report_section = save_report_section_decorator(message_buffer, "update_report_section")
 
     # Now start the display layout
-    layout = create_layout()
+    layout = create_cli_layout()
 
     with Live(layout, refresh_per_second=4) as live:
         # Initial display
@@ -1075,7 +902,10 @@ def run_analysis(checkpoint: bool = False):
         )
         # Pass callbacks to graph config for tool execution tracking
         # (LLM tracking is handled separately via LLM constructor)
-        args = graph.propagator.get_graph_args(callbacks=[stats_handler])
+        args = graph.propagator.get_graph_args(
+            callbacks=[stats_handler],
+            max_concurrency=config["analyst_concurrency_limit"],
+        )
 
         # Stream the analysis
         trace = []
@@ -1187,7 +1017,6 @@ def run_analysis(checkpoint: bool = False):
         final_state = {}
         for chunk in trace:
             final_state.update(chunk)
-        decision = graph.process_signal(final_state["final_trade_decision"])
 
         # Update all agent statuses to completed
         for agent in message_buffer.agent_status:
@@ -1285,6 +1114,80 @@ def backtest_cmd(
     from cli.commands.backtest import backtest
 
     backtest(config_path=config, lookback=lookback, dry_run=dry_run)
+
+
+@app.command(name="evaluate-signal")
+def evaluate_signal_cli(
+    ticker: Optional[str] = typer.Option(
+        None,
+        "--ticker",
+        "-t",
+        help="Stock ticker symbol (prompted when omitted).",
+    ),
+    trade_date: Optional[str] = typer.Option(
+        None,
+        "--date",
+        "-d",
+        help="Target prediction date T0 (prompted when omitted).",
+    ),
+    provider: Optional[str] = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help="LLM Provider override.",
+    ),
+):
+    """
+    Run Single-Shot Agentic Prediction at T0 and Evaluate over Horizon H days.
+    """
+    from cli.commands.evaluate import evaluate_signal_cmd
+
+    if ticker is None:
+        ticker = get_ticker()
+    if trade_date is None:
+        trade_date = get_analysis_date()
+
+    evaluate_signal_cmd(
+        ticker=ticker,
+        trade_date=trade_date,
+        llm_provider=provider,
+    )
+
+
+@app.callback(invoke_without_command=True)
+def main_menu(ctx: typer.Context):
+    """Interactive top-level selector when no subcommand is provided."""
+    if ctx.invoked_subcommand is not None:
+        return
+
+    display_announcements(fetch_announcements())
+
+    choices = [
+        questionary.Choice("📊 Analisis Saham Hari Ini (Live Interactive Analysis)", value="live"),
+        questionary.Choice("🎯 Single-Shot Evaluator (Uji Prediksi Tanggal Tertentu & Hitung ROI Sinyal AI)", value="evaluate"),
+        questionary.Choice("📈 Walk-Forward Backtest (Simulasi Portofolio Multi-Bulan & Akun Margin)", value="backtest"),
+        questionary.Choice("❌ Keluar", value="exit"),
+    ]
+
+    selected = questionary.select(
+        "Pilih Mode TradingAgents yang Ingin Dijalankan:",
+        choices=choices,
+        style=questionary.Style([
+            ("selected", "fg:green bold"),
+            ("highlighted", "fg:cyan bold"),
+            ("pointer", "fg:yellow bold"),
+        ]),
+    ).ask()
+
+    if selected == "live":
+        run_analysis(checkpoint=False)
+    elif selected == "evaluate":
+        evaluate_signal_cli(ticker=None, trade_date=None, provider=None)
+    elif selected == "backtest":
+        backtest_cmd(config=Path("backtest.yaml"), lookback=None, dry_run=False)
+    else:
+        console.print("[dim]Keluar.[/dim]")
+        raise typer.Exit(0)
 
 
 if __name__ == "__main__":

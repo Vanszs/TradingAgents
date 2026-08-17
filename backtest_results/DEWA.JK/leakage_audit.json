@@ -11,10 +11,6 @@
     "news_cutoff": "PASSED",
     "fundamental_available_date": "PASSED",
     "sentiment_cutoff": "PASSED",
-    "next_bar_execution": "PASSED",
-    "long_short_pnl_rules": "PASSED",
-    "reverse_fee_rule": "PASSED",
-    "margin_rule": "PASSED",
-    "leverage_limit": "PASSED"
+    "next_bar_execution": "PASSED"
   }
 }

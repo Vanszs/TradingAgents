@@ -38,10 +38,16 @@ class Propagator:
         
         state = {
             "messages": [("human", company_name)],
+            "market_messages": [("human", company_name)],
+            "social_messages": [("human", company_name)],
+            "news_messages": [("human", company_name)],
+            "fundamentals_messages": [("human", company_name)],
             "company_of_interest": company_name,
             "asset_type": asset_type,
             "trade_date": str(trade_date),
             "past_context": past_context,
+            "trader_proposal": None,
+            "signal_contract": None,
             "investment_debate_state": InvestDebateState(
                 {
                     "bull_history": "",
@@ -75,7 +81,11 @@ class Propagator:
         logger.info(f"[PROPAGATOR] Initial state created with keys: {list(state.keys())}")
         return state
 
-    def get_graph_args(self, callbacks: Optional[List] = None) -> Dict[str, Any]:
+    def get_graph_args(
+        self,
+        callbacks: Optional[List] = None,
+        max_concurrency: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Get arguments for the graph invocation.
 
         Args:
@@ -89,6 +99,8 @@ class Propagator:
         # is kept for backward compatibility.
         effective = callbacks if callbacks is not None else self.callbacks
         config = {"recursion_limit": self.max_recur_limit}
+        if max_concurrency is not None:
+            config["max_concurrency"] = max_concurrency
         if effective:
             config["callbacks"] = effective
         

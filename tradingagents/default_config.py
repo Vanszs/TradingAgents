@@ -52,9 +52,9 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # Pending entries are never pruned. None disables rotation entirely.
     "memory_log_max_entries": None,
     # LLM settings
-    "llm_provider": "tokenrouter",  # Options: openai, google, anthropic, bluesmind, etc.
-    "deep_think_llm": "MiniMax-M3",
-    "quick_think_llm": "MiniMax-M3",
+    "llm_provider": "openai",  # Options: openai, google, anthropic, bluesmind, etc.
+    "deep_think_llm": "gpt-5.4",
+    "quick_think_llm": "gpt-5.4-mini",
     # When None, each provider's client falls back to its own default endpoint
     # (api.openai.com for OpenAI, generativelanguage.googleapis.com for Gemini, ...).
     # The CLI overrides this per provider when the user picks one. Keeping a
@@ -91,6 +91,8 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "ECB Bank of England BOJ central bank policy",
         "oil commodities supply chain energy",
     ],
+    # Historical runs must use dated snapshots, never live vendor data.
+    "point_in_time_mode": False,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {

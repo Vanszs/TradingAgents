@@ -9,7 +9,6 @@ import pandas as pd
 from tradingagents.dataflows.snapshot import (
     _format_fundamental_items,
     _format_news_items,
-    _format_sentiment_items,
     snapshot_get_balance_sheet,
     snapshot_get_cashflow,
     snapshot_get_fundamentals,
@@ -19,6 +18,12 @@ from tradingagents.dataflows.snapshot import (
     snapshot_get_news,
     snapshot_get_stock_data,
 )
+
+
+def _record_snapshot_data():
+    data = _mock_snapshot_data()
+    data["ohlcv"] = data["ohlcv"].to_dict(orient="records")
+    return data
 
 
 def _mock_snapshot_data():
@@ -223,6 +228,17 @@ class TestSnapshotGetIndicators(unittest.TestCase):
         finally:
             cfg._config = original
 
+    def test_record_snapshot_computes_indicator(self):
+        data = _record_snapshot_data()
+        import tradingagents.dataflows.config as cfg
+        original = cfg._config
+        cfg._config = {"snapshot_data": data}
+        try:
+            result = snapshot_get_indicators("TEST", "rsi", "2025-06-14", 10)
+            self.assertNotIn("list' object has no attribute", result)
+        finally:
+            cfg._config = original
+
     def test_unsupported_indicator(self):
         data = _mock_snapshot_data()
         import tradingagents.dataflows.config as cfg
@@ -259,16 +275,6 @@ class TestFormatHelpers(unittest.TestCase):
     def test_format_fundamental_items_empty(self):
         self.assertIn("No fundamental", _format_fundamental_items([]))
 
-    def test_format_sentiment_items(self):
-        items = [{"timestamp": "2025-06-13", "source": "st", "score": 0.8, "label": "Bull", "text": "Good"}]
-        result = _format_sentiment_items(items)
-        self.assertIn("st", result)
-        self.assertIn("0.8", result)
-        self.assertIn("Bull", result)
-
-    def test_format_sentiment_items_empty(self):
-        self.assertIn("No sentiment", _format_sentiment_items([]))
-
 
 class TestSnapshotVendorRegistered(unittest.TestCase):
 
@@ -282,10 +288,6 @@ class TestSnapshotVendorRegistered(unittest.TestCase):
         self.assertIn("snapshot", VENDOR_METHODS["get_balance_sheet"])
         self.assertIn("snapshot", VENDOR_METHODS["get_cashflow"])
         self.assertIn("snapshot", VENDOR_METHODS["get_income_statement"])
-
-    def test_snapshot_in_vendor_list(self):
-        from tradingagents.dataflows.interface import VENDOR_LIST
-        self.assertIn("snapshot", VENDOR_LIST)
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ from .alpha_vantage import (
 from .alpha_vantage_common import AlphaVantageRateLimitError
 
 # Configuration and routing logic
-from .config import get_config
+from .config import get_config, is_point_in_time_mode
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
 )
@@ -97,12 +97,6 @@ TOOLS_CATEGORIES = {
         ]
     }
 }
-
-VENDOR_LIST = [
-    "yfinance",
-    "alpha_vantage",
-    "snapshot",
-]
 
 # Mapping of methods to their vendor-specific implementations
 VENDOR_METHODS = {
@@ -195,11 +189,9 @@ def route_to_vendor(method: str, *args, **kwargs):
         if vendor not in fallback_vendors:
             fallback_vendors.append(vendor)
 
-    # In backtest mode, restrict fallbacks to snapshot-only to prevent
-    # accidental live data leakage through the fallback chain.
-    config = get_config()
-    if config.get("backtest_mode"):
-        fallback_vendors = [v for v in fallback_vendors if v == "snapshot"]
+    # PIT mode is fail-closed: never fall back from snapshot to a live vendor.
+    if is_point_in_time_mode():
+        fallback_vendors = ["snapshot"]
 
     for vendor in fallback_vendors:
         if vendor not in VENDOR_METHODS[method]:

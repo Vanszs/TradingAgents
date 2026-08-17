@@ -70,7 +70,7 @@ class AnalystWallTimeTrackerTests(unittest.TestCase):
             "Analyst wall time: News 4.00s | Market 2.25s",
         )
 
-    def test_syncs_wall_time_from_sequential_chunks(self):
+    def test_syncs_wall_time_from_parallel_chunks(self):
         plan = build_analyst_execution_plan(["market", "news"])
         tracker = AnalystWallTimeTracker(plan)
 
@@ -91,5 +91,5 @@ class AnalystWallTimeTrackerTests(unittest.TestCase):
         )
         self.assertEqual(
             tracker.get_wall_times(),
-            {"market": 3.0, "news": 5.0},
+            {"market": 3.0, "news": 8.0},
         )

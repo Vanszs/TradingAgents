@@ -38,6 +38,25 @@ def _format_news_items(items: list[dict], limit: int = 50) -> str:
     return "\n\n".join(lines)
 
 
+def _fundamental_available_date(item: dict) -> str:
+    """Return the normalized availability date, or an empty value if absent."""
+    return str(item.get("available_date") or item.get("date") or "").split("T")[0].split(" ")[0]
+
+
+def _runtime_trade_date() -> Optional[str]:
+    from .config import get_config
+    return get_config().get("trade_date") or get_config().get("curr_date")
+
+
+def _ohlcv_frame(value) -> pd.DataFrame:
+    """Normalize snapshot OHLCV records and frames at the vendor boundary."""
+    if isinstance(value, pd.DataFrame):
+        return value.copy()
+    if isinstance(value, list):
+        return pd.DataFrame(value)
+    return pd.DataFrame()
+
+
 def _format_fundamental_items(items: list[dict]) -> str:
     """Format fundamental items into a readable string."""
     if not items:
@@ -52,30 +71,6 @@ def _format_fundamental_items(items: list[dict]) -> str:
         if period:
             parts.append(f"({period})")
         parts.append(f"{metric}: {value}")
-        lines.append(" ".join(parts))
-    return "\n".join(lines)
-
-
-def _format_sentiment_items(items: list[dict]) -> str:
-    """Format sentiment items into a readable string."""
-    if not items:
-        return "No sentiment data available."
-    lines = []
-    for item in items:
-        ts = item.get("timestamp", item.get("date", ""))
-        score = item.get("score", item.get("sentiment_score", ""))
-        source = item.get("source", item.get("provider", ""))
-        label = item.get("label", item.get("sentiment_label", ""))
-        text = item.get("text", item.get("headline", ""))
-        parts = [f"[{ts}]"]
-        if source:
-            parts.append(f"{source}:")
-        if label:
-            parts.append(f"({label})")
-        if score:
-            parts.append(f"score={score}")
-        if text:
-            parts.append(f"— {text}")
         lines.append(" ".join(parts))
     return "\n".join(lines)
 
@@ -95,7 +90,9 @@ def snapshot_get_stock_data(
     if ohlcv is None:
         return f"No OHLCV data available in snapshot for {symbol}."
 
-    df = ohlcv.copy()
+    df = _ohlcv_frame(ohlcv)
+    if df.empty or "date" not in df.columns:
+        return f"No OHLCV data available in snapshot for {symbol}."
     df["date"] = df["date"].astype(str)
     filtered = df[(df["date"] >= start_date) & (df["date"] <= end_date)]
 
@@ -124,9 +121,10 @@ def snapshot_get_indicators(
     data = _get_snapshot_data()
     ohlcv = data.get("ohlcv")
     if ohlcv is None:
-        return f"No OHLCV data available for indicator computation."
+        return "No OHLCV data available for indicator computation."
 
     from datetime import datetime, timedelta
+
     from stockstats import wrap
 
     best_ind_params = {
@@ -152,7 +150,9 @@ def snapshot_get_indicators(
         )
 
     # Prepare DataFrame for stockstats
-    df = ohlcv.copy()
+    df = _ohlcv_frame(ohlcv)
+    if df.empty or "date" not in df.columns:
+        return "No OHLCV data available for indicator computation."
     df = df.rename(columns={
         "date": "Date", "open": "Open", "high": "High",
         "low": "Low", "close": "Close", "volume": "Volume",
@@ -209,6 +209,18 @@ def snapshot_get_news(
     """Return formatted news from snapshot."""
     data = _get_snapshot_data()
     news = data.get("news", [])
+    if end_date:
+        cutoff = str(end_date).split(" ")[0]
+        start_cutoff = str(start_date).split(" ")[0] if start_date else ""
+        filtered = []
+        for item in news:
+            raw = str(item.get("published_at") or item.get("date") or "")
+            if not raw:
+                continue
+            item_date = raw.split("T")[0].split(" ")[0]
+            if (not start_cutoff or item_date >= start_cutoff) and item_date <= cutoff:
+                filtered.append(item)
+        news = filtered
     if not news:
         return f"No news data available for {ticker}."
     return _format_news_items(news)
@@ -222,6 +234,13 @@ def snapshot_get_global_news(
     """Return formatted global/macro news from snapshot."""
     data = _get_snapshot_data()
     news = data.get("news", [])
+    if curr_date:
+        cutoff = str(curr_date).split(" ")[0]
+        news = [
+            item for item in news
+            if str(item.get("published_at") or item.get("date") or "").split("T")[0].split(" ")[0] <= cutoff
+            and bool(str(item.get("published_at") or item.get("date") or ""))
+        ]
     if not news:
         return "No global news data available."
     return _format_news_items(news, limit=limit or 50)
@@ -229,12 +248,17 @@ def snapshot_get_global_news(
 
 def snapshot_get_insider_transactions(ticker: str) -> str:
     """Return insider transactions from snapshot (if available)."""
+    from .config import get_config
+    curr_date = get_config().get("trade_date") or get_config().get("curr_date")
     data = _get_snapshot_data()
     fundamentals = data.get("fundamentals", [])
     insider_items = [
         f for f in fundamentals
-        if "insider" in f.get("metric", "").lower()
-        or "transaction" in f.get("metric", "").lower()
+        if ("insider" in f.get("metric", "").lower() or "transaction" in f.get("metric", "").lower())
+        and (not curr_date or (
+            _fundamental_available_date(f)
+            and _fundamental_available_date(f) <= str(curr_date).split("T")[0].split(" ")[0]
+        ))
     ]
     if not insider_items:
         return f"No insider transaction data available for {ticker}."
@@ -253,9 +277,10 @@ def snapshot_get_fundamentals(ticker: str, curr_date: str) -> str:
         return f"No fundamental data available for {ticker}."
 
     # Filter by available_date <= curr_date
+    cutoff = str(curr_date).split("T")[0].split(" ")[0]
     filtered = [
         f for f in fundamentals
-        if f.get("available_date", f.get("date", "")) <= curr_date
+        if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
     ]
     if not filtered:
         return f"No fundamental data available for {ticker} up to {curr_date}."
@@ -275,10 +300,12 @@ def snapshot_get_balance_sheet(
         f for f in fundamentals
         if any(kw in f.get("metric", "").lower() for kw in keywords)
     ]
-    if curr_date:
+    cutoff = curr_date or _runtime_trade_date()
+    if cutoff:
+        cutoff = str(cutoff).split("T")[0].split(" ")[0]
         items = [
             f for f in items
-            if f.get("available_date", f.get("date", "")) <= curr_date
+            if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
         ]
     if not items:
         return f"No balance sheet data available for {ticker}."
@@ -298,10 +325,12 @@ def snapshot_get_cashflow(
         f for f in fundamentals
         if any(kw in f.get("metric", "").lower() for kw in keywords)
     ]
-    if curr_date:
+    cutoff = curr_date or _runtime_trade_date()
+    if cutoff:
+        cutoff = str(cutoff).split("T")[0].split(" ")[0]
         items = [
             f for f in items
-            if f.get("available_date", f.get("date", "")) <= curr_date
+            if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
         ]
     if not items:
         return f"No cashflow data available for {ticker}."
@@ -321,10 +350,12 @@ def snapshot_get_income_statement(
         f for f in fundamentals
         if any(kw in f.get("metric", "").lower() for kw in keywords)
     ]
-    if curr_date:
+    cutoff = curr_date or _runtime_trade_date()
+    if cutoff:
+        cutoff = str(cutoff).split("T")[0].split(" ")[0]
         items = [
             f for f in items
-            if f.get("available_date", f.get("date", "")) <= curr_date
+            if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
         ]
     if not items:
         return f"No income statement data available for {ticker}."

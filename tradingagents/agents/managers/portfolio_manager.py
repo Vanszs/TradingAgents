@@ -10,7 +10,11 @@ back gracefully to free-text generation.
 
 from __future__ import annotations
 
-from tradingagents.agents.schemas import PortfolioDecision, render_pm_decision
+from tradingagents.agents.schemas import (
+    PortfolioDecision,
+    portfolio_decision_to_signal_contract,
+    render_pm_decision,
+)
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
     get_language_instruction,
@@ -31,7 +35,11 @@ def create_portfolio_manager(llm):
         risk_debate_state = state["risk_debate_state"]
         research_plan = state["investment_plan"]
         trader_plan = state["trader_investment_plan"]
-        trade_date = state["trade_date"]
+        trade_date = state.get("trade_date", "")
+        trader_proposal = state.get("trader_proposal")
+        planned_entry_price = (
+            trader_proposal.entry_price if trader_proposal is not None else None
+        )
 
         past_context = state.get("past_context", "")
         lessons_line = (
@@ -74,15 +82,30 @@ Example: If current date is 2024-01-15 and rating is Hold, output:
 
 IMPORTANT: The line "**Next Review Date**: YYYY-MM-DD" MUST be the LAST line of your response. Without it, the backtester cannot schedule future analysis.
 
-Be decisive and ground every conclusion in specific evidence from the analysts. Write your entire response in Indonesian (Bahasa Indonesia).{get_language_instruction()}"""
+Be decisive and ground every conclusion in specific evidence from the analysts.{get_language_instruction()}"""
 
-        final_trade_decision = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            prompt,
-            render_pm_decision,
-            "Portfolio Manager",
-        )
+        typed_decision = None
+        if structured_llm is not None:
+            try:
+                typed_decision = structured_llm.invoke(prompt)
+                final_trade_decision = render_pm_decision(typed_decision)
+            except Exception:
+                final_trade_decision = invoke_structured_or_freetext(
+                    None, llm, prompt, render_pm_decision, "Portfolio Manager"
+                )
+        else:
+            final_trade_decision = invoke_structured_or_freetext(
+                None, llm, prompt, render_pm_decision, "Portfolio Manager"
+            )
+
+        signal_contract = None
+        if typed_decision is not None and trade_date:
+            signal_contract = portfolio_decision_to_signal_contract(
+                typed_decision,
+                state["company_of_interest"],
+                trade_date,
+                planned_entry_price=planned_entry_price,
+            )
 
         new_risk_debate_state = {
             "judge_decision": final_trade_decision,
@@ -100,6 +123,7 @@ Be decisive and ground every conclusion in specific evidence from the analysts. 
         return {
             "risk_debate_state": new_risk_debate_state,
             "final_trade_decision": final_trade_decision,
+            "signal_contract": signal_contract,
         }
 
     return portfolio_manager_node

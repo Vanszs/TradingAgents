@@ -16,11 +16,9 @@ Filtering
 ---------
 LangChain fires ``on_chain_*`` for every nested chain too (the LLM
 inside a node is itself a chain). To avoid double-counting, we
-restrict emission to:
-
-1. Top-level events (``parent_run_id is None``), AND
-2. Events whose ``langgraph_node`` metadata key is set, AND
-3. Events whose node name is in :data:`KNOWN_NODES`.
+restrict emission to root events (``parent_run_id is None``) whose
+``langgraph_node`` metadata key, ``langgraph:node:*`` tag, or serialized
+name identifies a node in :data:`KNOWN_NODES`.
 
 This guarantees one duration log per node, no chatter from internal
 LLM/tool chains.
@@ -129,8 +127,6 @@ class BacktestAgentCallback(BaseCallbackHandler):
         metadata: Optional[dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        # Only top-level graph nodes have parent_run_id == None. Inner
-        # chains (LLM, tool, retriever) have a parent.
         if parent_run_id is not None:
             return
         node_name = self._extract_node_name(serialized, tags, metadata)

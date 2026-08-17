@@ -66,12 +66,9 @@ def filter_analysts_for_asset_type(
 
 def get_analysis_date() -> str:
     """Prompt the user to enter a date in YYYY-MM-DD format."""
-    import re
     from datetime import datetime
 
     def validate_date(date_str: str) -> bool:
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-            return False
         try:
             datetime.strptime(date_str, "%Y-%m-%d")
             return True
@@ -556,4 +553,23 @@ def ask_output_language() -> str:
         ).ask().strip()
 
     return choice
+
+
+def create_cli_layout():
+    """Standard 3-column Layout: header, main (upper: progress/messages, analysis), footer."""
+    from rich.layout import Layout
+
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="main"),
+        Layout(name="footer", size=3),
+    )
+    layout["main"].split_column(
+        Layout(name="upper", ratio=3), Layout(name="analysis", ratio=5)
+    )
+    layout["upper"].split_row(
+        Layout(name="progress", ratio=2), Layout(name="messages", ratio=3)
+    )
+    return layout
 
