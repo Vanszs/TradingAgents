@@ -1,7 +1,4 @@
 from enum import Enum
-from typing import Dict, List, Optional
-
-from pydantic import BaseModel
 
 
 class AnalystType(str, Enum):
@@ -16,3 +13,5 @@ class AnalystType(str, Enum):
 class AssetType(str, Enum):
     STOCK = "stock"
     CRYPTO = "crypto"
+    FOREX = "forex"
+    COMMODITY = "commodity"

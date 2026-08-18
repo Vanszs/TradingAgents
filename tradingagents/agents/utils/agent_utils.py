@@ -6,6 +6,7 @@ from tradingagents.agents.utils.fundamental_data_tools import (
     get_fundamentals,
     get_income_statement,
 )
+from tradingagents.agents.utils.market_data_validation_tools import get_verified_market_snapshot
 from tradingagents.agents.utils.news_data_tools import (
     get_global_news,
     get_insider_transactions,
@@ -32,16 +33,21 @@ def get_language_instruction() -> str:
 
 def build_instrument_context(ticker: str, asset_type: str = "stock") -> str:
     """Describe the exact instrument so agents preserve exchange-qualified tickers."""
-    instrument_label = "asset" if asset_type == "crypto" else "instrument"
-    extra_hint = (
-        " Treat it as a crypto asset rather than a company, and do not assume company fundamentals are available."
-        if asset_type == "crypto"
-        else ""
-    )
+    from tradingagents.dataflows.symbol_utils import normalize_symbol
+    canonical = normalize_symbol(ticker)
+    label_suffix = f" (resolved canonical symbol: `{canonical}`)" if canonical != ticker.upper() else ""
+
+    if asset_type in ("forex", "commodity") or canonical.endswith("=X") or canonical.endswith("=F"):
+        extra_hint = " Treat it as a global macroeconomic/forex/commodity asset; do not attempt corporate filing lookups."
+    elif asset_type == "crypto":
+        extra_hint = " Treat it as a crypto asset rather than a company, and do not assume company fundamentals are available."
+    else:
+        extra_hint = ""
+
     return (
-        f"The {instrument_label} to analyze is `{ticker}`. "
+        f"The instrument to analyze is `{ticker}`{label_suffix}. "
         "Use this exact ticker in every tool call, report, and recommendation, "
-        "preserving any exchange suffix (e.g. `.TO`, `.L`, `.HK`, `.T`, `-USD`)."
+        "preserving any exchange suffix (e.g. `.TO`, `.L`, `.HK`, `.T`, `-USD`, `=X`, `=F`)."
         + extra_hint
     )
 

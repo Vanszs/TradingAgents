@@ -12,6 +12,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_language_instruction,
 )
 from tradingagents.agents.utils.structured import (
+    NO_EXTERNAL_TOOLS,
     bind_structured,
     invoke_structured_or_freetext,
 )
@@ -32,7 +33,7 @@ def create_trader(llm):
                 "content": (
                     "You are a trading agent converting the Research Manager's plan into a concrete transaction. "
                     "Provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the research plan provided below.\n\n"
+                    f"Anchor your reasoning in the research plan provided below. {NO_EXTERNAL_TOOLS}\n\n"
                     "IMPORTANT for price fields (entry_price, stop_loss, take_profit):\n"
                     "- Always provide specific numerical values when possible.\n"
                     "- NEVER output the string 'None' — either provide a number or omit the field entirely.\n"

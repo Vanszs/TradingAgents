@@ -24,6 +24,7 @@ from cli.stats_handler import StatsCallbackHandler
 from cli.utils import detect_asset_type
 from tradingagents.agents.schemas import SignalContract
 from tradingagents.backtesting.horizon_evaluator import HorizonEvaluator
+from tradingagents.dataflows.errors import NoMarketDataError
 from tradingagents.dataflows.y_finance import get_YFin_data_online
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.trading_graph import TradingAgentsGraph
@@ -159,6 +160,9 @@ def _evaluate_signal_with_tui(
         if "date" not in ohlcv_df.columns:
             index_name = ohlcv_df.columns[0]
             ohlcv_df = ohlcv_df.rename(columns={index_name: "date"})
+    except NoMarketDataError as e:
+        tui.fail_phase("Market Data", f"No market data: {e}")
+        raise typer.Exit(1)
     except Exception as e:
         tui.fail_phase("Market Data", e)
         raise typer.Exit(1)

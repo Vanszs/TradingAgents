@@ -33,6 +33,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_insider_transactions,
     get_news,
     get_stock_data,
+    get_verified_market_snapshot,
 )
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.agents.utils.rating import parse_rating
@@ -197,6 +198,8 @@ class TradingAgentsGraph:
                     get_stock_data,
                     # Technical indicators
                     get_indicators,
+                    # Ground-truth verified market data snapshot
+                    get_verified_market_snapshot,
                 ]
             ),
             "social": ToolNode(

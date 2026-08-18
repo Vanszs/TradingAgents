@@ -8,11 +8,13 @@ import yfinance as yf
 from dateutil.relativedelta import relativedelta
 
 from .config import is_point_in_time_mode
+from .errors import NoMarketDataError
 from .stockstats_utils import (
     filter_financials_by_date,
     load_ohlcv,
     yf_retry,
 )
+from .symbol_utils import normalize_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -93,33 +95,35 @@ def get_YFin_data_online(
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
 
-    # Create ticker object
-    ticker = yf.Ticker(symbol.upper())
+    # Resolve broker/forex aliases (e.g. EURUSD -> EURUSD=X, XAUUSD -> GC=F)
+    canonical = normalize_symbol(symbol)
+    ticker = yf.Ticker(canonical)
 
     # Fetch historical data for the specified date range
     data = yf_retry(lambda: ticker.history(start=start_date, end=end_date))
 
     # Check if data is empty
     if data.empty:
-        return (
-            f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
-        )
+        raise NoMarketDataError(symbol, canonical, f"no rows found between {start_date} and {end_date}")
 
     # Remove timezone info from index for cleaner output
     if data.index.tz is not None:
         data.index = data.index.tz_localize(None)
 
-    # Round numerical values to 2 decimal places for cleaner display
+    # Round numerical values to 2 decimal places for cleaner display (4 for forex)
+    is_fx = canonical.endswith("=X")
+    decimals = 4 if is_fx else 2
     numeric_columns = ["Open", "High", "Low", "Close", "Adj Close"]
     for col in numeric_columns:
         if col in data.columns:
-            data[col] = data[col].round(2)
+            data[col] = data[col].round(decimals)
 
     # Convert DataFrame to CSV string
     csv_string = data.to_csv()
 
     # Add header information
-    header = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n"
+    label = canonical if canonical == symbol.upper() else f"{canonical} (from {symbol})"
+    header = f"# Stock data for {label} from {start_date} to {end_date}\n"
     header += f"# Total records: {len(data)}\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 

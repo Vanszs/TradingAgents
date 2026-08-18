@@ -7,6 +7,7 @@ from dotenv import find_dotenv, set_key
 from rich.console import Console
 
 from cli.models import AnalystType, AssetType
+from tradingagents.dataflows.symbol_utils import normalize_symbol
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.llm_clients.api_key_env import get_api_key_env
 from tradingagents.llm_clients.model_catalog import get_model_options
@@ -46,14 +47,18 @@ def get_ticker() -> str:
 
 
 def normalize_ticker_symbol(ticker: str) -> str:
-    """Normalize ticker input, validate filesystem safety, and preserve exchange suffixes."""
-    cleaned = ticker.strip().upper()
-    return safe_ticker_component(cleaned)
+    """Normalize ticker input, map aliases (e.g. EURUSD -> EURUSD=X), and validate filesystem safety."""
+    canonical = normalize_symbol(ticker.strip().upper())
+    return safe_ticker_component(canonical)
 
 
 def detect_asset_type(ticker: str) -> AssetType:
-    normalized_ticker = ticker.strip().upper()
-    if normalized_ticker.endswith(CRYPTO_SUFFIXES):
+    canonical = normalize_symbol(ticker.strip().upper())
+    if canonical.endswith("=X"):
+        return AssetType.FOREX
+    if canonical.endswith("=F") or canonical.startswith("^"):
+        return AssetType.COMMODITY
+    if canonical.endswith(CRYPTO_SUFFIXES):
         return AssetType.CRYPTO
     return AssetType.STOCK
 
@@ -61,7 +66,9 @@ def detect_asset_type(ticker: str) -> AssetType:
 def filter_analysts_for_asset_type(
     analysts: List[AnalystType], asset_type: AssetType
 ) -> List[AnalystType]:
-    """Crypto now has its own fundamentals analyst — keep all analysts."""
+    """Filter out corporate SEC/fundamental analyst for non-equity instruments."""
+    if asset_type in (AssetType.FOREX, AssetType.COMMODITY):
+        return [a for a in analysts if a != AnalystType.FUNDAMENTALS]
     return analysts
 
 

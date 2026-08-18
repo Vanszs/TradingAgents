@@ -9,6 +9,8 @@ from stockstats import wrap
 from yfinance.exceptions import YFRateLimitError
 
 from .config import get_config
+from .errors import NoMarketDataError
+from .symbol_utils import normalize_symbol
 from .utils import safe_ticker_component
 
 logger = logging.getLogger(__name__)
@@ -55,12 +57,13 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     """
     # Reject ticker values that would escape the cache directory when
     # interpolated into the cache filename (e.g. ``../../tmp/x``).
-    safe_symbol = safe_ticker_component(symbol)
+    canonical = normalize_symbol(symbol)
+    safe_symbol = safe_ticker_component(canonical)
 
     config = get_config()
     curr_date_dt = pd.to_datetime(curr_date)
 
-    # Cache uses a fixed window (15y to today) so one file per symbol
+    # Cache uses a fixed window so one file per symbol
     today_date = pd.Timestamp.today()
     start_date = today_date - pd.DateOffset(years=5)
     start_str = start_date.strftime("%Y-%m-%d")
@@ -72,18 +75,28 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
         f"{safe_symbol}-YFin-data-{start_str}-{end_str}.csv",
     )
 
+    data = None
     if os.path.exists(data_file):
-        data = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
-    else:
-        data = yf_retry(lambda: yf.download(
-            symbol,
+        # Apply 15-minute TTL for same-day cache so partial intraday bars refresh
+        file_mtime = os.path.getmtime(data_file)
+        is_today = (curr_date == today_date.strftime("%Y-%m-%d"))
+        if not is_today or (time.time() - file_mtime < 900):
+            cached = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
+            if not cached.empty and "Close" in cached.columns:
+                data = cached
+
+    if data is None:
+        downloaded = yf_retry(lambda: yf.download(
+            canonical,
             start=start_str,
             end=end_str,
             multi_level_index=False,
             progress=False,
             auto_adjust=True,
         ))
-        data = data.reset_index()
+        if downloaded.empty or "Close" not in downloaded.columns:
+            raise NoMarketDataError(symbol, canonical, "Yahoo Finance returned zero market rows")
+        data = downloaded.reset_index()
         data.to_csv(data_file, index=False, encoding="utf-8")
 
     data = _clean_dataframe(data)

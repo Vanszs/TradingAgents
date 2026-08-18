@@ -5,6 +5,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_indicators,
     get_language_instruction,
     get_stock_data,
+    get_verified_market_snapshot,
 )
 
 
@@ -25,6 +26,7 @@ def create_market_analyst(llm):
         tools = [
             get_stock_data,
             get_indicators,
+            get_verified_market_snapshot,
         ]
 
         system_message = (

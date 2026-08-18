@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
+NO_EXTERNAL_TOOLS = (
+    "Use only the evidence provided in this prompt. Do not call external tools "
+    "or search the web; if something is missing, say so explicitly."
+)
+
 
 def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]:
     """Return ``llm.with_structured_output(schema)`` or ``None`` if unsupported.
