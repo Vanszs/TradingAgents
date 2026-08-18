@@ -24,6 +24,7 @@ from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+from tradingagents.dataflows.config import get_config
 
 
 def create_portfolio_manager(llm):
@@ -49,6 +50,18 @@ def create_portfolio_manager(llm):
             else ""
         )
 
+        target_mode = int(get_config().get("target_mode", 3))
+        if target_mode == 1:
+            target_guidance = "Provide a single unconstrained price_target representing long-term fair value."
+        elif target_mode == 2:
+            target_guidance = "Provide take_profit as a strict tactical swing exit based on current market levels."
+        else:
+            target_guidance = (
+                "Provide BOTH targets:\n"
+                "- take_profit: Nearest tactical/swing resistance level for execution.\n"
+                "- price_target: 12-month fundamental fair value / long-term valuation target."
+            )
+
         prompt = f"""As the Portfolio Manager, synthesize the risk analysts' debate and deliver the final trading decision.
 
 {instrument_context}
@@ -61,6 +74,9 @@ def create_portfolio_manager(llm):
 - **Hold**: Maintain current position, no action needed
 - **Underweight**: Reduce exposure, take partial profits
 - **Sell**: Exit position or avoid entry
+
+**Target Price Guidance:**
+{target_guidance}
 
 **Context:**
 - Current trade date: {trade_date}

@@ -18,6 +18,7 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
     "TRADINGAGENTS_ANALYST_CONCURRENCY":  "analyst_concurrency_limit",
+    "TRADINGAGENTS_TARGET_MODE":          "target_mode",
 }
 
 
@@ -71,6 +72,11 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # Output language for analyst reports and final decision
     # Internal agent debate stays in English for reasoning quality
     "output_language": "English",
+    # Target price strategy mode:
+    # 1: Legacy Macro Mode (free-form unconstrained price estimates)
+    # 2: Tactical Snapshot Mode (strict risk-managed swing execution via verified snapshot)
+    # 3: Hybrid Mode (dual target: tactical take-profit + 12-month fundamental fair value)
+    "target_mode": 3,
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,

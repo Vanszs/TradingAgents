@@ -334,9 +334,10 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     ]
     if decision.stop_loss is not None:
         parts.extend(["", f"**Stop Loss**: {decision.stop_loss}"])
-    take_profit = decision.take_profit if decision.take_profit is not None else decision.price_target
-    if take_profit is not None:
-        parts.extend(["", f"**Price Target**: {take_profit}"])
+    if decision.take_profit is not None:
+        parts.extend(["", f"**Take Profit**: {decision.take_profit}"])
+    if decision.price_target is not None:
+        parts.extend(["", f"**Price Target**: {decision.price_target}"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
     parts.extend(["", f"**Next Review Date**: {decision.next_review_date}"])
@@ -457,6 +458,7 @@ class SignalContract(BaseModel):
     reference_price_timestamp: Optional[str] = None
     reference_timezone: Optional[str] = None
     take_profit: Optional[float] = Field(default=None, description="Take profit price target")
+    price_target: Optional[float] = Field(default=None, description="Long-term fundamental fair value target")
     stop_loss: Optional[float] = Field(default=None, description="Stop loss protective boundary")
     time_horizon_days: int = Field(
         ge=1,
@@ -550,6 +552,7 @@ def portfolio_decision_to_signal_contract(
         entry_mode=EntryMode.ASSUMED_AI_ENTRY if action != "HOLD" and planned_entry_price is not None else EntryMode.T1_OPEN if action != "HOLD" else None,
         planned_entry_price=planned_entry_price,
         take_profit=take_profit,
+        price_target=decision.price_target,
         stop_loss=decision.stop_loss,
         time_horizon_days=decision.time_horizon_days,
         confidence=decision.confidence,

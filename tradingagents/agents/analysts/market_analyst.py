@@ -7,6 +7,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_stock_data,
     get_verified_market_snapshot,
 )
+from tradingagents.dataflows.config import get_config
 
 
 def create_market_analyst(llm):
@@ -23,11 +24,16 @@ def create_market_analyst(llm):
         else:
             analysis_note = ""
 
+        target_mode = int(get_config().get("target_mode", 3))
+
         tools = [
             get_stock_data,
             get_indicators,
-            get_verified_market_snapshot,
         ]
+        # Target Mode 1 is legacy macro (no verified snapshot injection)
+        # Target Mode 2 (tactical) and Mode 3 (hybrid) bind verified snapshot
+        if target_mode in (2, 3):
+            tools.append(get_verified_market_snapshot)
 
         system_message = (
             """You are a trading assistant tasked with analyzing financial markets. Your role is to select the **most relevant indicators** for a given market condition or trading strategy from the following list. The goal is to choose up to **8 indicators** that provide complementary insights without redundancy. Categories and each category's indicators are:

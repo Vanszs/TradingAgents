@@ -37,15 +37,16 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
 
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps."""
-    data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
-    data = data.dropna(subset=["Date"])
+    df = data.copy()
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df = df.dropna(subset=["Date"])
 
-    price_cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in data.columns]
-    data[price_cols] = data[price_cols].apply(pd.to_numeric, errors="coerce")
-    data = data.dropna(subset=["Close"])
-    data[price_cols] = data[price_cols].ffill().bfill()
+    price_cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in df.columns]
+    df.loc[:, price_cols] = df[price_cols].apply(pd.to_numeric, errors="coerce")
+    df = df.dropna(subset=["Close"])
+    df.loc[:, price_cols] = df[price_cols].ffill().bfill()
 
-    return data
+    return df
 
 
 def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:

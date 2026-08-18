@@ -284,18 +284,21 @@ class SingleShotTUI:
 
 
 def render_signal_summary(signal, horizon_days: int) -> str:
-    return "\n".join(
-        (
-            f"- **Agent Rating:** {signal.rating.value}",
-            f"- **Action:** {signal.action}",
-            f"- **Planned Entry:** {signal.planned_entry_price if signal.planned_entry_price is not None else 'None'}",
-            f"- **Take Profit:** {signal.take_profit if signal.take_profit is not None else 'None'}",
-            f"- **Stop Loss:** {signal.stop_loss if signal.stop_loss is not None else 'None'}",
-            f"- **Entry Mode:** {signal.entry_mode.value if signal.entry_mode is not None else 'None'}",
-            f"- **Reference Price:** {signal.reference_price_at_signal if signal.reference_price_at_signal is not None else 'None'}",
-            f"- **Horizon:** {horizon_days} trading days",
-        )
-    )
+    parts = [
+        f"- **Agent Rating:** {signal.rating.value}",
+        f"- **Action:** {signal.action}",
+        f"- **Planned Entry:** {signal.planned_entry_price if signal.planned_entry_price is not None else 'None'}",
+        f"- **Take Profit:** {signal.take_profit if signal.take_profit is not None else 'None'}",
+    ]
+    if getattr(signal, "price_target", None) is not None:
+        parts.append(f"- **Price Target (12M):** {signal.price_target}")
+    parts.extend([
+        f"- **Stop Loss:** {signal.stop_loss if signal.stop_loss is not None else 'None'}",
+        f"- **Entry Mode:** {signal.entry_mode.value if signal.entry_mode is not None else 'None'}",
+        f"- **Reference Price:** {signal.reference_price_at_signal if signal.reference_price_at_signal is not None else 'None'}",
+        f"- **Horizon:** {horizon_days} trading days",
+    ])
+    return "\n".join(parts)
 
 
 def render_evaluation_summary(result, label: str) -> str:
