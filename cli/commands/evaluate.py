@@ -21,6 +21,7 @@ from cli.commands.evaluate_tui import (
     render_signal_summary,
 )
 from cli.stats_handler import StatsCallbackHandler
+from cli.utils import detect_asset_type
 from tradingagents.agents.schemas import SignalContract
 from tradingagents.backtesting.horizon_evaluator import HorizonEvaluator
 from tradingagents.dataflows.y_finance import get_YFin_data_online
@@ -186,7 +187,7 @@ def _evaluate_signal_with_tui(
     if llm_provider:
         config_override["llm_provider"] = llm_provider
 
-    asset_type = "crypto" if ticker.endswith("-USD") or "-USD" in ticker else "stock"
+    asset_type = detect_asset_type(ticker).value
 
     tui.start_phase("Analyst Team")
     try:

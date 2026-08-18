@@ -17,7 +17,7 @@ import pandas as pd
 from tradingagents.dataflows.utils import safe_ticker_component
 
 _SECRET_KEY = re.compile(
-    r"(?:api[_-]?key|token|secret|password|credential|authorization|headers|auth)",
+    r"(?:\bkey\b|api[_-]?key|access[_-]?key|token|jwt|secret|password|credential|authorization|headers|auth)",
     re.IGNORECASE,
 )
 _SECRET_VALUE = re.compile(r"(?:bearer\s+|sk-[A-Za-z0-9][A-Za-z0-9_-]{8,})\S*", re.IGNORECASE)

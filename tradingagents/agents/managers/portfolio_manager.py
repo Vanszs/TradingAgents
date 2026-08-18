@@ -100,12 +100,15 @@ Be decisive and ground every conclusion in specific evidence from the analysts.{
 
         signal_contract = None
         if typed_decision is not None and trade_date:
-            signal_contract = portfolio_decision_to_signal_contract(
-                typed_decision,
-                state["company_of_interest"],
-                trade_date,
-                planned_entry_price=planned_entry_price,
-            )
+            try:
+                signal_contract = portfolio_decision_to_signal_contract(
+                    typed_decision,
+                    state["company_of_interest"],
+                    trade_date,
+                    planned_entry_price=planned_entry_price,
+                )
+            except Exception:
+                signal_contract = None
 
         new_risk_debate_state = {
             "judge_decision": final_trade_decision,

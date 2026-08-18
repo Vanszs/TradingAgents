@@ -5,9 +5,9 @@ from typing import List, Optional, Tuple
 import questionary
 from dotenv import find_dotenv, set_key
 from rich.console import Console
-from rich.panel import Panel
 
 from cli.models import AnalystType, AssetType
+from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.llm_clients.api_key_env import get_api_key_env
 from tradingagents.llm_clients.model_catalog import get_model_options
 
@@ -46,8 +46,9 @@ def get_ticker() -> str:
 
 
 def normalize_ticker_symbol(ticker: str) -> str:
-    """Normalize ticker input while preserving exchange suffixes."""
-    return ticker.strip().upper()
+    """Normalize ticker input, validate filesystem safety, and preserve exchange suffixes."""
+    cleaned = ticker.strip().upper()
+    return safe_ticker_component(cleaned)
 
 
 def detect_asset_type(ticker: str) -> AssetType:
@@ -68,16 +69,21 @@ def get_analysis_date() -> str:
     """Prompt the user to enter a date in YYYY-MM-DD format."""
     from datetime import datetime
 
+    default_today = datetime.now().strftime("%Y-%m-%d")
+
     def validate_date(date_str: str) -> bool:
+        if not date_str.strip():
+            return True
         try:
-            datetime.strptime(date_str, "%Y-%m-%d")
+            datetime.strptime(date_str.strip(), "%Y-%m-%d")
             return True
         except ValueError:
             return False
 
     date = questionary.text(
         "Enter the analysis date (YYYY-MM-DD):",
-        validate=lambda x: validate_date(x.strip())
+        default=default_today,
+        validate=lambda x: validate_date(x)
         or "Please enter a valid date in YYYY-MM-DD format.",
         style=questionary.Style(
             [
@@ -88,8 +94,7 @@ def get_analysis_date() -> str:
     ).ask()
 
     if not date:
-        console.print("\n[red]No date provided. Exiting...[/red]")
-        exit(1)
+        return default_today
 
     return date.strip()
 

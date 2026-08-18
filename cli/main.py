@@ -1,5 +1,4 @@
 import datetime
-from functools import wraps
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +23,7 @@ from rich.table import Table
 from rich.text import Text
 
 from cli.announcements import display_announcements, fetch_announcements
+from cli.commands.evaluate_results import sanitize_config
 from cli.progress_contract import (
     ALL_TEAMS,
     ANALYST_AGENT_NAMES,
@@ -38,6 +38,7 @@ from cli.progress_contract import (
 )
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import (
+    ANALYST_ORDER as UTILS_ANALYST_ORDER,
     ask_anthropic_effort,
     ask_gemini_thinking_config,
     ask_glm_region,
@@ -49,8 +50,10 @@ from cli.utils import (
     create_cli_layout,
     detect_asset_type,
     ensure_api_key,
+    filter_analysts_for_asset_type,
     get_analysis_date,
     get_ticker,
+    normalize_ticker_symbol,
     select_analysts,
     select_deep_thinking_agent,
     select_llm_provider,
@@ -91,14 +94,20 @@ class MessageBuffer:
         self.report_sections = {}
         self.selected_analysts = []
         self._processed_message_ids = set()
+        self.log_file: Optional[Path] = None
+        self.report_dir: Optional[Path] = None
 
-    def init_for_analysis(self, selected_analysts):
+    def init_for_analysis(self, selected_analysts, log_file: Optional[Path] = None, report_dir: Optional[Path] = None):
         """Initialize agent status and report sections based on selected analysts.
 
         Args:
             selected_analysts: List of analyst type strings (e.g., ["market", "news"])
+            log_file: Optional log path to write message/tool trace
+            report_dir: Optional directory to save intermediate report sections
         """
         self.selected_analysts = [a.lower() for a in selected_analysts]
+        self.log_file = log_file
+        self.report_dir = report_dir
 
         # Build agent_status dynamically
         self.agent_status = {}
@@ -128,20 +137,12 @@ class MessageBuffer:
         self._processed_message_ids.clear()
 
     def get_completed_reports_count(self):
-        """Count reports that are finalized (their finalizing agent is completed).
-
-        A report is considered complete when:
-        1. The report section has content (not None), AND
-        2. The agent responsible for finalizing that report has status "completed"
-
-        This prevents interim updates (like debate rounds) from counting as completed.
-        """
+        """Count reports that are finalized (their finalizing agent is completed)."""
         count = 0
         for section in self.report_sections:
             if section not in self.REPORT_SECTIONS:
                 continue
             _, finalizing_agent = self.REPORT_SECTIONS[section]
-            # Report is complete if it has content AND its finalizing agent is done
             has_content = self.report_sections.get(section) is not None
             agent_done = self.agent_status.get(finalizing_agent) == "completed"
             if has_content and agent_done:
@@ -151,10 +152,18 @@ class MessageBuffer:
     def add_message(self, message_type, content):
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         self.messages.append((timestamp, message_type, content))
+        if self.log_file is not None:
+            clean_content = str(content).replace("\n", " ")
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(f"{timestamp} [{message_type}] {clean_content}\n")
 
     def add_tool_call(self, tool_name, args):
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         self.tool_calls.append((timestamp, tool_name, args))
+        if self.log_file is not None:
+            args_str = ", ".join(f"{k}={v}" for k, v in args.items()) if isinstance(args, dict) else str(args)
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(f"{timestamp} [Tool Call] {tool_name}({args_str})\n")
 
     def update_agent_status(self, agent, status):
         if agent in self.agent_status:
@@ -165,6 +174,11 @@ class MessageBuffer:
         if section_name in self.report_sections:
             self.report_sections[section_name] = content
             self._update_current_report()
+            if self.report_dir is not None and content:
+                file_name = f"{section_name}.md"
+                text = "\n".join(str(item) for item in content) if isinstance(content, list) else str(content)
+                with open(self.report_dir / file_name, "w", encoding="utf-8") as f:
+                    f.write(text)
 
     def _update_current_report(self):
         # For the panel display, only show the most recently updated section
@@ -581,8 +595,49 @@ def get_user_selections():
     }
 
 
-def save_report_to_disk(final_state, ticker: str, save_path: Path):
-    """Save complete analysis report to disk with organized subfolders."""
+def build_headless_selections(
+    ticker: str,
+    analysis_date: Optional[str] = None,
+    provider: Optional[str] = None,
+    research_depth: Optional[int] = None,
+    language: Optional[str] = None,
+) -> dict:
+    """Build selections dictionary for headless / automated runs without Questionary prompts."""
+    normalized_ticker = normalize_ticker_symbol(ticker)
+    asset_type = detect_asset_type(normalized_ticker)
+    trade_date = analysis_date or datetime.datetime.now().strftime("%Y-%m-%d")
+
+    llm_provider = (provider or DEFAULT_CONFIG.get("llm_provider", "openai")).lower()
+    backend_url = DEFAULT_CONFIG.get("backend_url")
+    shallow_thinker = DEFAULT_CONFIG.get("quick_think_llm", "gpt-5.4-mini")
+    deep_thinker = DEFAULT_CONFIG.get("deep_think_llm", "gpt-5.4")
+    depth = research_depth or int(DEFAULT_CONFIG.get("max_debate_rounds", 3))
+    out_lang = language or DEFAULT_CONFIG.get("output_language", "English")
+
+    analysts = filter_analysts_for_asset_type(
+        [value for _, value in UTILS_ANALYST_ORDER],
+        asset_type,
+    )
+
+    return {
+        "ticker": normalized_ticker,
+        "asset_type": asset_type.value,
+        "analysis_date": trade_date,
+        "analysts": analysts,
+        "research_depth": depth,
+        "llm_provider": llm_provider,
+        "backend_url": backend_url,
+        "shallow_thinker": shallow_thinker,
+        "deep_thinker": deep_thinker,
+        "google_thinking_level": DEFAULT_CONFIG.get("google_thinking_level"),
+        "openai_reasoning_effort": DEFAULT_CONFIG.get("openai_reasoning_effort"),
+        "anthropic_effort": DEFAULT_CONFIG.get("anthropic_effort"),
+        "output_language": out_lang,
+    }
+
+
+def save_report_to_disk(final_state, ticker: str, save_path: Path, config: Optional[dict] = None):
+    """Save complete analysis report to disk with organized subfolders, signal.json, and sanitized config."""
     save_path.mkdir(parents=True, exist_ok=True)
     sections = []
 
@@ -664,6 +719,27 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
             portfolio_dir.mkdir(exist_ok=True)
             (portfolio_dir / "decision.md").write_text(risk["judge_decision"], encoding="utf-8")
             sections.append(f"## V. Portfolio Manager Decision\n\n### Portfolio Manager\n{risk['judge_decision']}")
+
+    # 6. Save typed signal.json if available
+    signal_contract = final_state.get("signal_contract")
+    if signal_contract is not None:
+        import json
+        signal_dict = (
+            signal_contract.model_dump(mode="json")
+            if hasattr(signal_contract, "model_dump")
+            else dict(signal_contract)
+        )
+        (save_path / "signal.json").write_text(
+            json.dumps(signal_dict, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    # 7. Save sanitized config.json
+    if config:
+        import json
+        sanitized = sanitize_config(config)
+        (save_path / "config.json").write_text(
+            json.dumps(sanitized, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     # Write consolidated report
     header = f"# Trading Analysis Report: {ticker}\n\nGenerated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
@@ -783,12 +859,20 @@ def update_analyst_statuses(message_buffer, chunk, wall_time_tracker=None):
         if message_buffer.agent_status.get("Bull Researcher") == "pending":
             message_buffer.update_agent_status("Bull Researcher", "in_progress")
 
-def run_analysis(checkpoint: bool = False):
-    # First get all user selections
-    selections = get_user_selections()
+def run_analysis(
+    checkpoint: bool = False,
+    selections: Optional[dict] = None,
+    output_dir: Optional[Path] = None,
+    headless: bool = False,
+):
+    # First get user selections (interactive or headless)
+    if selections is None:
+        selections = get_user_selections()
 
-    # Create config with selected research depth
+    # Create config with selected research depth and date context for Exa/tools
     config = DEFAULT_CONFIG.copy()
+    config["trade_date"] = selections["analysis_date"]
+    config["curr_date"] = selections["analysis_date"]
     config["max_debate_rounds"] = selections["research_depth"]
     config["max_risk_discuss_rounds"] = selections["research_depth"]
     config["quick_think_llm"] = selections["shallow_thinker"]
@@ -805,8 +889,11 @@ def run_analysis(checkpoint: bool = False):
     # Create stats callback handler for tracking LLM/tool calls
     stats_handler = StatsCallbackHandler()
 
-    # Normalize analyst selection to predefined order (selection is a 'set', order is fixed)
-    selected_set = {analyst.value for analyst in selections["analysts"]}
+    # Normalize analyst selection to predefined order (supports enum or raw string items)
+    selected_set = {
+        analyst.value if hasattr(analyst, "value") else str(analyst)
+        for analyst in selections.get("analysts", [])
+    }
     selected_analyst_keys = [a for a in PROGRESS_ANALYST_ORDER if a in selected_set]
     analyst_execution_plan = build_analyst_execution_plan(
         selected_analyst_keys,
@@ -823,12 +910,6 @@ def run_analysis(checkpoint: bool = False):
         asset_type=selections["asset_type"],
     )
 
-    # Initialize message buffer with selected analysts
-    message_buffer.init_for_analysis(selected_analyst_keys)
-
-    # Track start time for elapsed display
-    start_time = time.time()
-
     # Create result directory
     base_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
     v = 1
@@ -841,45 +922,15 @@ def run_analysis(checkpoint: bool = False):
     log_file = results_dir / "message_tool.log"
     log_file.touch(exist_ok=True)
 
-    def save_message_decorator(obj, func_name):
-        func = getattr(obj, func_name)
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            func(*args, **kwargs)
-            timestamp, message_type, content = obj.messages[-1]
-            content = content.replace("\n", " ")  # Replace newlines with spaces
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(f"{timestamp} [{message_type}] {content}\n")
-        return wrapper
-    
-    def save_tool_call_decorator(obj, func_name):
-        func = getattr(obj, func_name)
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            func(*args, **kwargs)
-            timestamp, tool_name, args = obj.tool_calls[-1]
-            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(f"{timestamp} [Tool Call] {tool_name}({args_str})\n")
-        return wrapper
+    # Initialize message buffer with selected analysts and disk targets
+    message_buffer.init_for_analysis(
+        selected_analyst_keys,
+        log_file=log_file,
+        report_dir=report_dir,
+    )
 
-    def save_report_section_decorator(obj, func_name):
-        func = getattr(obj, func_name)
-        @wraps(func)
-        def wrapper(section_name, content):
-            func(section_name, content)
-            if section_name in obj.report_sections and obj.report_sections[section_name] is not None:
-                content = obj.report_sections[section_name]
-                if content:
-                    file_name = f"{section_name}.md"
-                    text = "\n".join(str(item) for item in content) if isinstance(content, list) else content
-                    with open(report_dir / file_name, "w", encoding="utf-8") as f:
-                        f.write(text)
-        return wrapper
-
-    message_buffer.add_message = save_message_decorator(message_buffer, "add_message")
-    message_buffer.add_tool_call = save_tool_call_decorator(message_buffer, "add_tool_call")
-    message_buffer.update_report_section = save_report_section_decorator(message_buffer, "update_report_section")
+    # Track start time for elapsed display
+    start_time = time.time()
 
     # Now start the display layout
     layout = create_cli_layout()
@@ -894,17 +945,22 @@ def run_analysis(checkpoint: bool = False):
         message_buffer.add_message(
             "System", f"Analysis date: {selections['analysis_date']}"
         )
+        display_analysts = [
+            analyst.value if hasattr(analyst, "value") else str(analyst)
+            for analyst in selections.get("analysts", [])
+        ]
         message_buffer.add_message(
             "System",
-            f"Selected analysts: {', '.join(analyst.value for analyst in selections['analysts'])}",
+            f"Selected analysts: {', '.join(display_analysts)}",
         )
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
         # Update agent status to in_progress for the first analyst
-        first_analyst = get_initial_analyst_node(analyst_execution_plan)
-        message_buffer.update_agent_status(first_analyst, "in_progress")
-        analyst_wall_time_tracker.mark_started(selected_analyst_keys[0])
-        update_display(layout, stats_handler=stats_handler, start_time=start_time)
+        if selected_analyst_keys:
+            first_analyst = get_initial_analyst_node(analyst_execution_plan)
+            message_buffer.update_agent_status(first_analyst, "in_progress")
+            analyst_wall_time_tracker.mark_started(selected_analyst_keys[0])
+            update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
         # Create spinner text
         spinner_text = (
@@ -1052,11 +1108,27 @@ def run_analysis(checkpoint: bool = False):
 
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
-    # Post-analysis prompts (outside Live context for clean interaction)
+    # Post-analysis reporting
     console.print("\n[bold cyan]Analysis Complete![/bold cyan]\n")
     console.print(f"[dim]{analyst_wall_time_tracker.format_summary()}[/dim]")
 
-    # Prompt to save report
+    # If output_dir is given explicitly or in headless mode, write without prompting
+    if output_dir is not None:
+        save_path = output_dir
+        report_file = save_report_to_disk(final_state, selections["ticker"], save_path, config=config)
+        console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
+        console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
+        return final_state
+
+    if headless:
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_path = Path.cwd() / "reports" / f"{selections['ticker']}_{timestamp}"
+        report_file = save_report_to_disk(final_state, selections["ticker"], save_path, config=config)
+        console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
+        console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
+        return final_state
+
+    # Interactive prompts
     save_choice = typer.prompt("Save report?", default="Y").strip().upper()
     if save_choice in ("Y", "YES", ""):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1067,20 +1139,61 @@ def run_analysis(checkpoint: bool = False):
         ).strip()
         save_path = Path(save_path_str)
         try:
-            report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
+            report_file = save_report_to_disk(final_state, selections["ticker"], save_path, config=config)
             console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
             console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
         except Exception as e:
             console.print(f"[red]Error saving report: {e}[/red]")
 
-    # Prompt to display full report
     display_choice = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper()
     if display_choice in ("Y", "YES", ""):
         display_complete_report(final_state)
 
+    return final_state
+
 
 @app.command()
 def analyze(
+    ticker: Optional[str] = typer.Option(
+        None,
+        "--ticker",
+        "-t",
+        help="Stock ticker symbol to analyze (e.g. BBRI.JK, NVDA, AAPL).",
+    ),
+    trade_date: Optional[str] = typer.Option(
+        None,
+        "--date",
+        "-d",
+        help="Target analysis date (YYYY-MM-DD). Defaults to today.",
+    ),
+    provider: Optional[str] = typer.Option(
+        None,
+        "--provider",
+        "-p",
+        help="LLM provider override (e.g. openai, anthropic, google, bluesmind, ollama).",
+    ),
+    research_depth: Optional[int] = typer.Option(
+        None,
+        "--depth",
+        help="Research debate depth rounds (1=Shallow, 3=Medium, 5=Deep).",
+    ),
+    language: Optional[str] = typer.Option(
+        None,
+        "--lang",
+        "-l",
+        help="Output report language (e.g. English, Indonesian, Chinese).",
+    ),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output-dir",
+        "-o",
+        help="Custom directory path to save reports, signal.json, and config.json.",
+    ),
+    headless: bool = typer.Option(
+        False,
+        "--headless",
+        help="Run non-interactively without terminal prompts (ideal for cron / automated scripts).",
+    ),
     checkpoint: bool = typer.Option(
         False,
         "--checkpoint",
@@ -1092,11 +1205,36 @@ def analyze(
         help="Delete all saved checkpoints before running (force fresh start).",
     ),
 ):
+    """
+    Run full multi-agent financial analysis.
+
+    Can be run interactively or headlessly using CLI flags (--ticker, --date, --headless).
+    """
     if clear_checkpoints:
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
         console.print(f"[yellow]Cleared {n} checkpoint(s).[/yellow]")
-    run_analysis(checkpoint=checkpoint)
+
+    # Build selections: if ticker is provided or headless flag is set, run non-interactively
+    is_headless = headless or (ticker is not None)
+    if is_headless:
+        target_ticker = ticker or "SPY"
+        selections = build_headless_selections(
+            ticker=target_ticker,
+            analysis_date=trade_date,
+            provider=provider,
+            research_depth=research_depth,
+            language=language,
+        )
+    else:
+        selections = None
+
+    run_analysis(
+        checkpoint=checkpoint,
+        selections=selections,
+        output_dir=output_dir,
+        headless=is_headless,
+    )
 
 
 @app.command(name="backtest")

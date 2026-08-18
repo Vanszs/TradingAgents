@@ -104,7 +104,7 @@ def create_crypto_fundamentals_analyst(llm):
         chain = filled_prompt | llm.bind_tools(tools)
         result = chain.invoke(state["messages"])
 
-        report = result.content or ""
+        report = result.content if len(result.tool_calls) == 0 else ""
         return {
             "messages": [result],
             "fundamentals_report": report,
