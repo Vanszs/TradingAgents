@@ -165,6 +165,13 @@ class HorizonEvaluator:
             entry_date = signal_date
 
         df = ohlcv_df.copy()
+        # Drop incomplete rows (e.g. active intraday sessions where prices are NaN or 0)
+        price_cols = [c for c in ["open", "high", "low", "close"] if c in df.columns]
+        if len(price_cols) == 4:
+            numeric_check = df[price_cols].apply(pd.to_numeric, errors="coerce")
+            valid_mask = numeric_check.notna().all(axis=1) & (numeric_check > 0).all(axis=1)
+            df = df[valid_mask].copy()
+
         parsed_dates = pd.to_datetime(df["date"], errors="raise", utc=True)
         if parsed_dates.duplicated().any():
             raise ValueError("ohlcv_df contains duplicate dates")

@@ -160,6 +160,12 @@ def _evaluate_signal_with_tui(
         if "date" not in ohlcv_df.columns:
             index_name = ohlcv_df.columns[0]
             ohlcv_df = ohlcv_df.rename(columns={index_name: "date"})
+
+        # Drop incomplete/unclosed market sessions (e.g. rows with NaN/null in price columns)
+        price_cols = [c for c in ["open", "high", "low", "close"] if c in ohlcv_df.columns]
+        if len(price_cols) == 4:
+            valid_numeric = ohlcv_df[price_cols].apply(pd.to_numeric, errors="coerce")
+            ohlcv_df = ohlcv_df[valid_numeric.notna().all(axis=1) & (valid_numeric > 0).all(axis=1)].copy()
     except NoMarketDataError as e:
         tui.fail_phase("Market Data", f"No market data: {e}")
         raise typer.Exit(1)
