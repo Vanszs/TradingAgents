@@ -90,26 +90,10 @@ def resolve_agent_config(yaml_agent: dict[str, Any], env: dict[str, str] | None 
     )
 
 
-# Provider → env var for API key (subset of llm_clients/api_key_env.py)
-_PROVIDER_KEY_ENV: dict[str, str | None] = {
-    "openai": "OPENAI_API_KEY",
-    "anthropic": "ANTHROPIC_API_KEY",
-    "google": "GOOGLE_API_KEY",
-    "azure": "AZURE_OPENAI_API_KEY",
-    "xai": "XAI_API_KEY",
-    "deepseek": "DEEPSEEK_API_KEY",
-    "qwen": "DASHSCOPE_API_KEY",
-    "minimax": "MINIMAX_API_KEY",
-    "openrouter": "OPENROUTER_API_KEY",
-    "bluesmind": "BLUESMIND_API_KEY",
-    "sumopod": "SUMOPOD_API_KEY",
-    "ollama": None,
-}
-
-
 def _validate_api_key(provider: str, env: dict[str, str]) -> None:
     """Assert that the API key env var is set for known providers."""
-    key_env = _PROVIDER_KEY_ENV.get(provider.lower())
+    from tradingagents.llm_clients.api_key_env import get_api_key_env
+    key_env = get_api_key_env(provider)
     if key_env is None:
         return  # unknown provider or keyless (ollama)
     if not env.get(key_env, "").strip():

@@ -18,6 +18,9 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
     "TRADINGAGENTS_ANALYST_CONCURRENCY":  "analyst_concurrency_limit",
+    "TRADINGAGENTS_GOOGLE_THINKING_LEVEL": "google_thinking_level",
+    "TRADINGAGENTS_OPENAI_REASONING_EFFORT": "openai_reasoning_effort",
+    "TRADINGAGENTS_ANTHROPIC_EFFORT":     "anthropic_effort",
 }
 
 

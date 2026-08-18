@@ -263,27 +263,31 @@ class RiskEngine:
             stop_triggered = low_price <= stop_price
             # PRD §16.3: If both stop and target triggered, stop wins (conservative)
             if stop_triggered:
+                # Realistic gap fill: take opening price if market gap-opened below stop
+                fill_price = min(open_price, stop_price)
                 events.append(RiskEvent(
                     date=date,
                     event_type="stop",
                     side="LONG",
-                    price=stop_price,
-                    reason=f"Long stop triggered: low {low_price} <= stop {stop_price}",
+                    price=fill_price,
+                    reason=f"Long stop triggered: low {low_price} <= stop {stop_price} (fill: {fill_price})",
                 ))
-                return self._force_close_position(date, position, stop_price, "stop")
+                return self._force_close_position(date, position, fill_price, "stop")
 
         elif position.side == PositionSide.SHORT:
             # PRD §16.2: Short stop triggered if High >= stop_price
             stop_triggered = high_price >= stop_price
             if stop_triggered:
+                # Realistic gap fill: take opening price if market gap-opened above stop
+                fill_price = max(open_price, stop_price)
                 events.append(RiskEvent(
                     date=date,
                     event_type="stop",
                     side="SHORT",
-                    price=stop_price,
-                    reason=f"Short stop triggered: high {high_price} >= stop {stop_price}",
+                    price=fill_price,
+                    reason=f"Short stop triggered: high {high_price} >= stop {stop_price} (fill: {fill_price})",
                 ))
-                return self._force_close_position(date, position, stop_price, "stop")
+                return self._force_close_position(date, position, fill_price, "stop")
 
         return None
 

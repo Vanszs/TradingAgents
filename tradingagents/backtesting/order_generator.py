@@ -68,20 +68,18 @@ class OrderGenerator:
         ticker = decision.ticker
         exec_date = decision.decision_valid_from or decision.trade_date
 
-        # Calculate target quantity from allocation_pct
-        target_qty = self._allocation_to_qty(decision, current_position, current_equity, reference_price)
-
-        # Lot-size rounding
-        target_qty = self._round_to_lot(target_qty)
-
-        # Max-leverage cap
-        target_qty = self._cap_by_leverage(target_qty, current_position, current_equity)
-
-        # For close orders, use full position quantity if allocation yielded 0
-        if target_qty <= 0 and order_type in (
+        # For close orders, always close the full open position
+        if order_type in (
             OrderType.SELL_TO_CLOSE, OrderType.BUY_TO_CLOSE,
-        ):
+        ) or decision.position_intent == "close":
             target_qty = current_position.abs_qty()
+        else:
+            # Calculate target quantity from allocation_pct
+            target_qty = self._allocation_to_qty(decision, current_position, current_equity, reference_price)
+            # Lot-size rounding
+            target_qty = self._round_to_lot(target_qty)
+            # Max-leverage cap
+            target_qty = self._cap_by_leverage(target_qty, current_position, current_equity, reference_price)
 
         if target_qty <= 0:
             return []
@@ -159,7 +157,8 @@ class OrderGenerator:
         pos: Position,
     ) -> list[Order]:
         """Handle the legacy decision_schema.ParsedDecision (with .action, .rating)."""
-        from .decision_schema import Action, Rating as OldRating
+        from .decision_schema import Action
+        from .decision_schema import Rating as OldRating
 
         if decision.action == Action.INVALID:
             return []
@@ -176,7 +175,7 @@ class OrderGenerator:
         action_map = {
             Action.BUY: "BUY_TO_OPEN",
             Action.ADD: "BUY_TO_ADD",
-            Action.SELL: "SELL_TO_CLOSE",
+            Action.SELL: "SELL_TO_CLOSE" if portfolio.is_long() else "SELL_TO_OPEN",
             Action.OPEN_SHORT: "SELL_TO_OPEN",
             Action.COVER_SHORT: "BUY_TO_CLOSE",
             Action.REDUCE: "SELL_TO_REDUCE" if portfolio.is_long() else "BUY_TO_REDUCE",
@@ -297,7 +296,7 @@ class OrderGenerator:
                 quantity=target_qty,
                 execution_date=execution_date,
                 reason="reverse_open_leg",
-                is_reverse=True,
+                is_reverse=False,
             )
             return [close_order, open_order]
 
@@ -367,7 +366,7 @@ class OrderGenerator:
 
         # For OPEN: apply percentage to equity
         target_notional = equity * alloc
-        price_ref = reference_price or decision.stop_price
+        price_ref = reference_price or (position.mark_price if position.mark_price and position.mark_price > 0 else decision.stop_price)
         if not price_ref or price_ref <= 0:
             logger.warning("Cannot size order: no reference price available for %s", decision.ticker)
             return 0
@@ -387,18 +386,19 @@ class OrderGenerator:
         qty: int,
         position: Position,
         equity: float,
+        reference_price: float = 0.0,
     ) -> int:
         """Clamp qty so total exposure <= equity * max_leverage."""
         max_lev = getattr(self.margin_cfg, "max_leverage", 2.0)
         if max_lev <= 0:
             return qty
 
-        existing_exposure = position.notional(position.mark_price or 0.0)
-        max_new_exposure = equity * max_lev - existing_exposure
+        price_ref = reference_price if reference_price > 0 else (position.mark_price or 100.0)
+        existing_exposure = position.notional(price_ref)
+        max_new_exposure = max(0.0, equity * max_lev - existing_exposure)
         if max_new_exposure <= 0:
             return 0
 
-        price_ref = position.mark_price or 100.0
         multiplier = getattr(self.exec_cfg, "contract_multiplier", 1.0)
         max_qty_by_lev = int(max_new_exposure // (price_ref * multiplier))
         return min(qty, max(0, max_qty_by_lev))

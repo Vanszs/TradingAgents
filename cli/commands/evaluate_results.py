@@ -7,7 +7,7 @@ import os
 import re
 import shutil
 import tempfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -54,7 +54,10 @@ def _validated_records(
     for index, record in enumerate(records):
         if not isinstance(record, dict):
             raise ValueError(f"snapshot {name}[{index}] must be an object")
-        observed = next((_parse_date(record.get(field)) for field in fields if record.get(field)), None)
+        observed = next(
+            (d for field in fields if (d := _parse_date(record.get(field))) is not None),
+            None,
+        )
         if observed is None:
             raise ValueError(f"snapshot {name}[{index}] has no usable publication date")
         if observed > trade_date:
@@ -73,7 +76,7 @@ def _json_safe(value: Any) -> Any:
         return {str(key): _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
-    if isinstance(value, (pd.Timestamp, datetime)):
+    if isinstance(value, (pd.Timestamp, datetime, date)):
         return value.isoformat()
     return value
 

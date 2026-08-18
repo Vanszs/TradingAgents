@@ -17,7 +17,12 @@ def create_research_manager(llm):
     structured_llm = bind_structured(llm, ResearchPlan, "Research Manager")
 
     def research_manager_node(state) -> dict:
-        instrument_context = build_instrument_context(state["company_of_interest"], state.get("asset_type", "stock"))
+        trade_date = state.get("trade_date", "")
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            state.get("asset_type", "stock"),
+            trade_date=trade_date,
+        )
         history = state["investment_debate_state"].get("history", "")
 
         investment_debate_state = state["investment_debate_state"]

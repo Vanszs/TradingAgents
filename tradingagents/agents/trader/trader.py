@@ -23,16 +23,21 @@ def create_trader(llm):
     def trader_node(state, name):
         company_name = state["company_of_interest"]
         asset_type = state.get("asset_type", "stock")
-        instrument_context = build_instrument_context(company_name, asset_type)
+        trade_date = state.get("trade_date", "")
+        instrument_context = build_instrument_context(company_name, asset_type, trade_date=trade_date)
         investment_plan = state["investment_plan"]
 
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "You are a trading agent converting the Research Manager's plan into a concrete transaction. "
-                    "Provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the research plan provided below.\n\n"
+                    "You are a professional execution trader converting the Research Manager's plan into a high-expectancy transaction. "
+                    "All price levels (entry, stop loss, take profit) must be grounded strictly in the **Daily (1D)** chart structure.\n\n"
+                    "**Execution & Entry Discipline**:\n"
+                    "- **Entry Sizing & Proximity**: Do NOT chase price or enter in 'no man's land' between key levels. For long entries during pullbacks or downtrends, anchor `entry_price` near key support/swing floors (within 0.5%-1.5% above support) rather than buying at the top of the daily range.\n"
+                    "- **Trend & Confirmation**: If price is falling rapidly towards support without confirmed stabilization or base formation, favor `Hold` or specify a conservative limit entry at the support floor.\n"
+                    "- **Risk-to-Reward (R:R)**: Ensure the distance to `take_profit` is at least 2x the distance to `stop_loss` (R:R >= 2:1). Set `stop_loss` strictly at the invalidation level below structural support.\n"
+                    "- Provide a specific recommendation to buy, sell, or hold, anchored in the research plan.\n\n"
                     "IMPORTANT for price fields (entry_price, stop_loss, take_profit):\n"
                     "- Always provide specific numerical values when possible.\n"
                     "- NEVER output the string 'None' — either provide a number or omit the field entirely.\n"

@@ -29,7 +29,12 @@ def create_portfolio_manager(llm):
     structured_llm = bind_structured(llm, PortfolioDecision, "Portfolio Manager")
 
     def portfolio_manager_node(state) -> dict:
-        instrument_context = build_instrument_context(state["company_of_interest"], state.get("asset_type", "stock"))
+        trade_date = state.get("trade_date", "")
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            state.get("asset_type", "stock"),
+            trade_date=trade_date,
+        )
 
         history = state["risk_debate_state"]["history"]
         risk_debate_state = state["risk_debate_state"]
@@ -49,6 +54,7 @@ def create_portfolio_manager(llm):
         )
 
         prompt = f"""As the Portfolio Manager, synthesize the risk analysts' debate and deliver the final trading decision.
+All technical barriers, swing levels, and price targets must be evaluated strictly on the **Daily (1D)** timeframe. Ensure entries adhere to disciplined Risk/Reward (>= 2:1), with stop-loss placed strictly at the structural invalidation point. If price is in freefall towards support without clear stabilization, default to **Hold** or conservative staged exposure rather than aggressive buying.
 
 {instrument_context}
 

@@ -50,7 +50,7 @@ def _fetch_subreddit(
         with urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read())
     except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
-        logger.warning("Reddit fetch failed for r/%s · %s: %s", sub, ticker, exc)
+        logger.debug("Reddit fetch failed for r/%s · %s: %s", sub, ticker, exc)
         return []
     children = (payload.get("data") or {}).get("children") or []
     return [c.get("data", {}) for c in children if isinstance(c, dict)]

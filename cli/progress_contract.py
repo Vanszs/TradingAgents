@@ -54,10 +54,9 @@ def extract_content_string(content: Any) -> str | None:
             stripped = value.strip()
             if not stripped:
                 return True
-            try:
-                return not bool(ast.literal_eval(stripped))
-            except (ValueError, SyntaxError):
-                return False
+            if stripped in ("[]", "{}", "()", "set()"):
+                return True
+            return False
         return not bool(value)
 
     if is_empty(content):

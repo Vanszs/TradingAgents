@@ -45,8 +45,8 @@ from tradingagents.backtesting import (
     BacktestEngine,
     TradingAgentsRunner,
 )
-from tradingagents.backtesting.decision_schema import AgentConfig
 from tradingagents.backtesting.data_window import ALLOWED_LOOKBACKS
+from tradingagents.backtesting.decision_schema import AgentConfig
 from tradingagents.backtesting.trigger_evaluator import TriggerConfig
 
 ALLOWED_LOOKBACK_CHOICES = [v for v in ALLOWED_LOOKBACKS if v is not None]
@@ -237,11 +237,18 @@ def _build_llm_agent_config() -> AgentConfig:
     os.environ["TRADINGAGENTS_DEEP_THINK_LLM"] = deep
     if backend_url:
         os.environ["TRADINGAGENTS_LLM_BACKEND_URL"] = backend_url
+    if thinking_level:
+        os.environ["TRADINGAGENTS_GOOGLE_THINKING_LEVEL"] = thinking_level
+    if reasoning_effort:
+        os.environ["TRADINGAGENTS_OPENAI_REASONING_EFFORT"] = reasoning_effort
+    if anthropic_effort:
+        os.environ["TRADINGAGENTS_ANTHROPIC_EFFORT"] = anthropic_effort
 
     # Reload DEFAULT_CONFIG so it picks up the env vars we just set.
     # TradingAgentsRunner does deepcopy(DEFAULT_CONFIG) on every call;
     # it must see the updated provider/model, not the import-time values.
     import importlib
+
     import tradingagents.default_config
     importlib.reload(tradingagents.default_config)
     # Also reload anything else that captured DEFAULT_CONFIG at import time.
@@ -394,7 +401,7 @@ def _render_progress(layout: Layout, ui: _BacktestUI) -> None:
     table.add_column("Line1", ratio=1)
 
     line1 = Text()
-    line1.append(f"Day ", style="bold cyan")
+    line1.append("Day ", style="bold cyan")
     line1.append(f"{ui.current_day}/{ui.n_days}", style="bold cyan")
     line1.append(f"  [{bar}] {pct * 100:5.1f}%", style="green")
     table.add_row(line1)

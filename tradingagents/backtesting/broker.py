@@ -14,7 +14,7 @@ Responsibilities:
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 from uuid import uuid4
 
 from .decision_schema import MarginEvent, MarketPoint, OpenClose
@@ -27,6 +27,9 @@ from .position import (
     Order,
     OrderType,
 )
+
+if TYPE_CHECKING:
+    from .decision_schema import Trade
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +125,7 @@ class SimulatedBroker:
         market_point: MarketPoint,
     ) -> Optional[MarginEvent]:
         """PRD §15.3 — intraday check: long uses bar.low, short uses bar.high."""
-        if not portfolio.has_position() or not self.config.intraday_margin_check:
+        if not portfolio.has_position() or not getattr(self.config, "intraday_margin_check", True):
             return None
 
         if portfolio.is_long():
@@ -253,10 +256,12 @@ class SimulatedBroker:
             OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD,
             OrderType.BUY_TO_REDUCE, OrderType.BUY_TO_CLOSE,
         )
+        half_spread_pct = (getattr(self.config, "spread_bps", 0.0) / 10000.0) / 2.0
+        total_friction_pct = slippage_pct + half_spread_pct
         if is_buy:
-            fill_price = base_price * (1 + slippage_pct)
+            fill_price = base_price * (1 + total_friction_pct)
         else:
-            fill_price = base_price * (1 - slippage_pct)
+            fill_price = base_price * (1 - total_friction_pct)
 
         if fill_price <= 0:
             raise ValueError(
@@ -332,11 +337,13 @@ class SimulatedBroker:
             tick = getattr(spec, "tick_size", 0.01)
             slippage_pct = (tick_slippage * tick) / base_price if base_price > 0 else 0.0
 
+        half_spread_pct = (getattr(self.config, "spread_bps", 0.0) / 10000.0) / 2.0
+        total_friction_pct = slippage_pct + half_spread_pct
         if close_side == "BUY":
-            close_fill = base_price * (1 + slippage_pct)
+            close_fill = base_price * (1 + total_friction_pct)
             close_fee_pct = getattr(self.config, "buy_fee", None)
         else:
-            close_fill = base_price * (1 - slippage_pct)
+            close_fill = base_price * (1 - total_friction_pct)
             close_fee_pct = getattr(self.config, "sell_fee", None)
 
         close_gross = close_fill * close_qty * spec.multiplier
@@ -384,10 +391,10 @@ class SimulatedBroker:
         )
 
         if open_side == "BUY":
-            open_fill = base_price * (1 + slippage_pct)
+            open_fill = base_price * (1 + total_friction_pct)
             open_fee_pct = getattr(self.config, "buy_fee", None)
         else:
-            open_fill = base_price * (1 - slippage_pct)
+            open_fill = base_price * (1 - total_friction_pct)
             open_fee_pct = getattr(self.config, "sell_fee", None)
 
         open_gross = open_fill * order.quantity * spec.multiplier

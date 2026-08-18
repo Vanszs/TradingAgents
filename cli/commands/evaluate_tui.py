@@ -155,51 +155,48 @@ class SingleShotTUI:
 
     def _update_agent_statuses(self, chunk: dict[str, Any]) -> None:
         selected = [key for key in ANALYST_ORDER if key in ANALYST_AGENT_NAMES]
-        active = False
+        found_active = False
+        all_analysts_done = True
         for key in selected:
             agent = ANALYST_AGENT_NAMES[key]
             report = self.report_sections.get(ANALYST_REPORT_MAP[key])
             if report:
                 self.statuses[agent] = "completed"
-            elif not active:
+            elif not found_active:
                 self.statuses[agent] = "in_progress"
-                active = True
+                found_active = True
+                all_analysts_done = False
             else:
                 self.statuses[agent] = "pending"
+                all_analysts_done = False
 
-        if not active:
-            self.statuses["Research Team"] = "in_progress"
+        if all_analysts_done:
             debate = chunk.get("investment_debate_state") or {}
+            judge_done = bool(debate.get("judge_decision"))
             for agent in ("Bull Researcher", "Bear Researcher", "Research Manager"):
-                self.statuses[agent] = "in_progress"
-            if debate.get("judge_decision"):
-                for agent in ("Bull Researcher", "Bear Researcher", "Research Manager"):
-                    self.statuses[agent] = "completed"
-                self.statuses["Research Team"] = "completed"
+                self.statuses[agent] = "completed" if judge_done else "in_progress"
+            self.statuses["Research Team"] = "completed" if judge_done else "in_progress"
+
+            if judge_done and not chunk.get("trader_investment_plan"):
                 self.statuses["Trader"] = "in_progress"
 
         if chunk.get("trader_investment_plan"):
             self.statuses["Trader"] = "completed"
-            self.statuses["Risk Team"] = "in_progress"
-            self.statuses["Aggressive Analyst"] = "in_progress"
+            risk = chunk.get("risk_debate_state") or {}
+            risk_done = bool(risk.get("judge_decision") or chunk.get("signal_contract"))
 
-        risk = chunk.get("risk_debate_state") or {}
-        if chunk.get("trader_investment_plan") or any(
-            risk.get(key)
-            for key in ("aggressive_history", "conservative_history", "neutral_history", "judge_decision")
-        ):
-            self.statuses["Risk Team"] = "in_progress"
             for key, agent in (
                 ("aggressive_history", "Aggressive Analyst"),
                 ("conservative_history", "Conservative Analyst"),
                 ("neutral_history", "Neutral Analyst"),
             ):
-                self.statuses[agent] = "completed" if risk.get(key) else "in_progress"
-        if risk.get("judge_decision") or chunk.get("signal_contract"):
-            for agent in ("Aggressive Analyst", "Conservative Analyst", "Neutral Analyst"):
-                self.statuses[agent] = "completed"
-            self.statuses["Portfolio Manager"] = "completed"
-            self.statuses["Risk Team"] = "completed"
+                self.statuses[agent] = "completed" if (risk.get(key) or risk_done) else "in_progress"
+            self.statuses["Risk Team"] = "completed" if risk_done else "in_progress"
+
+            if risk_done:
+                self.statuses["Portfolio Manager"] = "completed"
+            else:
+                self.statuses["Portfolio Manager"] = "in_progress"
 
     def _set_status(self, name: str, status: str) -> None:
         if name not in self.statuses:

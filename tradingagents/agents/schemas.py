@@ -18,6 +18,7 @@ so that:
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 from datetime import datetime
@@ -25,6 +26,8 @@ from enum import Enum
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Shared rating types
@@ -98,6 +101,18 @@ class ResearchPlan(BaseModel):
         ),
     )
 
+    @field_validator("recommendation", mode="before")
+    @classmethod
+    def _normalize_recommendation(cls, v: Any) -> Any:
+        if isinstance(v, PortfolioRating):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().title()
+            for member in PortfolioRating:
+                if member.value.lower() == clean.lower() or member.name.lower() == clean.lower():
+                    return member
+        return v
+
 
 def render_research_plan(plan: ResearchPlan) -> str:
     """Render a ResearchPlan to markdown for storage and the trader's prompt context."""
@@ -162,12 +177,55 @@ class TraderProposal(BaseModel):
         description="Optional sizing guidance, e.g. '5% of portfolio'.",
     )
 
+    @field_validator("action", mode="before")
+    @classmethod
+    def _normalize_action(cls, v: Any) -> Any:
+        if isinstance(v, TraderAction):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().title()
+            for member in TraderAction:
+                if member.value.lower() == clean.lower() or member.name.lower() == clean.lower():
+                    return member
+        return v
+
     @field_validator("entry_price", "stop_loss", "take_profit", mode="before")
     @classmethod
     def _coerce_none_strings(cls, v):
-        if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
-            return None
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in ("none", "null", "n/a", "", "undefined"):
+                return None
+            import re
+            num_clean = re.sub(r"[^\d.-]", "", v.strip())
+            if not num_clean:
+                return None
+            try:
+                v = float(num_clean)
+            except ValueError:
+                return None
+        if isinstance(v, (int, float)):
+            import math
+            if not math.isfinite(v) or v <= 0:
+                return None
+            return float(v)
         return v
+
+    @model_validator(mode="after")
+    def _validate_risk_reward_expectancy(self):
+        if self.action in (TraderAction.BUY, TraderAction.SELL):
+            if self.entry_price and self.stop_loss and self.take_profit:
+                if self.action == TraderAction.BUY:
+                    risk = self.entry_price - self.stop_loss
+                    reward = self.take_profit - self.entry_price
+                else:
+                    risk = self.stop_loss - self.entry_price
+                    reward = self.entry_price - self.take_profit
+                if risk > 0 and reward > 0:
+                    rr = reward / risk
+                    if rr < 1.95:
+                        logger.warning("Trader proposal R:R ratio (%.2f) is below standard 2.0 desk threshold", rr)
+        return self
 
 
 def render_trader_proposal(proposal: TraderProposal) -> str:
@@ -295,14 +353,41 @@ class PortfolioDecision(BaseModel):
             "hari": 1, "minggu": 5, "bulan": 21, "tahun": 252,
         }[unit]
         normalized = dict(data)
-        normalized["time_horizon_days"] = round(upper * multiplier)
+        clamped_days = max(1, min(252, round(upper * multiplier)))
+        normalized["time_horizon_days"] = clamped_days
         return normalized
+
+    @field_validator("rating", mode="before")
+    @classmethod
+    def _normalize_rating(cls, v: Any) -> Any:
+        if isinstance(v, PortfolioRating):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().title()
+            for member in PortfolioRating:
+                if member.value.lower() == clean.lower() or member.name.lower() == clean.lower():
+                    return member
+        return v
 
     @field_validator("take_profit", "price_target", "stop_loss", mode="before")
     @classmethod
     def _coerce_optional_prices(cls, v):
-        if isinstance(v, str) and v.strip().lower() in ("none", "null", "n/a", ""):
-            return None
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in ("none", "null", "n/a", "", "undefined"):
+                return None
+            num_clean = re.sub(r"[^\d.-]", "", v.strip())
+            if not num_clean:
+                return None
+            try:
+                v = float(num_clean)
+            except ValueError:
+                return None
+        if isinstance(v, (int, float)):
+            import math
+            if not math.isfinite(v) or v <= 0:
+                return None
+            return float(v)
         return v
 
     @field_validator("next_review_date")
@@ -542,13 +627,24 @@ def portfolio_decision_to_signal_contract(
     take_profit = decision.take_profit if decision.take_profit is not None else decision.price_target
     if action != "HOLD" and (take_profit is None or decision.stop_loss is None):
         raise ValueError("actionable ratings require take_profit and stop_loss")
+
+    # Validate whether planned_entry_price is coherent with stop_loss and take_profit; fallback to T1_OPEN if bounded violated
+    valid_planned_entry = None
+    if action != "HOLD" and planned_entry_price is not None:
+        if action == "BUY" and decision.stop_loss is not None and take_profit is not None:
+            if decision.stop_loss < planned_entry_price < take_profit:
+                valid_planned_entry = planned_entry_price
+        elif action == "SELL" and decision.stop_loss is not None and take_profit is not None:
+            if take_profit < planned_entry_price < decision.stop_loss:
+                valid_planned_entry = planned_entry_price
+
     return SignalContract(
         ticker=ticker,
         signal_date=signal_date,
         rating=decision.rating,
         action=action,
-        entry_mode=EntryMode.ASSUMED_AI_ENTRY if action != "HOLD" and planned_entry_price is not None else EntryMode.T1_OPEN if action != "HOLD" else None,
-        planned_entry_price=planned_entry_price,
+        entry_mode=EntryMode.ASSUMED_AI_ENTRY if action != "HOLD" and valid_planned_entry is not None else EntryMode.T1_OPEN if action != "HOLD" else None,
+        planned_entry_price=valid_planned_entry,
         take_profit=take_profit,
         stop_loss=decision.stop_loss,
         time_horizon_days=decision.time_horizon_days,

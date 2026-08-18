@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from .alpha_vantage_common import _make_api_request, format_datetime_for_api
 from .config import is_point_in_time_mode
 
-
 _PUBLICATION_FIELDS = ("time_published", "published_at", "publishedAt", "publicationDate")
 
 
@@ -81,9 +80,16 @@ def get_global_news(curr_date, look_back_days: int = 7, limit: int = 50) -> dict
     """
     from datetime import datetime, timedelta
 
+    from .config import get_config
+
+    if look_back_days is None:
+        look_back_days = get_config().get("global_news_lookback_days", 7)
+    if limit is None:
+        limit = get_config().get("global_news_article_limit", 50)
+
     # Calculate start date
     curr_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-    start_dt = curr_dt - timedelta(days=look_back_days)
+    start_dt = curr_dt - timedelta(days=int(look_back_days))
     start_date = start_dt.strftime("%Y-%m-%d")
 
     params = {

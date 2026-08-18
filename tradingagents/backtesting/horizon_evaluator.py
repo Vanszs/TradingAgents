@@ -207,6 +207,94 @@ class HorizonEvaluator:
         if entry_price <= 0:
             entry_price = float(entry_row["close"])
 
+        # Validate barrier order sanity (TP must be above SL for LONG, and below SL for SHORT)
+        if (is_long and take_profit <= stop_loss) or (not is_long and take_profit >= stop_loss):
+            raise ValueError("take_profit and stop_loss do not match entry direction")
+
+        # Gap open barrier evaluation at T1 Open
+        if is_long:
+            if take_profit is not None and entry_price >= take_profit:
+                return EvaluationResult(
+                    ticker=ticker,
+                    signal_date=signal_date,
+                    entry_date=entry_date,
+                    actual_entry_price=entry_price,
+                    exit_date=entry_date,
+                    exit_price=entry_price,
+                    outcome=EvaluationOutcome.HIT_TAKE_PROFIT,
+                    side="LONG",
+                    take_profit=take_profit,
+                    stop_loss=stop_loss,
+                    planned_time_horizon_days=time_horizon_days,
+                    actual_holding_days=1,
+                    realized_return_pct=0.0,
+                    max_favorable_excursion_pct=0.0,
+                    max_adverse_excursion_pct=0.0,
+                    planned_entry_price=planned_entry_price,
+                    entry_policy=entry_policy,
+                )
+            if stop_loss is not None and entry_price <= stop_loss:
+                return EvaluationResult(
+                    ticker=ticker,
+                    signal_date=signal_date,
+                    entry_date=entry_date,
+                    actual_entry_price=entry_price,
+                    exit_date=entry_date,
+                    exit_price=entry_price,
+                    outcome=EvaluationOutcome.HIT_STOP_LOSS,
+                    side="LONG",
+                    take_profit=take_profit,
+                    stop_loss=stop_loss,
+                    planned_time_horizon_days=time_horizon_days,
+                    actual_holding_days=1,
+                    realized_return_pct=0.0,
+                    max_favorable_excursion_pct=0.0,
+                    max_adverse_excursion_pct=0.0,
+                    planned_entry_price=planned_entry_price,
+                    entry_policy=entry_policy,
+                )
+        else:  # SHORT
+            if take_profit is not None and entry_price <= take_profit:
+                return EvaluationResult(
+                    ticker=ticker,
+                    signal_date=signal_date,
+                    entry_date=entry_date,
+                    actual_entry_price=entry_price,
+                    exit_date=entry_date,
+                    exit_price=entry_price,
+                    outcome=EvaluationOutcome.HIT_TAKE_PROFIT,
+                    side="SHORT",
+                    take_profit=take_profit,
+                    stop_loss=stop_loss,
+                    planned_time_horizon_days=time_horizon_days,
+                    actual_holding_days=1,
+                    realized_return_pct=0.0,
+                    max_favorable_excursion_pct=0.0,
+                    max_adverse_excursion_pct=0.0,
+                    planned_entry_price=planned_entry_price,
+                    entry_policy=entry_policy,
+                )
+            if stop_loss is not None and entry_price >= stop_loss:
+                return EvaluationResult(
+                    ticker=ticker,
+                    signal_date=signal_date,
+                    entry_date=entry_date,
+                    actual_entry_price=entry_price,
+                    exit_date=entry_date,
+                    exit_price=entry_price,
+                    outcome=EvaluationOutcome.HIT_STOP_LOSS,
+                    side="SHORT",
+                    take_profit=take_profit,
+                    stop_loss=stop_loss,
+                    planned_time_horizon_days=time_horizon_days,
+                    actual_holding_days=1,
+                    realized_return_pct=0.0,
+                    max_favorable_excursion_pct=0.0,
+                    max_adverse_excursion_pct=0.0,
+                    planned_entry_price=planned_entry_price,
+                    entry_policy=entry_policy,
+                )
+
         if (is_long and not stop_loss < entry_price < take_profit) or (
             not is_long and not take_profit < entry_price < stop_loss
         ):

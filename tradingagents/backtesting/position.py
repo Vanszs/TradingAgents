@@ -14,7 +14,6 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Optional
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -70,6 +69,7 @@ class ExecutionConfig:
     financing_rate: float = 0.0001
     borrow_fee: float = 0.0002
     conservative_intraday_rule: bool = True
+    intraday_margin_check: bool = True
     initial_position_side: PositionSide = PositionSide.FLAT
 
     def __post_init__(self) -> None:
@@ -126,7 +126,7 @@ class RiskConfig:
     use_atr_based_stops: bool = True
     atr_period: int = 14
     atr_stop_multiplier: float = 1.5
-    atr_tp_multiplier: float = 2.0
+    atr_tp_multiplier: float = 3.0  # Guarantees R:R >= 2.0 (3.0 / 1.5 = 2.0)
 
 
 @dataclass
@@ -391,6 +391,7 @@ class Order:
         buy_types = {
             OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD,
             OrderType.BUY_TO_REDUCE, OrderType.BUY_TO_CLOSE,
+            OrderType.REVERSE_TO_LONG,
         }
         return "BUY" if self.order_type in buy_types else "SELL"
 

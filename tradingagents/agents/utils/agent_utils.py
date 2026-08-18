@@ -1,3 +1,5 @@
+from typing import Optional
+
 # Import tools from separate utility files
 from tradingagents.agents.utils.core_stock_tools import get_stock_data
 from tradingagents.agents.utils.fundamental_data_tools import (
@@ -30,19 +32,27 @@ def get_language_instruction() -> str:
     return f" Write your entire response in {lang}."
 
 
-def build_instrument_context(ticker: str, asset_type: str = "stock") -> str:
-    """Describe the exact instrument so agents preserve exchange-qualified tickers."""
+def build_instrument_context(ticker: str, asset_type: str = "stock", trade_date: Optional[str] = None) -> str:
+    """Describe the exact instrument and inject quantitative structural levels."""
     instrument_label = "asset" if asset_type == "crypto" else "instrument"
     extra_hint = (
         " Treat it as a crypto asset rather than a company, and do not assume company fundamentals are available."
         if asset_type == "crypto"
         else ""
     )
+    structural_info = ""
+    if trade_date:
+        from tradingagents.dataflows.structural_levels import get_market_structural_summary
+        summary = get_market_structural_summary(ticker, trade_date)
+        if summary:
+            structural_info = f"\n\n{summary}"
+
     return (
         f"The {instrument_label} to analyze is `{ticker}`. "
         "Use this exact ticker in every tool call, report, and recommendation, "
         "preserving any exchange suffix (e.g. `.TO`, `.L`, `.HK`, `.T`, `-USD`)."
         + extra_hint
+        + structural_info
     )
 
 

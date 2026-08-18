@@ -31,6 +31,18 @@ from .alpha_vantage_common import AlphaVantageRateLimitError
 
 # Configuration and routing logic
 from .config import get_config, is_point_in_time_mode
+from .snapshot import (
+    snapshot_get_balance_sheet,
+    snapshot_get_cashflow,
+    snapshot_get_fundamentals,
+    snapshot_get_global_news,
+    snapshot_get_income_statement,
+    snapshot_get_indicators,
+    snapshot_get_insider_transactions,
+    snapshot_get_news,
+    snapshot_get_stock_data,
+)
+from .stockstats_utils import YFRateLimitError
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
 )
@@ -53,17 +65,6 @@ from .y_finance import (
     get_YFin_data_online,
 )
 from .yfinance_news import get_global_news_yfinance, get_news_yfinance
-from .snapshot import (
-    snapshot_get_stock_data,
-    snapshot_get_indicators,
-    snapshot_get_news,
-    snapshot_get_global_news,
-    snapshot_get_insider_transactions,
-    snapshot_get_fundamentals,
-    snapshot_get_balance_sheet,
-    snapshot_get_cashflow,
-    snapshot_get_income_statement,
-)
 
 # Tools organized by category
 TOOLS_CATEGORIES = {
@@ -202,7 +203,7 @@ def route_to_vendor(method: str, *args, **kwargs):
 
         try:
             return impl_func(*args, **kwargs)
-        except AlphaVantageRateLimitError:
+        except (AlphaVantageRateLimitError, YFRateLimitError):
             continue  # Rate limits trigger fallback to next vendor
         except (ConnectionError, TimeoutError, OSError):
             continue  # Network errors also trigger fallback

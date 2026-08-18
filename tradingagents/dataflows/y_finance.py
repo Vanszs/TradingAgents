@@ -34,8 +34,12 @@ def get_intraday_data(
     end_dt = pd.Timestamp(end)
     if not is_daily and (start_dt.tzinfo is None or end_dt.tzinfo is None):
         raise ValueError("intraday window must include timezone")
-    if end_dt <= start_dt:
-        raise ValueError("data end must be after start")
+    if is_daily:
+        if end_dt < start_dt:
+            raise ValueError("data end must be after start")
+    else:
+        if end_dt <= start_dt:
+            raise ValueError("data end must be after start")
     # yfinance expects date strings YYYY-MM-DD or unix timestamps, not ISO8601 with tz offset.
     # For daily intervals, yfinance end date is exclusive, so if start and end fall on the same day,
     # advance end by 1 day to capture that session.

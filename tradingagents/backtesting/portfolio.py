@@ -12,20 +12,20 @@ Tracks:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 from .decision_schema import (
-    InstrumentSpec,
-    MarketPoint,
     OpenClose,
     OrderSide,
     PortfolioSnapshot,
-    Position as LegacyPosition,
     Trade,
 )
+from .decision_schema import (
+    Position as LegacyPosition,
+)
+from .margin import MarginAccount
 from .margin_engine import (
     excess_margin,
     initial_margin,
@@ -35,13 +35,13 @@ from .margin_engine import (
     notional_value,
 )
 from .position import (
-    Position as V2Position,
-    PositionSide,
-    OrderType,
     Fill,
     MarginConfig,
+    OrderType,
 )
-from .margin import MarginAccount
+from .position import (
+    Position as V2Position,
+)
 
 
 class InsufficientMarginError(Exception):
@@ -569,7 +569,9 @@ class PortfolioV2:
     def account_equity(self, mark_price: Optional[float] = None) -> float:
         if mark_price is None:
             mark_price = self.last_mark or self.position.avg_entry_price or 0.0
-        return self.cash + self.position.unrealized_pnl_calc(float(mark_price))
+        # In stock-like cash accounting where notional cash is deducted on long open,
+        # total equity is cash + signed position market value (positive for long, negative liability for short).
+        return self.cash + self.position_value(float(mark_price))
 
     def margin_used(self) -> float:
         return self.margin_posted
@@ -651,7 +653,8 @@ class PortfolioV2:
     # ------------------------------------------------------------------
     def apply_trade(self, trade) -> None:
         """Bridge: convert legacy Trade to Fill and apply."""
-        from .decision_schema import OrderSide, OpenClose as LegacyOC
+        from .decision_schema import OpenClose as LegacyOC
+        from .decision_schema import OrderSide
         from .position import OrderType as V2OT
 
         if trade.side == OrderSide.BUY:
