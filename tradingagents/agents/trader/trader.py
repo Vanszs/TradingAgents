@@ -31,27 +31,24 @@ def create_trader(llm):
             {
                 "role": "system",
                 "content": (
-                    "You are a professional execution trader converting the Research Manager's plan into a high-expectancy transaction. "
-                    "All price levels (entry, stop loss, take profit) must be grounded strictly in the **Daily (1D)** chart structure.\n\n"
+                    "You are the Senior Execution Trader converting the Research Manager's plan into a high-expectancy transaction under a Spot Equity Long-Only mandate. "
+                    "Ground price levels (entry, stop loss, take profit) in the **Multi-Timeframe Structure (1D Macro + 1H Micro)**.\n\n"
                     "**Execution & Entry Discipline**:\n"
-                    "- **Entry Sizing & Proximity**: Do NOT chase price or enter in 'no man's land' between key levels. For long entries during pullbacks or downtrends, anchor `entry_price` near key support/swing floors (within 0.5%-1.5% above support) rather than buying at the top of the daily range.\n"
-                    "- **Trend & Confirmation**: If price is falling rapidly towards support without confirmed stabilization or base formation, favor `Hold` or specify a conservative limit entry at the support floor.\n"
-                    "- **Risk-to-Reward (R:R)**: Ensure the distance to `take_profit` is at least 2x the distance to `stop_loss` (R:R >= 2:1). Set `stop_loss` strictly at the invalidation level below structural support.\n"
-                    "- Provide a specific recommendation to buy, sell, or hold, anchored in the research plan.\n\n"
-                    "IMPORTANT for price fields (entry_price, stop_loss, take_profit):\n"
-                    "- Always provide specific numerical values when possible.\n"
-                    "- NEVER output the string 'None' — either provide a number or omit the field entirely.\n"
-                    "- If you cannot determine a price, leave the field empty (null), do not write 'None'."
+                    "- **Immediate Market Entry (Buy)**: Use if price is currently sitting directly at confirmed support with bullish momentum and R:R >= 2:1.\n"
+                    "- **Conditional Limit Accumulation (Hold with Limit Levels)**: If current price is extended or pulling back towards support (e.g. current 390, demand floor 350-355), set action to `Hold`, specify `entry_price` at the Limit Accumulation floor (e.g. 355), set `stop_loss` below structural support (e.g. 340), and `take_profit` at target (e.g. 420) ensuring R:R >= 2:1.\n"
+                    "- **Multi-Timeframe Confluence**: Use 1D swing floors and Fibonacci levels for macro invalidation (Stop Loss), and use 1H 24-bar swing levels and 1H EMA 20/50 alignment for precise entry timing.\n"
+                    "- **Risk-to-Reward (R:R)**: Ensure (take_profit - entry_price) / (entry_price - stop_loss) >= 2.0.\n"
+                    "- Provide a specific recommendation to buy, sell, or hold, anchored in empirical market structure."
                     + get_language_instruction()
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"The Research Manager provided this investment plan for {company_name}. "
-                    f"{instrument_context} Convert it into an executable transaction proposal.\n\n"
-                    f"Research Manager Investment Plan: {investment_plan}\n\n"
-                    f"Provide the action, reasoning, price levels, and sizing guidance."
+                    f"### Target Instrument & Market Structure\n{instrument_context}\n\n"
+                    f"### Research Manager Investment Plan\n{investment_plan}\n\n"
+                    f"### Execution Assignment\n"
+                    f"Evaluate execution feasibility for `{company_name}`. Provide concrete action, reasoning, entry price, stop loss, take profit, and sizing guidance."
                 ),
             },
         ]

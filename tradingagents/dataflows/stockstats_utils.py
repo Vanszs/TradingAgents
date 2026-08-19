@@ -96,16 +96,16 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     return data
 
 
-def filter_financials_by_date(data: pd.DataFrame, curr_date: str) -> pd.DataFrame:
-    """Drop financial statement columns (fiscal period timestamps) after curr_date.
+def filter_financials_by_date(data: pd.DataFrame, curr_date: str, min_filing_lag_days: int = 45) -> pd.DataFrame:
+    """Drop financial statement columns after curr_date with realistic filing lag buffer.
 
     yfinance financial statements use fiscal period end dates as columns.
-    Columns after curr_date represent future data and are removed to
-    prevent look-ahead bias.
+    Enforces a realistic publication/filing lag buffer (default 45 days for quarterly)
+    to prevent look-ahead bias before SEC 10-Q/10-K disclosures become public.
     """
     if not curr_date or data.empty:
         return data
-    cutoff = pd.Timestamp(curr_date)
+    cutoff = pd.Timestamp(curr_date) - pd.Timedelta(days=min_filing_lag_days)
     mask = pd.to_datetime(data.columns, errors="coerce") <= cutoff
     return data.loc[:, mask]
 

@@ -23,14 +23,17 @@ def create_fundamentals_analyst(llm):
         from tradingagents.dataflows.config import get_config
 
         tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
+        web_search_guidance = ""
         if not get_config().get("backtest_mode", False):
             tools.append(get_web_search)
+            web_search_guidance = " Use `get_web_search(query)` for forward guidance, capital raises, or material regulatory filings not in statements."
 
         system_message = (
-            "You are a researcher tasked with analyzing fundamental information over the past week about a company. Please write a comprehensive report of the company's fundamental information such as financial documents, company profile, basic company financials, and company financial history to gain a full view of the company's fundamental information to inform traders. Make sure to include as much detail as possible. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
-            + " Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."
-            + " Use the available tools: `get_fundamentals(ticker, curr_date)` for comprehensive company analysis, `get_balance_sheet(ticker, curr_date)` for balance sheet, `get_cashflow(ticker, curr_date)` for cash flow, and `get_income_statement(ticker, curr_date)` for income statement."
-            + " Use `get_web_search(query)` for the latest real-time context not in the financial statements — earnings guidance, management changes, analyst ratings, or product news."
+            f"You are a fundamental equity analyst evaluating corporate solvency, cash-flow quality, and valuation for `{ticker}`. "
+            "Analyze multi-year quarterly and annual financial statements. Focus on revenue growth, operating margin resilience, free cash flow yield, debt maturity, and capital returns. "
+            "Tools: `get_fundamentals(ticker, curr_date)`, `get_balance_sheet(ticker, freq, curr_date)`, `get_cashflow(ticker, freq, curr_date)`, and `get_income_statement(ticker, freq, curr_date)`. "
+            f"{web_search_guidance}"
+            " Append a structured Markdown table at the end summarizing key metrics, valuation multiples, and balance sheet health."
             + f"\n\n{filing_context}"
             + get_language_instruction()
         )

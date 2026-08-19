@@ -72,12 +72,13 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
         lines.append(f"[{created} · @{user} · {tag}] {body}")
 
     total = bullish + bearish + unlabeled
-    bull_pct = round(100 * bullish / total) if total else 0
-    bear_pct = round(100 * bearish / total) if total else 0
+    labeled_total = bullish + bearish
+    bull_pct = round(100 * bullish / labeled_total) if labeled_total else 0
+    bear_pct = round(100 * bearish / labeled_total) if labeled_total else 0
     summary = (
-        f"Bullish: {bullish} ({bull_pct}%) · "
-        f"Bearish: {bearish} ({bear_pct}%) · "
+        f"Bullish: {bullish} ({bull_pct}% of labeled) · "
+        f"Bearish: {bearish} ({bear_pct}% of labeled) · "
         f"Unlabeled: {unlabeled} · "
-        f"Total: {total} most-recent messages"
+        f"Total: {total} messages"
     )
     return summary + "\n\n" + "\n".join(lines)

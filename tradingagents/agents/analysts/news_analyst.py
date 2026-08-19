@@ -4,6 +4,7 @@ from tradingagents.agents.utils.agent_utils import (
     build_exchange_filing_context,
     build_instrument_context,
     get_global_news,
+    get_insider_transactions,
     get_language_instruction,
     get_news,
 )
@@ -17,19 +18,29 @@ def create_news_analyst(llm):
         asset_label = "company" if asset_type == "stock" else "asset"
         ticker = state["company_of_interest"]
         instrument_context = build_instrument_context(
-            ticker, asset_type
+            ticker, asset_type, trade_date=current_date
         )
         filing_context = build_exchange_filing_context(ticker, asset_type)
 
         from tradingagents.dataflows.config import get_config
 
         tools = [get_news, get_global_news]
+        if asset_type != "crypto":
+            tools.append(get_insider_transactions)
+        web_search_guidance = ""
         if not get_config().get("backtest_mode", False):
             tools.append(get_web_search)
+            web_search_guidance = " Use get_web_search(query) for real-time catalysts and breaking developments."
 
         system_message = (
-            f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(ticker, start_date, end_date) for {asset_label}-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Use get_web_search(query) to find the latest real-time information, recent news, and current analysis not covered by other tools. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
-            + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
+            f"You are an institutional news and catalyst analyst evaluating `{ticker}` for Spot Equity Long-Only accumulation. "
+            f"Use get_news(ticker, start_date, end_date) for {asset_label}-specific developments, get_insider_transactions(ticker) for insider accumulation, "
+            f"and get_global_news(curr_date, look_back_days, limit) for macroeconomic context.{web_search_guidance}\n\n"
+            "Catalyst & Valuation Framework:\n"
+            "1. Classify catalysts: Structural Growth, Transitory Panic/Overreaction, Regulatory Clearance, or Fundamental Deterioration.\n"
+            "2. Assess market pricing status: Fresh vs Priced-In vs Sentiment Divergence.\n"
+            "3. If price is pulling back on non-fatal noise, identify catalyst-backed Limit Accumulation opportunity near key structural support.\n"
+            "Append a structured Markdown table summarizing: Catalyst Event, Date/Source, Impact (Bullish/Bearish), Pricing Status, and Accumulation Implication."
             + f"\n\n{filing_context}"
             + get_language_instruction()
         )

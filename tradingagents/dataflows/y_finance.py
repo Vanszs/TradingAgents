@@ -224,20 +224,18 @@ def get_stock_stats_indicators_window(
     try:
         indicator_data = _get_stock_stats_bulk(symbol, indicator, curr_date)
         
-        # Generate the date range we need
+        # Generate the date range we need (trading days only)
         current_dt = curr_date_dt
         date_values = []
         
         while current_dt >= before:
             date_str = current_dt.strftime('%Y-%m-%d')
             
-            # Look up the indicator value for this date
+            # Look up the indicator value for this date (skip non-trading days to maximize token density)
             if date_str in indicator_data:
                 indicator_value = indicator_data[date_str]
-            else:
-                indicator_value = "N/A: Not a trading day (weekend or holiday)"
+                date_values.append((date_str, indicator_value))
             
-            date_values.append((date_str, indicator_value))
             current_dt = current_dt - relativedelta(days=1)
         
         # Build the result string

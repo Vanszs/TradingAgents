@@ -17,10 +17,11 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from tradingagents.default_config import DEFAULT_CONFIG
+
 from .decision_schema import AgentConfig, AssetClass, ensure_dir
 from .portfolio import Portfolio
 from .snapshot_provider import DataSnapshot
-from tradingagents.default_config import DEFAULT_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -515,10 +516,10 @@ class TradingAgentsRunner:
                     or final_state.get("investment_plan")
                     or final_state.get("portfolio_management_decision")
                 )
-                # Merge trader output (stop_loss, take_profit) with PM output
+                # Merge PM output (authoritative rating & decision) ahead of trader plan
                 trader_report = final_state.get("trader_investment_plan", "")
-                if trader_report and pm_report:
-                    report = f"{trader_report}\n\n{pm_report}"
+                if pm_report and trader_report:
+                    report = f"{pm_report}\n\n{trader_report}"
                 elif pm_report:
                     report = pm_report
                 elif trader_report:

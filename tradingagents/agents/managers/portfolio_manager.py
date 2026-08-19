@@ -10,11 +10,18 @@ back gracefully to free-text generation.
 
 from __future__ import annotations
 
+import logging
+
+import pandas as pd
+
 from tradingagents.agents.schemas import (
     PortfolioDecision,
+    PortfolioRating,
     portfolio_decision_to_signal_contract,
     render_pm_decision,
 )
+
+logger = logging.getLogger(__name__)
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
     get_language_instruction,
@@ -36,11 +43,10 @@ def create_portfolio_manager(llm):
             trade_date=trade_date,
         )
 
-        history = state["risk_debate_state"]["history"]
-        risk_debate_state = state["risk_debate_state"]
-        research_plan = state["investment_plan"]
-        trader_plan = state["trader_investment_plan"]
-        trade_date = state.get("trade_date", "")
+        risk_debate_state = state.get("risk_debate_state", {})
+        history = risk_debate_state.get("history", "")
+        research_plan = state.get("investment_plan", "")
+        trader_plan = state.get("trader_investment_plan", "")
         trader_proposal = state.get("trader_proposal")
         planned_entry_price = (
             trader_proposal.entry_price if trader_proposal is not None else None
@@ -53,42 +59,30 @@ def create_portfolio_manager(llm):
             else ""
         )
 
-        prompt = f"""As the Portfolio Manager, synthesize the risk analysts' debate and deliver the final trading decision.
-All technical barriers, swing levels, and price targets must be evaluated strictly on the **Daily (1D)** timeframe. Ensure entries adhere to disciplined Risk/Reward (>= 2:1), with stop-loss placed strictly at the structural invalidation point. If price is in freefall towards support without clear stabilization, default to **Hold** or conservative staged exposure rather than aggressive buying.
+        prompt = f"""As the Senior Portfolio Manager & Risk Gatekeeper, evaluate the risk debate and trader proposal to deliver the final allocation decision.
 
 {instrument_context}
 
 ---
 
 **Rating Scale** (use exactly one):
-- **Buy**: Strong conviction to enter or add to position
-- **Overweight**: Favorable outlook, gradually increase exposure
-- **Hold**: Maintain current position, no action needed
-- **Underweight**: Reduce exposure, take partial profits
-- **Sell**: Exit position or avoid entry
+- **Buy**: Strong conviction to enter/expand long exposure (Asymmetric R:R >= 2:1)
+- **Overweight**: Constructive accumulation; scaled tranche execution
+- **Hold**: Neutral prior; wait for confirmed stabilization or favorable R:R
+- **Underweight**: Distribution/derisking; trim long inventory
+- **Sell**: Complete exit of long exposure; capital preservation
 
-**Context:**
-- Current trade date: {trade_date}
-- Research Manager's investment plan: **{research_plan}**
-- Trader's transaction proposal: **{trader_plan}**
+**Context Dossier:**
+- Current Trade Date: {trade_date}
+- Research Manager Synthesis: **{research_plan}**
+- Trader Execution Proposal: **{trader_plan}**
 {lessons_line}
-**Risk Analysts Debate History:**
-{history}
+### Risk Debate Deliberation
+{history if history else 'No risk debate recorded.'}
 
 ---
 
-**Next Review Date** (MANDATORY — this line MUST appear in your response):
-- **Buy/Overweight**: 7-14 days from current trade date (volatile, needs close monitoring)
-- **Hold**: 14-30 days from current trade date (stable, less frequent review)
-- **Underweight/Sell**: 7-14 days from current trade date (exit in progress, needs tracking)
-
-FORMAT: `**Next Review Date**: YYYY-MM-DD`
-Example: If current date is 2024-01-15 and rating is Hold, output:
-**Next Review Date**: 2024-02-15
-
-IMPORTANT: The line "**Next Review Date**: YYYY-MM-DD" MUST be the LAST line of your response. Without it, the backtester cannot schedule future analysis.
-
-Be decisive and ground every conclusion in specific evidence from the analysts.{get_language_instruction()}"""
+Be decisive and ground your decision in empirical risk asymmetry and structural invalidation levels.{get_language_instruction()}"""
 
         typed_decision = None
         if structured_llm is not None:
@@ -106,6 +100,14 @@ Be decisive and ground every conclusion in specific evidence from the analysts.{
 
         signal_contract = None
         if typed_decision is not None and trade_date:
+            # Deterministic Python date calculation if missing
+            if not typed_decision.next_review_date:
+                days_delta = 7 if typed_decision.rating in (PortfolioRating.BUY, PortfolioRating.SELL) else 21
+                try:
+                    typed_decision.next_review_date = (pd.to_datetime(trade_date) + pd.Timedelta(days=days_delta)).strftime("%Y-%m-%d")
+                except Exception:
+                    typed_decision.next_review_date = trade_date
+
             try:
                 signal_contract = portfolio_decision_to_signal_contract(
                     typed_decision,
@@ -113,7 +115,8 @@ Be decisive and ground every conclusion in specific evidence from the analysts.{
                     trade_date,
                     planned_entry_price=planned_entry_price,
                 )
-            except Exception:
+            except Exception as exc:
+                logger.error("Failed to build SignalContract for %s on %s: %s", state.get("company_of_interest"), trade_date, exc)
                 signal_contract = None
 
         new_risk_debate_state = {

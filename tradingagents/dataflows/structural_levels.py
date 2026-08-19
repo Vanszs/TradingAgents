@@ -1,8 +1,8 @@
-"""Quantitative market price structural levels and dynamic volatility barriers."""
+"""Quantitative market price structural levels (1D Macro + 1H Micro Structure)."""
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
@@ -11,8 +11,71 @@ from .stockstats_utils import load_ohlcv
 logger = logging.getLogger(__name__)
 
 
-def compute_structural_levels(df: pd.DataFrame, trade_date: str) -> Dict[str, Any]:
-    """Calculate 52-week High/Low, multi-month swing points, and Fibonacci retracements."""
+def compute_1h_micro_levels(df_1h: pd.DataFrame, trade_date: str) -> Dict[str, Any]:
+    """Calculate 1H 24-bar swing levels and EMA 20/50 trend alignment."""
+    if df_1h is None or df_1h.empty:
+        return {}
+
+    work_df = df_1h.copy()
+    if isinstance(work_df.index, pd.DatetimeIndex):
+        work_df = work_df.reset_index()
+
+    col_map = {c: str(c).strip().title() for c in work_df.columns}
+    work_df = work_df.rename(columns=col_map)
+
+    date_candidates = [c for c in work_df.columns if str(c).lower() in ("date", "datetime", "timestamp", "index", "trade_date")]
+    if date_candidates:
+        date_col = date_candidates[0]
+        work_df["ts_utc"] = pd.to_datetime(work_df[date_col], errors="coerce", utc=True)
+        work_df = work_df.dropna(subset=["ts_utc"])
+        cutoff_ts = pd.Timestamp(f"{str(trade_date)[:10]} 23:59:59", tz="UTC")
+        history = work_df[work_df["ts_utc"] <= cutoff_ts].sort_values("ts_utc").copy()
+    else:
+        history = work_df.copy()
+
+    for col in ["Open", "High", "Low", "Close"]:
+        if col in history.columns:
+            history[col] = pd.to_numeric(history[col], errors="coerce")
+
+    history = history.dropna(subset=["Close"])
+    if len(history) < 24:
+        return {}
+
+    # 1H 24-bar Swing High / Low (~3-4 trading sessions or 24h crypto)
+    w24 = history.tail(24)
+    h24 = float(w24["High"].max()) if "High" in w24 else float(w24["Close"].max())
+    l24 = float(w24["Low"].min()) if "Low" in w24 else float(w24["Close"].min())
+
+    # 1H EMA 20 and EMA 50
+    ema20_series = history["Close"].ewm(span=20, adjust=False).mean()
+    ema50_series = history["Close"].ewm(span=50, adjust=False).mean()
+    ema20 = float(ema20_series.iloc[-1])
+    ema50 = float(ema50_series.iloc[-1])
+    last_1h_close = float(history["Close"].iloc[-1])
+
+    if last_1h_close > ema20 > ema50:
+        trend_bias = "BULLISH (Close > EMA20 > EMA50)"
+    elif last_1h_close < ema20 < ema50:
+        trend_bias = "BEARISH (Close < EMA20 < EMA50)"
+    else:
+        trend_bias = "NEUTRAL / MIXED (Consolidation or Pullback)"
+
+    return {
+        "1h_last_close": round(last_1h_close, 2),
+        "1h_24bar_swing_high": round(h24, 2),
+        "1h_24bar_swing_low": round(l24, 2),
+        "1h_ema_20": round(ema20, 2),
+        "1h_ema_50": round(ema50, 2),
+        "1h_trend_bias": trend_bias,
+    }
+
+
+def compute_structural_levels(
+    df: pd.DataFrame,
+    trade_date: str,
+    df_1h: Optional[pd.DataFrame] = None,
+) -> Dict[str, Any]:
+    """Calculate 1D Macro (52W, 60D, 20D Swings, Fib) + optional 1H Micro Structure."""
     if df is None or df.empty:
         return {}
 
@@ -28,7 +91,7 @@ def compute_structural_levels(df: pd.DataFrame, trade_date: str) -> Dict[str, An
     date_col = date_candidates[0] if date_candidates else work_df.columns[0]
 
     work_df["date_str"] = pd.to_datetime(work_df[date_col], errors="coerce").dt.strftime("%Y-%m-%d")
-    history = work_df[work_df["date_str"] <= str(trade_date)].sort_values("date_str").copy()
+    history = work_df[work_df["date_str"] <= str(trade_date)[:10]].sort_values("date_str").copy()
     if history.empty:
         return {}
 
@@ -62,7 +125,7 @@ def compute_structural_levels(df: pd.DataFrame, trade_date: str) -> Dict[str, An
     fib_50 = round(h60 - (0.50 * fib_range), 2) if fib_range > 0 else last_close
     fib_618 = round(h60 - (0.618 * fib_range), 2) if fib_range > 0 else last_close
 
-    return {
+    result: Dict[str, Any] = {
         "trade_date": str(latest["date_str"]),
         "last_close": round(last_close, 2),
         "52_week_high": round(h52, 2),
@@ -75,25 +138,78 @@ def compute_structural_levels(df: pd.DataFrame, trade_date: str) -> Dict[str, An
         "fib_618_level": fib_618,
     }
 
+    if df_1h is not None and not df_1h.empty:
+        micro = compute_1h_micro_levels(df_1h, trade_date)
+        if micro:
+            result["micro_1h"] = micro
 
-def get_market_structural_summary(symbol: str, trade_date: str) -> str:
-    """Format quantitative structural levels into clean prompt text."""
+    return result
+
+
+def get_market_structural_summary(
+    symbol: str,
+    trade_date: str,
+    df_1h: Optional[pd.DataFrame] = None,
+) -> str:
+    """Format quantitative structural levels (1D Macro + 1H Micro) into clean prompt text."""
     try:
-        df = load_ohlcv(symbol, trade_date)
-        levels = compute_structural_levels(df, trade_date)
+        df_1d = load_ohlcv(symbol, trade_date)
     except Exception as exc:
         logger.warning("Could not calculate structural levels for %s: %s", symbol, exc)
         return ""
 
+    if df_1h is None:
+        from .config import get_config, is_point_in_time_mode
+        if not is_point_in_time_mode():
+            # Only query 1h intraday data if trade_date is within Yahoo Finance 730-day window
+            trade_dt = pd.Timestamp(str(trade_date)[:10], tz="UTC")
+            now_dt = pd.Timestamp.now(tz="UTC")
+            if (now_dt - trade_dt).days <= 700:
+                try:
+                    from .y_finance import get_intraday_data
+                    end_dt = pd.Timestamp(f"{str(trade_date)[:10]} 23:59:59", tz="UTC")
+                    start_dt = end_dt - pd.Timedelta(days=10)
+                    df_1h = get_intraday_data(
+                        symbol=symbol,
+                        start=start_dt.isoformat(),
+                        end=end_dt.isoformat(),
+                        interval="1h",
+                        timezone="UTC",
+                    )
+                except Exception:
+                    df_1h = None
+            else:
+                df_1h = None
+        else:
+            snap = get_config().get("snapshot_data", {})
+            df_1h = snap.get("ohlcv_1h") if isinstance(snap, dict) else None
+
+    levels = compute_structural_levels(df_1d, trade_date, df_1h=df_1h)
     if not levels:
         return ""
 
-    return (
-        f"Quantitative Structural Price Levels (1D Timeframe, as of {levels['trade_date']}):\n"
-        f"- Last Close: {levels['last_close']}\n"
-        f"- 52-Week Range: Low = {levels['52_week_low']} | High = {levels['52_week_high']}\n"
-        f"- 60D Swing Range: Low = {levels['60d_swing_low']} | High = {levels['60d_swing_high']}\n"
-        f"- 20D Swing Range: Low = {levels['20d_swing_low']} | High = {levels['20d_swing_high']}\n"
-        f"- Key Retracements: Fib 50% = {levels['fib_50_level']} | Fib 61.8% = {levels['fib_618_level']}\n"
-        f"Rule: Price levels in trading proposals should align with these calculated structural benchmarks."
+    summary = (
+        f"Quantitative Structural Price Levels (as of {levels['trade_date']}):\n"
+        f"1. **Macro Structure (1D Timeframe)**:\n"
+        f"   - Last Close (1D): {levels['last_close']}\n"
+        f"   - 52-Week Range: Low = {levels['52_week_low']} | High = {levels['52_week_high']}\n"
+        f"   - 60D Swing Range: Low = {levels['60d_swing_low']} | High = {levels['60d_swing_high']}\n"
+        f"   - 20D Swing Range: Low = {levels['20d_swing_low']} | High = {levels['20d_swing_high']}\n"
+        f"   - Key Retracements: Fib 50% = {levels['fib_50_level']} | Fib 61.8% = {levels['fib_618_level']}\n"
     )
+
+    if "micro_1h" in levels:
+        m = levels["micro_1h"]
+        summary += (
+            f"2. **Micro Structure (1H Timeframe)**:\n"
+            f"   - 1H 24-Bar Swing Range: Low = {m['1h_24bar_swing_low']} | High = {m['1h_24bar_swing_high']}\n"
+            f"   - 1H Momentum EMAs: 20 EMA = {m['1h_ema_20']} | 50 EMA = {m['1h_ema_50']}\n"
+            f"   - 1H Trend Alignment: {m['1h_trend_bias']}\n"
+        )
+    else:
+        summary += "2. **Micro Structure (1H Timeframe)**: Intraday 1H data not available (rely on 1D macro structure).\n"
+
+    summary += (
+        "Rule: Trading proposals must ensure multi-timeframe confluence — align 1D macro direction with 1H entry triggers."
+    )
+    return summary

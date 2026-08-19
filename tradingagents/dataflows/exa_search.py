@@ -160,9 +160,9 @@ class ExaTimeTravelSearch:
         # Historical mode must never fall back to an unbounded live index.
         if not api_key:
             logger.warning("EXA_API_KEY not set; historical search unavailable.")
-            return _historical_unavailable(query) if end_published_date else searxng_search(
-                query, num_results=num_results
-            )
+            if end_published_date or is_point_in_time_mode():
+                return _historical_unavailable(query)
+            return searxng_search(query, num_results=num_results)
 
         # 3. Exa API Request
         payload: Dict[str, Any] = {

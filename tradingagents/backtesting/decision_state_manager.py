@@ -45,7 +45,6 @@ from .position import (
     PositionIntent,
 )
 
-
 # Canonical 5-tier rating vocabulary, in agent-facing form.
 RATING_BUY = "Buy"
 RATING_OVERWEIGHT = "Overweight"
@@ -213,7 +212,7 @@ class DecisionStateManager:
 
         if rating == RATING_UNDERWEIGHT:
             if current_side == "FLAT":
-                if self.config.allow_short_on_underweight:
+                if self.config.allow_short_on_underweight and getattr(self.config, "short_allowed", True):
                     return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
                 return PositionIntent.HOLD, "FLAT", OrderType.NO_ORDER
             if current_side == "LONG":
@@ -226,7 +225,9 @@ class DecisionStateManager:
 
         if rating == RATING_SELL:
             if current_side == "FLAT":
-                return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
+                if self.config.allow_short_on_sell and getattr(self.config, "short_allowed", True):
+                    return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
+                return PositionIntent.HOLD, "FLAT", OrderType.NO_ORDER
             if current_side == "LONG":
                 # Conservative: close the long, do NOT auto-reverse.
                 return PositionIntent.CLOSE, "FLAT", OrderType.SELL_TO_CLOSE

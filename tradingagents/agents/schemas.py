@@ -213,14 +213,18 @@ class TraderProposal(BaseModel):
 
     @model_validator(mode="after")
     def _validate_risk_reward_expectancy(self):
-        if self.action in (TraderAction.BUY, TraderAction.SELL):
+        if self.action in (TraderAction.BUY, TraderAction.HOLD):
             if self.entry_price and self.stop_loss and self.take_profit:
-                if self.action == TraderAction.BUY:
-                    risk = self.entry_price - self.stop_loss
-                    reward = self.take_profit - self.entry_price
-                else:
-                    risk = self.stop_loss - self.entry_price
-                    reward = self.entry_price - self.take_profit
+                risk = self.entry_price - self.stop_loss
+                reward = self.take_profit - self.entry_price
+                if risk > 0 and reward > 0:
+                    rr = reward / risk
+                    if rr < 1.95:
+                        logger.warning("Trader proposal R:R ratio (%.2f) is below standard 2.0 desk threshold", rr)
+        elif self.action == TraderAction.SELL:
+            if self.entry_price and self.stop_loss and self.take_profit:
+                risk = self.stop_loss - self.entry_price
+                reward = self.entry_price - self.take_profit
                 if risk > 0 and reward > 0:
                     rr = reward / risk
                     if rr < 1.95:
@@ -300,6 +304,10 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Legacy alias for take-profit price.",
     )
+    planned_entry_price: Optional[float] = Field(
+        default=None,
+        description="Numeric planned limit accumulation entry price if staging conditional order on support.",
+    )
     time_horizon_days: int = Field(
         ge=1,
         le=252,
@@ -318,13 +326,9 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Legacy display field for the recommended holding period.",
     )
-    next_review_date: str = Field(
-        description=(
-            "REQUIRED: Specific date (YYYY-MM-DD) for the next full re-analysis. "
-            "Calculate relative to current trade date: Buy/Overweight = 7-14 days, "
-            "Hold = 14-30 days, Underweight/Sell = 7-14 days. "
-            "The backtester skips the analyst pipeline until this date."
-        ),
+    next_review_date: Optional[str] = Field(
+        default=None,
+        description="Optional review date YYYY-MM-DD. If omitted, calculated deterministically in Python.",
     )
 
     @model_validator(mode="before")
@@ -369,7 +373,7 @@ class PortfolioDecision(BaseModel):
                     return member
         return v
 
-    @field_validator("take_profit", "price_target", "stop_loss", mode="before")
+    @field_validator("take_profit", "price_target", "stop_loss", "planned_entry_price", mode="before")
     @classmethod
     def _coerce_optional_prices(cls, v):
         if isinstance(v, str):
@@ -390,16 +394,18 @@ class PortfolioDecision(BaseModel):
             return float(v)
         return v
 
-    @field_validator("next_review_date")
+    @field_validator("next_review_date", mode="before")
     @classmethod
     def _validate_next_review_date(cls, v):
-        if not isinstance(v, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v):
-            raise ValueError("next_review_date must use YYYY-MM-DD format")
+        if v is None or v == "" or str(v).lower() in ("none", "null", "n/a"):
+            return None
+        if not isinstance(v, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v.strip()):
+            return None
         try:
-            datetime.strptime(v, "%Y-%m-%d")
-        except ValueError as exc:
-            raise ValueError("next_review_date must use YYYY-MM-DD format") from exc
-        return v
+            datetime.strptime(v.strip(), "%Y-%m-%d")
+            return v.strip()
+        except ValueError:
+            return None
 
 
 def render_pm_decision(decision: PortfolioDecision) -> str:
@@ -424,6 +430,7 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
         parts.extend(["", f"**Price Target**: {take_profit}"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
+    parts.extend(["", f"**Time Horizon Days**: {decision.time_horizon_days}"])
     parts.extend(["", f"**Next Review Date**: {decision.next_review_date}"])
     return "\n".join(parts)
 
@@ -504,6 +511,36 @@ class SentimentReport(BaseModel):
         ),
     )
 
+    @field_validator("overall_band", mode="before")
+    @classmethod
+    def _normalize_overall_band(cls, v: Any) -> Any:
+        if isinstance(v, SentimentBand):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().replace("_", " ").title()
+            for member in SentimentBand:
+                if member.value.lower() == clean.lower() or member.name.lower() == clean.lower():
+                    return member
+        return v
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _normalize_confidence(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in ("low", "medium", "high"):
+                return clean
+        return v
+
+    @field_validator("overall_score", mode="before")
+    @classmethod
+    def _coerce_score(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            num_match = re.search(r"(\d+(?:\.\d+)?)", v)
+            if num_match:
+                return float(num_match.group(1))
+        return v
+
 
 def render_sentiment_report(report: SentimentReport) -> str:
     """Render a SentimentReport to the markdown shape the rest of the system expects.
@@ -532,6 +569,18 @@ class SignalContract(BaseModel):
     signal_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     rating: PortfolioRating
     action: Literal["BUY", "SELL", "HOLD"]
+
+    @field_validator("rating", mode="before")
+    @classmethod
+    def _normalize_rating(cls, v: Any) -> Any:
+        if isinstance(v, PortfolioRating):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().title()
+            for member in PortfolioRating:
+                if member.value.lower() == clean.lower() or member.name.lower() == clean.lower():
+                    return member
+        return v
     entry_mode: Optional[EntryMode] = None
     planned_entry_price: Optional[float] = Field(
         default=None,
@@ -590,6 +639,11 @@ class SignalContract(BaseModel):
                 raise ValueError(f"{name} must be finite and positive")
 
         if self.action == "HOLD":
+            if self.planned_entry_price is not None and self.take_profit is not None and self.stop_loss is not None:
+                if not (self.stop_loss < self.planned_entry_price < self.take_profit):
+                    raise ValueError("HOLD limit accumulation: stop_loss < planned_entry_price < take_profit required")
+                if self.entry_mode is None:
+                    object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
             return self
         if self.take_profit is None or self.stop_loss is None:
             raise ValueError("actionable signals require take_profit and stop_loss")
@@ -630,20 +684,24 @@ def portfolio_decision_to_signal_contract(
 
     # Validate whether planned_entry_price is coherent with stop_loss and take_profit; fallback to T1_OPEN if bounded violated
     valid_planned_entry = None
-    if action != "HOLD" and planned_entry_price is not None:
-        if action == "BUY" and decision.stop_loss is not None and take_profit is not None:
-            if decision.stop_loss < planned_entry_price < take_profit:
-                valid_planned_entry = planned_entry_price
-        elif action == "SELL" and decision.stop_loss is not None and take_profit is not None:
-            if take_profit < planned_entry_price < decision.stop_loss:
-                valid_planned_entry = planned_entry_price
+    if planned_entry_price is not None and decision.stop_loss is not None and take_profit is not None:
+        if action in ("BUY", "HOLD") and decision.stop_loss < planned_entry_price < take_profit:
+            valid_planned_entry = planned_entry_price
+        elif action == "SELL" and take_profit < planned_entry_price < decision.stop_loss:
+            valid_planned_entry = planned_entry_price
+
+    entry_mode = None
+    if valid_planned_entry is not None:
+        entry_mode = EntryMode.ASSUMED_AI_ENTRY
+    elif action != "HOLD":
+        entry_mode = EntryMode.T1_OPEN
 
     return SignalContract(
         ticker=ticker,
         signal_date=signal_date,
         rating=decision.rating,
         action=action,
-        entry_mode=EntryMode.ASSUMED_AI_ENTRY if action != "HOLD" and valid_planned_entry is not None else EntryMode.T1_OPEN if action != "HOLD" else None,
+        entry_mode=entry_mode,
         planned_entry_price=valid_planned_entry,
         take_profit=take_profit,
         stop_loss=decision.stop_loss,

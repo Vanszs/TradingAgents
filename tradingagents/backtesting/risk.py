@@ -309,29 +309,34 @@ class RiskEngine:
 
         tp_price = position.take_profit
 
+        open_price = float(bar.get("open", close_price))
         if position.side == PositionSide.LONG:
             # PRD §16.1: Long target triggered if High >= take_profit
             if high_price >= tp_price:
+                # Realistic gap fill: capture gap-open if market opened above target
+                fill_price = max(open_price, tp_price)
                 events.append(RiskEvent(
                     date=date,
                     event_type="take_profit",
                     side="LONG",
-                    price=tp_price,
-                    reason=f"Long target triggered: high {high_price} >= target {tp_price}",
+                    price=fill_price,
+                    reason=f"Long target triggered: high {high_price} >= target {tp_price} (fill: {fill_price})",
                 ))
-                return self._force_close_position(date, position, tp_price, "take_profit")
+                return self._force_close_position(date, position, fill_price, "take_profit")
 
         elif position.side == PositionSide.SHORT:
             # PRD §16.2: Short target triggered if Low <= take_profit
             if low_price <= tp_price:
+                # Realistic gap fill: capture gap-open if market opened below target
+                fill_price = min(open_price, tp_price)
                 events.append(RiskEvent(
                     date=date,
                     event_type="take_profit",
                     side="SHORT",
-                    price=tp_price,
-                    reason=f"Short target triggered: low {low_price} <= target {tp_price}",
+                    price=fill_price,
+                    reason=f"Short target triggered: low {low_price} <= target {tp_price} (fill: {fill_price})",
                 ))
-                return self._force_close_position(date, position, tp_price, "take_profit")
+                return self._force_close_position(date, position, fill_price, "take_profit")
 
         return None
 

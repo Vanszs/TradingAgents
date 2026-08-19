@@ -95,12 +95,10 @@ def get_news_yfinance(
                 if not (start_dt <= pub_date <= upper_bound):
                     continue
 
-            news_str += f"### {data['title']} (source: {data['publisher']})\n"
+            date_badge = f" [{pub_date.strftime('%Y-%m-%d %H:%M UTC')}]" if data["pub_date"] else ""
+            news_str += f"###{date_badge} {data['title']} (source: {data['publisher']})\n"
             if data["summary"]:
-                news_str += f"{data['summary']}\n"
-            if data["link"]:
-                news_str += f"Link: {data['link']}\n"
-            news_str += "\n"
+                news_str += f"{data['summary'].strip()}\n\n"
             filtered_count += 1
 
         if filtered_count == 0:
