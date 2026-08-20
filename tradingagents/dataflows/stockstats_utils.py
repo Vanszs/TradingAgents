@@ -113,6 +113,56 @@ def filter_financials_by_date(data: pd.DataFrame, curr_date: str, min_filing_lag
     return data.loc[:, mask]
 
 
+def compute_atr(data: pd.DataFrame, period: int = 14) -> pd.Series:
+    """Calculate True Range and Average True Range (ATR) causally with zero lookahead.
+
+    Uses Wilder's Exponential Moving Average (alpha = 1 / period) to compute ATR.
+    """
+    df = data.copy()
+    high = pd.to_numeric(df["High"], errors="coerce")
+    low = pd.to_numeric(df["Low"], errors="coerce")
+    close = pd.to_numeric(df["Close"], errors="coerce")
+    prev_close = close.shift(1)
+
+    tr1 = high - low
+    tr2 = (high - prev_close).abs()
+    tr3 = (low - prev_close).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+
+    atr = tr.ewm(alpha=1.0 / period, min_periods=period, adjust=False).mean()
+    return atr
+
+
+def compute_chandelier_exit(
+    data: pd.DataFrame,
+    period: int = 22,
+    multiplier: float = 3.0,
+) -> pd.DataFrame:
+    """Calculate Chandelier Exit bands causally with zero lookahead:
+    Long Band = rolling_max(High, period) - multiplier * ATR(period)
+    Short Band = rolling_min(Low, period) + multiplier * ATR(period)
+    """
+    df = data.copy()
+    high = pd.to_numeric(df["High"], errors="coerce")
+    low = pd.to_numeric(df["Low"], errors="coerce")
+    atr = compute_atr(df, period=period)
+
+    high_roll = high.rolling(window=period, min_periods=period).max()
+    low_roll = low.rolling(window=period, min_periods=period).min()
+
+    chandelier_long = high_roll - multiplier * atr
+    chandelier_short = low_roll + multiplier * atr
+
+    return pd.DataFrame(
+        {
+            "chandelier_long": chandelier_long,
+            "chandelier_short": chandelier_short,
+            "atr": atr,
+        },
+        index=df.index,
+    )
+
+
 class StockstatsUtils:
     @staticmethod
     def get_stock_stats(
@@ -125,6 +175,29 @@ class StockstatsUtils:
         ],
     ):
         data = load_ohlcv(symbol, curr_date)
+        indicator_lower = indicator.strip().lower()
+
+        if indicator_lower in ("chandelier_long", "chandelier_short"):
+            chan_df = compute_chandelier_exit(data, period=22, multiplier=3.0)
+            data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            data[indicator_lower] = chan_df[indicator_lower]
+            curr_date_str = pd.to_datetime(curr_date).strftime("%Y-%m-%d")
+            matching_rows = data[data["Date"].str.startswith(curr_date_str)]
+            if not matching_rows.empty:
+                return matching_rows[indicator_lower].values[0]
+            return "N/A: Not a trading day (weekend or holiday)"
+
+        if indicator_lower in ("atr_14", "atr_20"):
+            period = int(indicator_lower.split("_")[1])
+            atr_series = compute_atr(data, period=period)
+            data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            data[indicator_lower] = atr_series
+            curr_date_str = pd.to_datetime(curr_date).strftime("%Y-%m-%d")
+            matching_rows = data[data["Date"].str.startswith(curr_date_str)]
+            if not matching_rows.empty:
+                return matching_rows[indicator_lower].values[0]
+            return "N/A: Not a trading day (weekend or holiday)"
+
         df = wrap(data)
         df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
         curr_date_str = pd.to_datetime(curr_date).strftime("%Y-%m-%d")

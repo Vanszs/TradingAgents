@@ -118,6 +118,8 @@
     "default_stop_pct": 0.08,
     "default_take_profit_pct": 0.2,
     "trailing_stop_pct": 0.05,
+    "break_even_trigger_pct": 0.03,
+    "max_holding_days": 20,
     "max_position_pct": 0.3,
     "max_intraday_loss_pct": 0.05,
     "use_atr_based_stops": true,

@@ -104,14 +104,9 @@ def _run_forward_evaluation(
     ohlcv_df: pd.DataFrame,
 ):
     eval_side = {"BUY": "LONG", "SELL": "SHORT", "HOLD": "FLAT", "WNS": "FLAT"}[signal.action]
-    actual_entry_price = None
-    actual_entry_timestamp = None
-
-    if eval_side != "FLAT":
-        if signal.planned_entry_price is None:
-            raise ValueError("ASSUMED_AI_ENTRY requires an explicit planned entry")
-        actual_entry_price = signal.planned_entry_price
-        actual_entry_timestamp = signal.signal_timestamp
+    actual_entry_price = signal.planned_entry_price
+    actual_entry_timestamp = signal.signal_timestamp
+    entry_policy = "ASSUMED_AI_ENTRY" if signal.planned_entry_price is not None else "T1_OPEN"
 
     result = HorizonEvaluator.evaluate(
         ticker=ticker,
@@ -124,10 +119,13 @@ def _run_forward_evaluation(
         planned_entry_price=signal.planned_entry_price,
         actual_entry_price=actual_entry_price,
         actual_entry_date=actual_entry_timestamp,
-        entry_policy="ASSUMED_AI_ENTRY",
+        entry_policy=entry_policy,
         signal_timestamp=signal.signal_timestamp,
         entry_timestamp=actual_entry_timestamp,
         reference_price_at_signal=signal.reference_price_at_signal,
+        trailing_stop_pct=getattr(signal, "trailing_stop_pct", None),
+        break_even_trigger_pct=getattr(signal, "break_even_trigger_pct", 0.03),
+        max_holding_days=getattr(signal, "max_holding_days", None),
     )
 
     return result, {}
@@ -223,9 +221,13 @@ def _evaluate_signal_with_tui(
         raise
     if signal.action not in ("HOLD", "WNS"):
         if signal.planned_entry_price is None:
-            raise typer.BadParameter(
-                "actionable signals require an explicit planned entry price"
-            )
+            reference_cutoff = pd.Timestamp(f"{trade_date}T23:59:59+00:00")
+            daily_bars = ohlcv_df[ohlcv_df["date"].astype(str) <= trade_date]
+            if daily_bars.empty:
+                tui.fail_phase("Market Data", "no reference market data available at signal date")
+                raise typer.Exit(1)
+            ref_close = float(daily_bars.iloc[-1]["close"])
+            signal = signal.model_copy(update={"planned_entry_price": ref_close})
         reference_cutoff = pd.Timestamp(f"{trade_date}T23:59:59+00:00")
         daily_bars = ohlcv_df[ohlcv_df["date"].astype(str) <= trade_date]
         if daily_bars.empty:

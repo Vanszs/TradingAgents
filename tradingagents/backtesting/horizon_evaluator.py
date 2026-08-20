@@ -17,6 +17,9 @@ import pandas as pd
 class EvaluationOutcome(str, Enum):
     HIT_TAKE_PROFIT = "HIT_TAKE_PROFIT"
     HIT_STOP_LOSS = "HIT_STOP_LOSS"
+    HIT_TRAILING_STOP = "HIT_TRAILING_STOP"
+    HIT_BREAK_EVEN = "HIT_BREAK_EVEN"
+    HIT_TIME_STOP = "HIT_TIME_STOP"
     EXPIRED = "EXPIRED"
     NO_ORDER = "NO_ORDER"
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
@@ -62,6 +65,10 @@ class EvaluationResult:
     reference_price_at_signal: Optional[float] = None
     planned_rr_ratio: Optional[float] = None
     realized_rr_ratio: Optional[float] = None
+    trailing_stop_pct: Optional[float] = None
+    break_even_trigger_pct: Optional[float] = None
+    max_holding_days: Optional[int] = None
+    mfe_efficiency: Optional[float] = None
     trajectory: List[DailyExcursionBar] = field(default_factory=list)
 
     @property
@@ -106,6 +113,9 @@ class HorizonEvaluator:
         signal_timestamp: Optional[str] = None,
         entry_timestamp: Optional[str] = None,
         reference_price_at_signal: Optional[float] = None,
+        trailing_stop_pct: Optional[float] = None,
+        break_even_trigger_pct: Optional[float] = None,
+        max_holding_days: Optional[int] = None,
     ) -> EvaluationResult:
         if not 1 <= time_horizon_days <= 252:
             raise ValueError("time_horizon_days must be between 1 and 252")
@@ -199,10 +209,66 @@ class HorizonEvaluator:
                 planned_entry_price=planned_entry_price,
             )
 
-        # T1 Entry execution at Open
+        # T1 Entry execution
         entry_row = future_df.iloc[0]
         entry_date = entry_date or entry_row["date_str"]
-        entry_price = actual_entry_price if actual_entry_price is not None else float(entry_row["open"])
+        b_open_first = float(entry_row["open"])
+        b_high_first = float(entry_row["high"])
+        b_low_first = float(entry_row["low"])
+
+        if actual_entry_price is not None:
+            if is_long:
+                if b_low_first <= actual_entry_price <= b_high_first:
+                    entry_price = actual_entry_price
+                elif b_open_first < actual_entry_price:  # Favorable gap-down open for buy
+                    entry_price = b_open_first
+                else:
+                    return EvaluationResult(
+                        ticker=ticker,
+                        signal_date=signal_date,
+                        entry_date=None,
+                        actual_entry_price=None,
+                        exit_date=None,
+                        exit_price=0.0,
+                        outcome=EvaluationOutcome.NO_FILL,
+                        side="LONG",
+                        take_profit=take_profit,
+                        stop_loss=stop_loss,
+                        planned_time_horizon_days=time_horizon_days,
+                        actual_holding_days=0,
+                        realized_return_pct=0.0,
+                        max_favorable_excursion_pct=0.0,
+                        max_adverse_excursion_pct=0.0,
+                        planned_entry_price=planned_entry_price,
+                        entry_policy=entry_policy,
+                    )
+            else:
+                if b_low_first <= actual_entry_price <= b_high_first:
+                    entry_price = actual_entry_price
+                elif b_open_first > actual_entry_price:  # Favorable gap-up open for short
+                    entry_price = b_open_first
+                else:
+                    return EvaluationResult(
+                        ticker=ticker,
+                        signal_date=signal_date,
+                        entry_date=None,
+                        actual_entry_price=None,
+                        exit_date=None,
+                        exit_price=0.0,
+                        outcome=EvaluationOutcome.NO_FILL,
+                        side="SHORT",
+                        take_profit=take_profit,
+                        stop_loss=stop_loss,
+                        planned_time_horizon_days=time_horizon_days,
+                        actual_holding_days=0,
+                        realized_return_pct=0.0,
+                        max_favorable_excursion_pct=0.0,
+                        max_adverse_excursion_pct=0.0,
+                        planned_entry_price=planned_entry_price,
+                        entry_policy=entry_policy,
+                    )
+        else:
+            entry_price = b_open_first
 
         if entry_price <= 0:
             entry_price = float(entry_row["close"])
@@ -326,6 +392,14 @@ class HorizonEvaluator:
         exit_price = float(horizon_bars.iloc[-1]["close"]) if has_full_horizon else 0.0
         actual_days = len(horizon_bars)
 
+        peak_high = entry_price
+        peak_low = entry_price
+        current_sl = stop_loss
+        is_break_even_active = False
+        is_trailing_active = False
+
+        effective_max_holding = max_holding_days or time_horizon_days
+
         for idx, row in horizon_bars.iterrows():
             bar_date = row["date_str"]
             b_open = float(row["open"])
@@ -333,22 +407,47 @@ class HorizonEvaluator:
             b_low = float(row["low"])
             b_close = float(row["close"])
 
-            # Intraday barrier evaluation with post-exit clamping
             if is_long:
-                # 1. Stop loss barrier hit
-                if stop_loss is not None and b_low <= stop_loss:
-                    outcome = EvaluationOutcome.HIT_STOP_LOSS
+                # 1. Gap Open Take Profit
+                if take_profit is not None and b_open >= take_profit:
+                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
                     exit_date = bar_date
-                    exit_price = b_open if b_open <= stop_loss else stop_loss
+                    exit_price = b_open
                     actual_days = idx + 1
-                    
-                    # Clamp MAE strictly to exit execution price
+                    exit_mfe = (exit_price - entry_price) / entry_price
+                    max_mfe = max(max_mfe, exit_mfe)
+                    exit_mae = min(0.0, (b_open - entry_price) / entry_price)
+                    max_mae = min(max_mae, exit_mae)
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mfe * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 2. Gap Open Stop Loss
+                if current_sl is not None and b_open <= current_sl:
+                    if is_trailing_active:
+                        outcome = EvaluationOutcome.HIT_TRAILING_STOP
+                    elif is_break_even_active:
+                        outcome = EvaluationOutcome.HIT_BREAK_EVEN
+                    else:
+                        outcome = EvaluationOutcome.HIT_STOP_LOSS
+                    exit_date = bar_date
+                    exit_price = b_open
+                    actual_days = idx + 1
                     exit_mae = (exit_price - entry_price) / entry_price
                     max_mae = min(max_mae, exit_mae)
-                    # MFE on stop bar is bounded by open or 0.0 (no post-exit rally credit)
                     exit_mfe = max(0.0, (b_open - entry_price) / entry_price)
                     max_mfe = max(max_mfe, exit_mfe)
-                    
                     trajectory.append(
                         DailyExcursionBar(
                             bar_index=idx + 1,
@@ -364,19 +463,51 @@ class HorizonEvaluator:
                     )
                     break
 
-                # 2. Take profit barrier hit
+                # 3. Intraday Stop loss / Trailing stop / Break-even hit
+                if current_sl is not None and b_low <= current_sl:
+                    if is_trailing_active:
+                        outcome = EvaluationOutcome.HIT_TRAILING_STOP
+                    elif is_break_even_active:
+                        outcome = EvaluationOutcome.HIT_BREAK_EVEN
+                    else:
+                        outcome = EvaluationOutcome.HIT_STOP_LOSS
+
+                    exit_date = bar_date
+                    exit_price = current_sl
+                    actual_days = idx + 1
+
+                    exit_mae = (exit_price - entry_price) / entry_price
+                    max_mae = min(max_mae, exit_mae)
+                    exit_mfe = max(0.0, (b_open - entry_price) / entry_price)
+                    max_mfe = max(max_mfe, exit_mfe)
+
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mae * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 4. Intraday Take profit barrier hit
                 if take_profit is not None and b_high >= take_profit:
                     outcome = EvaluationOutcome.HIT_TAKE_PROFIT
                     exit_date = bar_date
-                    exit_price = b_open if b_open >= take_profit else take_profit
+                    exit_price = take_profit
                     actual_days = idx + 1
-                    
-                    # Clamp MFE strictly to take profit execution price
+
                     exit_mfe = (exit_price - entry_price) / entry_price
                     max_mfe = max(max_mfe, exit_mfe)
                     exit_mae = min(0.0, (b_open - entry_price) / entry_price)
                     max_mae = min(max_mae, exit_mae)
-                    
+
                     trajectory.append(
                         DailyExcursionBar(
                             bar_index=idx + 1,
@@ -386,6 +517,33 @@ class HorizonEvaluator:
                             low=b_low,
                             close=exit_price,
                             unrealized_return_close_pct=round(exit_mfe * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 5. Time stop exit
+                if max_holding_days is not None and (idx + 1) >= max_holding_days and max_holding_days < time_horizon_days:
+                    outcome = EvaluationOutcome.HIT_TIME_STOP
+                    exit_date = bar_date
+                    exit_price = b_close
+                    actual_days = idx + 1
+                    close_ret = (b_close - entry_price) / entry_price
+                    mfe_bar = (b_high - entry_price) / entry_price
+                    mae_bar = (b_low - entry_price) / entry_price
+                    max_mfe = max(max_mfe, mfe_bar)
+                    max_mae = min(max_mae, mae_bar)
+
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=b_close,
+                            unrealized_return_close_pct=round(close_ret * 100.0, 2),
                             unrealized_mfe_pct=round(max_mfe * 100.0, 2),
                             unrealized_mae_pct=round(max_mae * 100.0, 2),
                         )
@@ -399,46 +557,34 @@ class HorizonEvaluator:
                 max_mfe = max(max_mfe, mfe_bar)
                 max_mae = min(max_mae, mae_bar)
 
-            else:  # SHORT
-                # 1. Stop loss barrier hit (Short)
-                if stop_loss is not None and b_high >= stop_loss:
-                    outcome = EvaluationOutcome.HIT_STOP_LOSS
-                    exit_date = bar_date
-                    exit_price = b_open if b_open >= stop_loss else stop_loss
-                    actual_days = idx + 1
-                    
-                    exit_mae = (entry_price - exit_price) / entry_price
-                    max_mae = min(max_mae, exit_mae)
-                    exit_mfe = max(0.0, (entry_price - b_open) / entry_price)
-                    max_mfe = max(max_mfe, exit_mfe)
-                    
-                    trajectory.append(
-                        DailyExcursionBar(
-                            bar_index=idx + 1,
-                            date=bar_date,
-                            open=b_open,
-                            high=b_high,
-                            low=b_low,
-                            close=exit_price,
-                            unrealized_return_close_pct=round(exit_mae * 100.0, 2),
-                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
-                            unrealized_mae_pct=round(max_mae * 100.0, 2),
-                        )
-                    )
-                    break
+                peak_high = max(peak_high, b_high)
+                current_runup_pct = (peak_high - entry_price) / entry_price
 
-                # 2. Take profit barrier hit (Short)
-                if take_profit is not None and b_low <= take_profit:
+                # Break-Even Ratchet
+                if break_even_trigger_pct and current_runup_pct >= break_even_trigger_pct:
+                    be_price = entry_price * 1.001
+                    if current_sl is None or be_price > current_sl:
+                        current_sl = be_price
+                        is_break_even_active = True
+
+                # Trailing Stop Ratchet
+                if trailing_stop_pct and (current_runup_pct >= (trailing_stop_pct * 0.8) or is_trailing_active):
+                    trail_price = peak_high * (1.0 - trailing_stop_pct)
+                    if current_sl is None or trail_price > current_sl:
+                        current_sl = trail_price
+                        is_trailing_active = True
+
+            else:  # SHORT
+                # 1. Gap Open Take Profit (Short)
+                if take_profit is not None and b_open <= take_profit:
                     outcome = EvaluationOutcome.HIT_TAKE_PROFIT
                     exit_date = bar_date
-                    exit_price = b_open if b_open <= take_profit else take_profit
+                    exit_price = b_open
                     actual_days = idx + 1
-                    
                     exit_mfe = (entry_price - exit_price) / entry_price
                     max_mfe = max(max_mfe, exit_mfe)
                     exit_mae = min(0.0, (entry_price - b_open) / entry_price)
                     max_mae = min(max_mae, exit_mae)
-                    
                     trajectory.append(
                         DailyExcursionBar(
                             bar_index=idx + 1,
@@ -454,12 +600,146 @@ class HorizonEvaluator:
                     )
                     break
 
+                # 2. Gap Open Stop Loss (Short)
+                if current_sl is not None and b_open >= current_sl:
+                    if is_trailing_active:
+                        outcome = EvaluationOutcome.HIT_TRAILING_STOP
+                    elif is_break_even_active:
+                        outcome = EvaluationOutcome.HIT_BREAK_EVEN
+                    else:
+                        outcome = EvaluationOutcome.HIT_STOP_LOSS
+                    exit_date = bar_date
+                    exit_price = b_open
+                    actual_days = idx + 1
+                    exit_mae = (entry_price - exit_price) / entry_price
+                    max_mae = min(max_mae, exit_mae)
+                    exit_mfe = max(0.0, (entry_price - b_open) / entry_price)
+                    max_mfe = max(max_mfe, exit_mfe)
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mae * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 3. Intraday Stop loss / Trailing stop / Break-even hit (Short)
+                if current_sl is not None and b_high >= current_sl:
+                    if is_trailing_active:
+                        outcome = EvaluationOutcome.HIT_TRAILING_STOP
+                    elif is_break_even_active:
+                        outcome = EvaluationOutcome.HIT_BREAK_EVEN
+                    else:
+                        outcome = EvaluationOutcome.HIT_STOP_LOSS
+
+                    exit_date = bar_date
+                    exit_price = current_sl
+                    actual_days = idx + 1
+
+                    exit_mae = (entry_price - exit_price) / entry_price
+                    max_mae = min(max_mae, exit_mae)
+                    exit_mfe = max(0.0, (entry_price - b_open) / entry_price)
+                    max_mfe = max(max_mfe, exit_mfe)
+
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mae * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 4. Intraday Take profit barrier hit (Short)
+                if take_profit is not None and b_low <= take_profit:
+                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
+                    exit_date = bar_date
+                    exit_price = take_profit
+                    actual_days = idx + 1
+
+                    exit_mfe = (entry_price - exit_price) / entry_price
+                    max_mfe = max(max_mfe, exit_mfe)
+                    exit_mae = min(0.0, (entry_price - b_open) / entry_price)
+                    max_mae = min(max_mae, exit_mae)
+
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mfe * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 5. Time stop exit (Short)
+                if max_holding_days is not None and (idx + 1) >= max_holding_days and max_holding_days < time_horizon_days:
+                    outcome = EvaluationOutcome.HIT_TIME_STOP
+                    exit_date = bar_date
+                    exit_price = b_close
+                    actual_days = idx + 1
+                    close_ret = (entry_price - b_close) / entry_price
+                    mfe_bar = (entry_price - b_low) / entry_price
+                    mae_bar = (entry_price - b_high) / entry_price
+                    max_mfe = max(max_mfe, mfe_bar)
+                    max_mae = min(max_mae, mae_bar)
+
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=b_close,
+                            unrealized_return_close_pct=round(close_ret * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
                 # Normal un-triggered Short bar
                 mfe_bar = (entry_price - b_low) / entry_price
                 mae_bar = (entry_price - b_high) / entry_price
                 close_ret = (entry_price - b_close) / entry_price
                 max_mfe = max(max_mfe, mfe_bar)
                 max_mae = min(max_mae, mae_bar)
+
+                peak_low = min(peak_low, b_low)
+                current_drop_pct = (entry_price - peak_low) / entry_price
+
+                # Break-Even Ratchet
+                if break_even_trigger_pct and current_drop_pct >= break_even_trigger_pct:
+                    be_price = entry_price * 0.999
+                    if current_sl is None or be_price < current_sl:
+                        current_sl = be_price
+                        is_break_even_active = True
+
+                # Trailing Stop Ratchet
+                if trailing_stop_pct and (current_drop_pct >= (trailing_stop_pct * 0.8) or is_trailing_active):
+                    trail_price = peak_low * (1.0 + trailing_stop_pct)
+                    if current_sl is None or trail_price < current_sl:
+                        current_sl = trail_price
+                        is_trailing_active = True
 
             trajectory.append(
                 DailyExcursionBar(
@@ -476,23 +756,34 @@ class HorizonEvaluator:
             )
 
         # Calculate Realized Return
-        if outcome in (EvaluationOutcome.HIT_TAKE_PROFIT, EvaluationOutcome.HIT_STOP_LOSS, EvaluationOutcome.EXPIRED):
+        is_terminal_fill = outcome in (
+            EvaluationOutcome.HIT_TAKE_PROFIT,
+            EvaluationOutcome.HIT_STOP_LOSS,
+            EvaluationOutcome.HIT_TRAILING_STOP,
+            EvaluationOutcome.HIT_BREAK_EVEN,
+            EvaluationOutcome.HIT_TIME_STOP,
+            EvaluationOutcome.EXPIRED,
+        )
+
+        if is_terminal_fill:
             if is_long:
                 realized_return = (exit_price - entry_price) / entry_price
             else:
                 realized_return = (entry_price - exit_price) / entry_price
             risk = abs(entry_price - stop_loss)
             realized_rr = round(realized_return / (risk / entry_price), 2) if risk > 0 else None
+            mfe_eff = round(realized_return / max(max_mfe, 0.0001), 2)
         else:
             realized_return = 0.0
             realized_rr = None
             actual_entry_price = None
+            mfe_eff = None
 
         return EvaluationResult(
             ticker=ticker,
             signal_date=signal_date,
             entry_date=entry_date,
-            actual_entry_price=round(entry_price, 2) if outcome in (EvaluationOutcome.HIT_TAKE_PROFIT, EvaluationOutcome.HIT_STOP_LOSS, EvaluationOutcome.EXPIRED) else None,
+            actual_entry_price=round(entry_price, 2) if is_terminal_fill else None,
             exit_date=exit_date,
             exit_price=round(exit_price, 2),
             outcome=outcome,
@@ -511,5 +802,9 @@ class HorizonEvaluator:
             reference_price_at_signal=reference_price_at_signal,
             planned_rr_ratio=planned_rr,
             realized_rr_ratio=realized_rr,
+            trailing_stop_pct=trailing_stop_pct,
+            break_even_trigger_pct=break_even_trigger_pct,
+            max_holding_days=max_holding_days,
+            mfe_efficiency=mfe_eff,
             trajectory=trajectory,
         )

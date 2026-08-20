@@ -198,6 +198,22 @@ def get_stock_stats_indicators_window(
             "Usage: Set stop-loss levels and adjust position sizes based on current market volatility. "
             "Tips: It's a reactive measure, so use it as part of a broader risk management strategy."
         ),
+        "atr_14": (
+            "ATR (14): 14-period Average True Range measuring market volatility. "
+            "Usage: Establish dynamic stop losses and breakout buffer zones."
+        ),
+        "atr_20": (
+            "ATR (20): 20-period Average True Range measuring swing volatility. "
+            "Usage: Gauge multi-week volatility bands."
+        ),
+        "chandelier_long": (
+            "Chandelier Exit Long: Highest High (22) - 3.0 * ATR (22). "
+            "Usage: Trailing stop loss level for long positions."
+        ),
+        "chandelier_short": (
+            "Chandelier Exit Short: Lowest Low (22) + 3.0 * ATR (22). "
+            "Usage: Trailing stop loss level for short positions."
+        ),
         # Volume-Based Indicators
         "vwma": (
             "VWMA: A moving average weighted by volume. "
@@ -266,8 +282,24 @@ def _get_stock_stats_bulk(
     Returns dict mapping date strings to indicator values.
     """
     from stockstats import wrap
+    from .stockstats_utils import compute_atr, compute_chandelier_exit
 
     data = load_ohlcv(symbol, curr_date)
+    ind_lower = indicator.strip().lower()
+
+    if ind_lower in ("chandelier_long", "chandelier_short"):
+        chan_df = compute_chandelier_exit(data, period=22, multiplier=3.0)
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        data[ind_lower] = chan_df[ind_lower]
+        return dict(zip(data["Date"], data[ind_lower].fillna("N/A").astype(str)))
+
+    if ind_lower in ("atr_14", "atr_20"):
+        period = int(ind_lower.split("_")[1])
+        atr_series = compute_atr(data, period=period)
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        data[ind_lower] = atr_series
+        return dict(zip(data["Date"], data[ind_lower].fillna("N/A").astype(str)))
+
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
     df[indicator]

@@ -120,6 +120,8 @@ class RiskConfig:
     default_stop_pct: float = 0.08
     default_take_profit_pct: float = 0.20
     trailing_stop_pct: float = 0.05
+    break_even_trigger_pct: float = 0.03
+    max_holding_days: int = 20
     max_position_pct: float = 0.30
     max_intraday_loss_pct: float = 0.05
     # ATR-based stop/take_profit

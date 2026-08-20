@@ -313,4 +313,6 @@ def render_evaluation_summary(result, label: str) -> str:
         lines.append(f"- **Planned Risk:Reward:** 1:{result.planned_rr_ratio:.2f}")
     if getattr(result, "realized_rr_ratio", None) is not None:
         lines.append(f"- **Realized Risk:Reward:** 1:{result.realized_rr_ratio:.2f}")
+    if getattr(result, "mfe_efficiency", None) is not None:
+        lines.append(f"- **MFE Efficiency:** {result.mfe_efficiency:.2f}")
     return "\n".join(lines)

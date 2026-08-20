@@ -29,6 +29,7 @@ from tradingagents.agents.utils.agent_utils import (
 from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
+    invoke_structured_with_recovery,
 )
 
 
@@ -49,7 +50,7 @@ def create_portfolio_manager(llm):
         trader_plan = state.get("trader_investment_plan", "")
         trader_proposal = state.get("trader_proposal")
         planned_entry_price = (
-            trader_proposal.entry_price if trader_proposal is not None else None
+            trader_proposal.entry_price if trader_proposal is not None and trader_proposal.entry_price is not None else None
         )
 
         past_context = state.get("past_context", "")
@@ -92,12 +93,12 @@ Output your decision strictly matching the PortfolioDecision schema.{get_languag
                 typed_decision = structured_llm.invoke(prompt)
                 final_trade_decision = render_pm_decision(typed_decision)
             except Exception:
-                final_trade_decision = invoke_structured_or_freetext(
-                    None, llm, prompt, render_pm_decision, "Portfolio Manager"
+                typed_decision, final_trade_decision = invoke_structured_with_recovery(
+                    None, llm, prompt, PortfolioDecision, render_pm_decision, "Portfolio Manager"
                 )
         else:
-            final_trade_decision = invoke_structured_or_freetext(
-                None, llm, prompt, render_pm_decision, "Portfolio Manager"
+            typed_decision, final_trade_decision = invoke_structured_with_recovery(
+                None, llm, prompt, PortfolioDecision, render_pm_decision, "Portfolio Manager"
             )
 
         signal_contract = None

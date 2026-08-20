@@ -52,6 +52,20 @@ class EntryMode(str, Enum):
     T1_OPEN = "T1_OPEN"
 
 
+class EvaluationOutcome(str, Enum):
+    """Execution and horizon evaluation outcomes for backtesting."""
+
+    HIT_TAKE_PROFIT = "HIT_TAKE_PROFIT"
+    HIT_STOP_LOSS = "HIT_STOP_LOSS"
+    HIT_TRAILING_STOP = "HIT_TRAILING_STOP"
+    HIT_BREAK_EVEN = "HIT_BREAK_EVEN"
+    HIT_TIME_STOP = "HIT_TIME_STOP"
+    EXPIRED = "EXPIRED"
+    NO_ORDER = "NO_ORDER"
+    INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
+    NO_FILL = "NO_FILL"
+
+
 class TraderAction(str, Enum):
     """Transaction direction used by the Trader.
 
@@ -170,6 +184,24 @@ class TraderProposal(BaseModel):
         default=None,
         description="Recommended position size (% of equity/cash)",
     )
+    trailing_stop_pct: Optional[float] = Field(
+        default=None,
+        ge=0.01,
+        le=0.20,
+        description="Trailing stop percentage below peak high once active (e.g. 0.05 for 5%)",
+    )
+    break_even_trigger_pct: Optional[float] = Field(
+        default=0.03,
+        ge=0.01,
+        le=0.15,
+        description="Runup percentage required to move SL to break-even entry price",
+    )
+    max_holding_days: int = Field(
+        default=20,
+        ge=1,
+        le=63,
+        description="Maximum holding period in trading days before time-based exit",
+    )
 
     # WNS Specific Re-evaluation Terms
     wns_condition_type: Optional[WNSConditionType] = Field(
@@ -198,7 +230,15 @@ class TraderProposal(BaseModel):
                     return member
         return v
 
-    @field_validator("entry_price", "stop_loss", "take_profit", "wns_trigger_price", mode="before")
+    @field_validator(
+        "entry_price",
+        "stop_loss",
+        "take_profit",
+        "wns_trigger_price",
+        "trailing_stop_pct",
+        "break_even_trigger_pct",
+        mode="before",
+    )
     @classmethod
     def _coerce_none_strings(cls, v):
         if isinstance(v, str):
@@ -206,11 +246,15 @@ class TraderProposal(BaseModel):
             if clean in ("none", "null", "n/a", "", "undefined"):
                 return None
             import re
+            is_pct = "%" in clean
             num_clean = re.sub(r"[^\d.-]", "", v.strip())
             if not num_clean:
                 return None
             try:
-                v = float(num_clean)
+                val = float(num_clean)
+                if is_pct and val > 1.0:
+                    val = val / 100.0
+                v = val
             except ValueError:
                 return None
         if isinstance(v, (int, float)):
@@ -266,6 +310,12 @@ def render_trader_proposal(proposal: TraderProposal) -> str:
         parts.extend(["", f"**Stop Loss**: {proposal.stop_loss}"])
     if proposal.take_profit is not None:
         parts.extend(["", f"**Take Profit**: {proposal.take_profit}"])
+    if proposal.trailing_stop_pct is not None:
+        parts.extend(["", f"**Trailing Stop Pct**: {proposal.trailing_stop_pct:.2%}"])
+    if proposal.break_even_trigger_pct is not None:
+        parts.extend(["", f"**Break Even Trigger Pct**: {proposal.break_even_trigger_pct:.2%}"])
+    if proposal.max_holding_days is not None:
+        parts.extend(["", f"**Max Holding Days**: {proposal.max_holding_days}"])
     if proposal.position_sizing:
         parts.extend(["", f"**Position Sizing**: {proposal.position_sizing}"])
     parts.extend([
@@ -347,6 +397,24 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Optional review date YYYY-MM-DD. If omitted, calculated deterministically in Python.",
     )
+    trailing_stop_pct: Optional[float] = Field(
+        default=None,
+        ge=0.01,
+        le=0.20,
+        description="Trailing stop percentage below peak high once active (e.g. 0.05 for 5%)",
+    )
+    break_even_trigger_pct: Optional[float] = Field(
+        default=0.03,
+        ge=0.01,
+        le=0.15,
+        description="Runup percentage required to move SL to break-even entry price",
+    )
+    max_holding_days: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=63,
+        description="Maximum holding period in trading days before time-based exit",
+    )
 
     # WNS Specific Fields
     wns_condition_type: Optional[WNSConditionType] = None
@@ -411,18 +479,30 @@ class PortfolioDecision(BaseModel):
                     return member
         return v
 
-    @field_validator("take_profit", "price_target", "stop_loss", "planned_entry_price", mode="before")
+    @field_validator(
+        "take_profit",
+        "price_target",
+        "stop_loss",
+        "planned_entry_price",
+        "trailing_stop_pct",
+        "break_even_trigger_pct",
+        mode="before",
+    )
     @classmethod
     def _coerce_optional_prices(cls, v):
         if isinstance(v, str):
             clean = v.strip().lower()
             if clean in ("none", "null", "n/a", "", "undefined"):
                 return None
+            is_pct = "%" in clean
             num_clean = re.sub(r"[^\d.-]", "", v.strip())
             if not num_clean:
                 return None
             try:
-                v = float(num_clean)
+                val = float(num_clean)
+                if is_pct and val > 1.0:
+                    val = val / 100.0
+                v = val
             except ValueError:
                 return None
         if isinstance(v, (int, float)):
@@ -466,6 +546,12 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     take_profit = decision.take_profit if decision.take_profit is not None else decision.price_target
     if take_profit is not None:
         parts.extend(["", f"**Price Target**: {take_profit}"])
+    if decision.trailing_stop_pct is not None:
+        parts.extend(["", f"**Trailing Stop Pct**: {decision.trailing_stop_pct:.2%}"])
+    if decision.break_even_trigger_pct is not None:
+        parts.extend(["", f"**Break Even Trigger Pct**: {decision.break_even_trigger_pct:.2%}"])
+    if decision.max_holding_days is not None:
+        parts.extend(["", f"**Max Holding Days**: {decision.max_holding_days}"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
     parts.extend(["", f"**Time Horizon Days**: {decision.time_horizon_days}"])
@@ -644,6 +730,24 @@ class SignalContract(BaseModel):
         description="Original agent wording for the holding-period range, preserved for audit display.",
     )
     thesis_summary: str = Field(default="", description="Core narrative thesis")
+    trailing_stop_pct: Optional[float] = Field(
+        default=None,
+        ge=0.01,
+        le=0.20,
+        description="Trailing stop percentage below peak high once active",
+    )
+    break_even_trigger_pct: Optional[float] = Field(
+        default=0.03,
+        ge=0.01,
+        le=0.15,
+        description="Runup percentage required to move SL to break-even entry price",
+    )
+    max_holding_days: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=63,
+        description="Maximum holding period in trading days before time-based exit",
+    )
 
     # WNS parameters
     wns_condition_type: Optional[WNSConditionType] = None
@@ -757,6 +861,9 @@ def portfolio_decision_to_signal_contract(
         confidence=decision.confidence,
         time_horizon_label=decision.time_horizon,
         thesis_summary=decision.investment_thesis,
+        trailing_stop_pct=decision.trailing_stop_pct,
+        break_even_trigger_pct=decision.break_even_trigger_pct,
+        max_holding_days=decision.max_holding_days or decision.time_horizon_days,
         wns_condition_type=decision.wns_condition_type,
         wns_recheck_date=decision.wns_recheck_date,
         wns_trigger_price=decision.wns_trigger_price,
