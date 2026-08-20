@@ -113,17 +113,29 @@ def compute_structural_levels(
     l52 = float(w52["Low"].min()) if "Low" in w52 else float(w52["Close"].min())
 
     # Multi-month Swing Lows & Highs (60D and 20D)
-    w60 = history.tail(60)
+    w60 = history.tail(60).reset_index(drop=True)
     l60 = float(w60["Low"].min()) if "Low" in w60 else float(w60["Close"].min())
     h60 = float(w60["High"].max()) if "High" in w60 else float(w60["Close"].max())
     w20 = history.tail(20)
     l20 = float(w20["Low"].min()) if "Low" in w20 else float(w20["Close"].min())
     h20 = float(w20["High"].max()) if "High" in w20 else float(w20["Close"].max())
 
-    # Fibonacci calculation between 60D High and Low
+    # Fibonacci calculation between 60D High and Low with directional awareness
+    pos_h60 = int(w60["High"].argmax()) if "High" in w60 else int(w60["Close"].argmax())
+    pos_l60 = int(w60["Low"].argmin()) if "Low" in w60 else int(w60["Close"].argmin())
+
     fib_range = h60 - l60
-    fib_50 = round(h60 - (0.50 * fib_range), 2) if fib_range > 0 else last_close
-    fib_618 = round(h60 - (0.618 * fib_range), 2) if fib_range > 0 else last_close
+    if fib_range > 0:
+        if pos_l60 < pos_h60:
+            # Bullish impulse (Low -> High): Pullback demand support levels
+            fib_50 = round(h60 - (0.50 * fib_range), 2)
+            fib_618 = round(h60 - (0.618 * fib_range), 2)
+        else:
+            # Bearish leg (High -> Low): Counter-trend bounce resistance levels
+            fib_50 = round(l60 + (0.50 * fib_range), 2)
+            fib_618 = round(l60 + (0.618 * fib_range), 2)
+    else:
+        fib_50 = fib_618 = last_close
 
     result: Dict[str, Any] = {
         "trade_date": str(latest["date_str"]),

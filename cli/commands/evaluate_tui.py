@@ -296,19 +296,21 @@ def render_signal_summary(signal, horizon_days: int) -> str:
 
 
 def render_evaluation_summary(result, label: str) -> str:
+    entry_str = f"{result.entry_date} @ {result.actual_entry_price:,.2f}" if (result.entry_date and result.actual_entry_price is not None) else "None"
+    exit_str = f"{result.exit_date} @ {result.exit_price:,.2f}" if (result.exit_date and result.exit_price is not None) else "None"
     lines = [
         f"### Horizon Realization: {label}",
-        f"- **Actual Entry ({result.entry_policy}):** {result.entry_date} @ {result.actual_entry_price:,.2f}" if result.entry_date else f"- **Actual Entry ({result.entry_policy}):** None",
+        f"- **Actual Entry ({result.entry_policy}):** {entry_str}",
         f"- **Fill Status:** {getattr(result.outcome, 'value', result.outcome)}",
         f"- **Planned Entry:** {result.planned_entry_price if result.planned_entry_price is not None else 'None'}",
-        f"- **Exit:** {result.exit_date or 'None'} @ {result.exit_price:,.2f}",
+        f"- **Exit:** {exit_str}",
         f"- **Holding Period:** {result.actual_holding_days} / {result.planned_time_horizon_days} trading days",
         f"- **Realized Return:** {result.realized_return_pct:+.2f}%",
         f"- **Max Runup (MFE):** +{result.max_favorable_excursion_pct:.2f}%",
         f"- **Max Drawdown (MAE):** {result.max_adverse_excursion_pct:.2f}%",
     ]
-    if result.planned_rr_ratio:
+    if getattr(result, "planned_rr_ratio", None) is not None:
         lines.append(f"- **Planned Risk:Reward:** 1:{result.planned_rr_ratio:.2f}")
-    if result.realized_rr_ratio:
+    if getattr(result, "realized_rr_ratio", None) is not None:
         lines.append(f"- **Realized Risk:Reward:** 1:{result.realized_rr_ratio:.2f}")
     return "\n".join(lines)

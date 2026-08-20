@@ -156,6 +156,7 @@ class WalkForwardBacktestRunner:
         self.margin_log: list[dict] = []
         self.trigger_log: list[dict] = []
         self._next_reanalysis_date: Optional[str] = None
+        self._pending_wns_price_trigger: Optional[float] = None
 
     def _init_portfolio(self) -> PortfolioV2:
         margin_cfg = MarginConfig(
@@ -295,6 +296,14 @@ class WalkForwardBacktestRunner:
 
         # Notify about executed trades so the CLI can display them
         if executed_trades:
+            # Immediately initialize risk levels for newly opened positions
+            if not self.portfolio.is_flat() and self.prev_decision is not None:
+                self._update_risk_levels(
+                    self.prev_decision,
+                    self._ohlcv_df,
+                    current_date=current_date,
+                )
+
             trade_dicts = []
             for t in executed_trades:
                 trade_dicts.append({
@@ -402,56 +411,43 @@ class WalkForwardBacktestRunner:
         # Track previous rating for logging and comparison.
         prev_rating = self.prev_decision.agent_rating if self.prev_decision else None
 
+        # 1. Check if WNS Structural Price Trigger was touched on today's bar
+        price_trigger_hit = False
+        if self._pending_wns_price_trigger is not None:
+            trigger_p = float(self._pending_wns_price_trigger)
+            if market_point.low <= trigger_p <= market_point.high:
+                price_trigger_hit = True
+                logger.info(f"[WNS TRIGGER] Price level {trigger_p:.2f} touched on {current_date}. Triggering agent re-analysis!")
+                self._pending_wns_price_trigger = None
+                self._next_reanalysis_date = None
+
+        # 2. Check if WNS Catalyst Date Gate was reached
+        time_gate_expired = (
+            self._next_reanalysis_date is not None
+            and current_date >= self._next_reanalysis_date
+        )
+        if time_gate_expired:
+            self._next_reanalysis_date = None
+
         # Check if we should skip the agent (conditional reanalysis).
         # If _next_reanalysis_date is set and current_date is before it,
-        # skip the full agent pipeline and carry forward the previous decision.
+        # skip the full agent pipeline and maintain portfolio state.
         should_skip_agent = (
-            self._next_reanalysis_date is not None
+            not price_trigger_hit
+            and self._next_reanalysis_date is not None
             and current_date < self._next_reanalysis_date
         )
 
         if should_skip_agent:
-            # Skip agent: carry forward previous decision as HOLD
+            # Active WNS Waiting: Maintain current portfolio, do not run agent or generate orders
             self._notify_progress(
                 "agent",
                 current_date,
                 self._day_index + 1,
                 len(self._trading_days) if self._trading_days else 0,
             )
-            # Create synthetic decision from previous
-            next_valid_date = self._safe_next_trading_day(current_date)
-            if next_valid_date is None:
-                self.prev_close = market_point.close
-                return
-
-            if self.prev_decision is not None:
-                decision = ParsedDecision(
-                    decision_id=f"{self.config.ticker}-{current_date}-SKIP",
-                    ticker=self.config.ticker,
-                    trade_date=current_date,
-                    agent_rating=self.prev_decision.agent_rating,
-                    report_generated_at=f"{current_date} 16:30:00",
-                    last_data_date=current_date,
-                    decision_valid_from=next_valid_date,
-                    normalized_rating=self.prev_decision.normalized_rating,
-                    confidence=self.prev_decision.confidence,
-                    allocation_pct=self.prev_decision.allocation_pct,
-                    reduce_pct=self.prev_decision.reduce_pct,
-                    leverage=self.prev_decision.leverage,
-                    stop_price=self.prev_decision.stop_price,
-                    take_profit=self.prev_decision.take_profit,
-                    time_horizon_days=self.prev_decision.time_horizon_days,
-                    allow_new_position=self.prev_decision.allow_new_position,
-                    short_allowed=self.prev_decision.short_allowed,
-                    market_mode=self.prev_decision.market_mode,
-                    allowed_position_sides=self.prev_decision.allowed_position_sides,
-                    source_report_path=None,
-                    raw_text_excerpt=f"Skipped — next review: {self._next_reanalysis_date}",
-                    next_review_date=self._next_reanalysis_date,
-                )
-            else:
-                # No previous decision: run agent normally
-                should_skip_agent = False
+            self.prev_close = market_point.close
+            return
 
         if not should_skip_agent:
             # PRD §17 step 5: Run agent after market close (Daily Review Agent)
@@ -483,8 +479,7 @@ class WalkForwardBacktestRunner:
             )
             next_valid_date = self._safe_next_trading_day(current_date)
             if next_valid_date is None:
-                self.prev_close = market_point.close
-                return
+                next_valid_date = current_date
 
             decision = self.parser.parse_text(
                 text=report_text,
@@ -537,11 +532,13 @@ class WalkForwardBacktestRunner:
                 prev_rating is not None and prev_rating != decision.agent_rating
             )
 
-            # Update _next_reanalysis_date from the parsed decision.
-            # If parser didn't extract next_review_date (common with free-text
-            # fallback on models like MiniMax that don't always include the
-            # "**Next Review Date**: YYYY-MM-DD" section), log a warning
-            # and use next trading day as default.
+            # Update _next_reanalysis_date and _pending_wns_price_trigger from decision
+            if getattr(decision, "agent_rating", "").upper() in ("WNS", "HOLD"):
+                if getattr(decision, "next_review_date", None):
+                    self._next_reanalysis_date = decision.next_review_date
+                if getattr(decision, "planned_entry_price", None):
+                    self._pending_wns_price_trigger = float(decision.planned_entry_price)
+
             if decision.next_review_date:
                 self._next_reanalysis_date = decision.next_review_date
             else:
@@ -588,6 +585,7 @@ class WalkForwardBacktestRunner:
             current_position=self.portfolio.position,
             risk_order=risk_order,
             current_equity=self.portfolio.account_equity(market_point.close),
+            current_bar=market_point,
         )
         extended_decision.triggered = trigger_result.triggered
         extended_decision.trigger_reasons = list(trigger_result.reasons)
@@ -630,6 +628,7 @@ class WalkForwardBacktestRunner:
             decision=extended_decision,
             current_position=self.portfolio.position,
             current_equity=self.portfolio.account_equity(market_point.close),
+            current_cash=self.portfolio.cash,
             reference_price=market_point.close,
         )
         self.broker.add_pending_orders(orders)

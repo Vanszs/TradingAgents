@@ -27,23 +27,25 @@ def create_research_manager(llm):
 
         investment_debate_state = state["investment_debate_state"]
 
-        prompt = f"""As the Senior Research Manager, synthesize the debate between the Bull and Bear analysts against quantitative levels to formulate the directional investment plan.
+        company_name = state["company_of_interest"]
+        prompt = f"""You are the Lead Research Manager synthesizing the dialectical debate for `{company_name}` under a strict **Spot Long-Only (BUY vs WNS)** mandate.
 
 {instrument_context}
 
----
+**Decision Scale & Mandate (Spot Long-Only)**:
+- **Buy**: Strong conviction in asymmetric long upside (R:R >= 2.0). Formulate clear entry, stop loss, and take profit targets.
+- **Overweight**: Constructive view; accumulation warranted.
+- **Hold**: Neutral prior; wait for confirmed stabilization.
+- **WNS (Wait and See)**: The default prior whenever entry placement or timing cannot be committed immediately. You MUST provide at least one explicit re-evaluation term:
+  1. Temporal Gate: "check after date X" (e.g., post-earnings release, macro catalyst, CPI).
+  2. Structural Price Gate: "check again after touch price level Y" (e.g., pullback to 200 SMA demand zone $YYY).
+- **Underweight**: Cautious view; trim exposure/distribution.
+- **Sell**: Complete liquidation / capital preservation exit of existing long inventory to cash.
 
-**Rating Scale** (use exactly one):
-- **Buy**: Strong conviction in the bull thesis; asymmetric upside
-- **Overweight**: Constructive view; accumulation warranted
-- **Hold**: Balanced view, unclear catalysts, or elevated regime uncertainty (Default prior)
-- **Underweight**: Cautious view; trim exposure/distribution
-- **Sell**: Strong conviction in the bear thesis; asymmetric downside
+### Debate History
+{history if history else 'No debate history available.'}
 
----
-
-**Debate History:**
-{history if history else 'No debate recorded.'}""" + get_language_instruction()
+Deliver a decisive, evidence-based judgment in valid JSON matching the ResearchPlan schema.""" + get_language_instruction()
 
         investment_plan = invoke_structured_or_freetext(
             structured_llm,

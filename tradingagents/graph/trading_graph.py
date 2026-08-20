@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import yfinance as yf
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from langgraph.prebuilt import ToolNode
 
 from tradingagents.agents import *
+from tradingagents.agents.schemas import SignalContract
 from tradingagents.agents.utils.agent_states import (
     AgentState,
     InvestDebateState,
@@ -472,7 +473,7 @@ class TradingAgentsGraph:
         total_duration = time.time() - graph_start_time
         logger.info(f"[GRAPH] Total _run_graph time: {total_duration:.3f}s")
 
-        return final_state, self.process_signal(final_state["final_trade_decision"])
+        return final_state, self.process_signal(final_state)
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""
@@ -521,6 +522,11 @@ class TradingAgentsGraph:
         with open(log_path, "w", encoding="utf-8") as f:
             json.dump(self.log_states_dict[str(trade_date)], f, indent=4)
 
-    def process_signal(self, full_signal):
-        """Process a signal to extract the core decision."""
-        return parse_rating(full_signal)
+    def process_signal(self, full_signal: Union[dict, str]) -> Union[SignalContract, str]:
+        """Process signal state, prioritizing structured SignalContract over legacy regex."""
+        if isinstance(full_signal, dict):
+            contract = full_signal.get("signal_contract")
+            if contract is not None:
+                return contract
+            return parse_rating(full_signal.get("final_trade_decision", ""))
+        return parse_rating(str(full_signal))

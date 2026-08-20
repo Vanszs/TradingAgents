@@ -333,18 +333,133 @@ class HorizonEvaluator:
             b_low = float(row["low"])
             b_close = float(row["close"])
 
-            # Excursion calculation relative to entry
+            # Intraday barrier evaluation with post-exit clamping
             if is_long:
+                # 1. Stop loss barrier hit
+                if stop_loss is not None and b_low <= stop_loss:
+                    outcome = EvaluationOutcome.HIT_STOP_LOSS
+                    exit_date = bar_date
+                    exit_price = b_open if b_open <= stop_loss else stop_loss
+                    actual_days = idx + 1
+                    
+                    # Clamp MAE strictly to exit execution price
+                    exit_mae = (exit_price - entry_price) / entry_price
+                    max_mae = min(max_mae, exit_mae)
+                    # MFE on stop bar is bounded by open or 0.0 (no post-exit rally credit)
+                    exit_mfe = max(0.0, (b_open - entry_price) / entry_price)
+                    max_mfe = max(max_mfe, exit_mfe)
+                    
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mae * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 2. Take profit barrier hit
+                if take_profit is not None and b_high >= take_profit:
+                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
+                    exit_date = bar_date
+                    exit_price = b_open if b_open >= take_profit else take_profit
+                    actual_days = idx + 1
+                    
+                    # Clamp MFE strictly to take profit execution price
+                    exit_mfe = (exit_price - entry_price) / entry_price
+                    max_mfe = max(max_mfe, exit_mfe)
+                    exit_mae = min(0.0, (b_open - entry_price) / entry_price)
+                    max_mae = min(max_mae, exit_mae)
+                    
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mfe * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # Normal un-triggered Long bar
                 mfe_bar = (b_high - entry_price) / entry_price
                 mae_bar = (b_low - entry_price) / entry_price
                 close_ret = (b_close - entry_price) / entry_price
-            else:
+                max_mfe = max(max_mfe, mfe_bar)
+                max_mae = min(max_mae, mae_bar)
+
+            else:  # SHORT
+                # 1. Stop loss barrier hit (Short)
+                if stop_loss is not None and b_high >= stop_loss:
+                    outcome = EvaluationOutcome.HIT_STOP_LOSS
+                    exit_date = bar_date
+                    exit_price = b_open if b_open >= stop_loss else stop_loss
+                    actual_days = idx + 1
+                    
+                    exit_mae = (entry_price - exit_price) / entry_price
+                    max_mae = min(max_mae, exit_mae)
+                    exit_mfe = max(0.0, (entry_price - b_open) / entry_price)
+                    max_mfe = max(max_mfe, exit_mfe)
+                    
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mae * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # 2. Take profit barrier hit (Short)
+                if take_profit is not None and b_low <= take_profit:
+                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
+                    exit_date = bar_date
+                    exit_price = b_open if b_open <= take_profit else take_profit
+                    actual_days = idx + 1
+                    
+                    exit_mfe = (entry_price - exit_price) / entry_price
+                    max_mfe = max(max_mfe, exit_mfe)
+                    exit_mae = min(0.0, (entry_price - b_open) / entry_price)
+                    max_mae = min(max_mae, exit_mae)
+                    
+                    trajectory.append(
+                        DailyExcursionBar(
+                            bar_index=idx + 1,
+                            date=bar_date,
+                            open=b_open,
+                            high=b_high,
+                            low=b_low,
+                            close=exit_price,
+                            unrealized_return_close_pct=round(exit_mfe * 100.0, 2),
+                            unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                            unrealized_mae_pct=round(max_mae * 100.0, 2),
+                        )
+                    )
+                    break
+
+                # Normal un-triggered Short bar
                 mfe_bar = (entry_price - b_low) / entry_price
                 mae_bar = (entry_price - b_high) / entry_price
                 close_ret = (entry_price - b_close) / entry_price
-
-            max_mfe = max(max_mfe, mfe_bar)
-            max_mae = min(max_mae, mae_bar)
+                max_mfe = max(max_mfe, mfe_bar)
+                max_mae = min(max_mae, mae_bar)
 
             trajectory.append(
                 DailyExcursionBar(
@@ -355,62 +470,10 @@ class HorizonEvaluator:
                     low=b_low,
                     close=b_close,
                     unrealized_return_close_pct=round(close_ret * 100.0, 2),
-                    unrealized_mfe_pct=round(mfe_bar * 100.0, 2),
-                    unrealized_mae_pct=round(mae_bar * 100.0, 2),
+                    unrealized_mfe_pct=round(max_mfe * 100.0, 2),
+                    unrealized_mae_pct=round(max_mae * 100.0, 2),
                 )
             )
-
-            # Barrier evaluation: check gap open precedence first
-            if is_long:
-                if take_profit is not None and b_open >= take_profit:
-                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
-                    exit_date = bar_date
-                    exit_price = b_open
-                    actual_days = idx + 1
-                    break
-                if stop_loss is not None and b_open <= stop_loss:
-                    outcome = EvaluationOutcome.HIT_STOP_LOSS
-                    exit_date = bar_date
-                    exit_price = b_open
-                    actual_days = idx + 1
-                    break
-                if stop_loss is not None and b_low <= stop_loss:
-                    outcome = EvaluationOutcome.HIT_STOP_LOSS
-                    exit_date = bar_date
-                    exit_price = stop_loss
-                    actual_days = idx + 1
-                    break
-                if take_profit is not None and b_high >= take_profit:
-                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
-                    exit_date = bar_date
-                    exit_price = take_profit
-                    actual_days = idx + 1
-                    break
-            else:  # SHORT
-                if take_profit is not None and b_open <= take_profit:
-                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
-                    exit_date = bar_date
-                    exit_price = b_open
-                    actual_days = idx + 1
-                    break
-                if stop_loss is not None and b_open >= stop_loss:
-                    outcome = EvaluationOutcome.HIT_STOP_LOSS
-                    exit_date = bar_date
-                    exit_price = b_open
-                    actual_days = idx + 1
-                    break
-                if stop_loss is not None and b_high >= stop_loss:
-                    outcome = EvaluationOutcome.HIT_STOP_LOSS
-                    exit_date = bar_date
-                    exit_price = stop_loss
-                    actual_days = idx + 1
-                    break
-                if take_profit is not None and b_low <= take_profit:
-                    outcome = EvaluationOutcome.HIT_TAKE_PROFIT
-                    exit_date = bar_date
-                    exit_price = take_profit
-                    actual_days = idx + 1
-                    break
 
         # Calculate Realized Return
         if outcome in (EvaluationOutcome.HIT_TAKE_PROFIT, EvaluationOutcome.HIT_STOP_LOSS, EvaluationOutcome.EXPIRED):

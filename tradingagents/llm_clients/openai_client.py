@@ -99,9 +99,9 @@ class DeepSeekChatOpenAI(NormalizedChatOpenAI):
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
         outgoing = payload.get("messages", [])
-        for message_dict, message in zip(outgoing, _input_to_messages(input_)):
-            if not isinstance(message, AIMessage):
-                continue
+        ai_messages = [m for m in _input_to_messages(input_) if isinstance(m, AIMessage)]
+        assistant_outgoing = [m for m in outgoing if m.get("role") == "assistant"]
+        for message_dict, message in zip(assistant_outgoing, ai_messages):
             reasoning = message.additional_kwargs.get("reasoning_content")
             if reasoning is not None:
                 message_dict["reasoning_content"] = reasoning
@@ -156,6 +156,7 @@ class MinimaxChatOpenAI(NormalizedChatOpenAI):
 _PASSTHROUGH_KWARGS = (
     "timeout", "max_retries", "reasoning_effort",
     "api_key", "callbacks", "http_client", "http_async_client",
+    "temperature", "seed", "top_p",
 )
 
 # Provider base URLs. API-key env vars live in api_key_env.PROVIDER_API_KEY_ENV

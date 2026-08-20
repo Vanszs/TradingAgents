@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from .position import (
     ExtendedDecision,
@@ -143,6 +143,7 @@ class TriggerEvaluator:
         current_position: Position,
         risk_order: Optional[Any] = None,
         current_equity: Optional[float] = None,
+        current_bar: Optional[Any] = None,
     ) -> TriggerResult:
         if not self.config.enabled:
             return TriggerResult(
@@ -190,8 +191,27 @@ class TriggerEvaluator:
             reasons.append("rating_confirmed")
             details["rating_confirmed"] = True
 
+        if current_position.is_flat():
+            price_touched = self._price_level_touched(today_decision, current_bar)
+            if price_touched:
+                reasons.append("price_level_touched")
+                details["price_level_touched"] = True
+            is_entry_signal = (
+                "entry_condition_changed" in reasons
+                or "rating_confirmed" in reasons
+                or "better_candidate" in reasons
+                or price_touched
+            )
+            is_invalid = (
+                "setup_invalid" in reasons
+                or "rr_deteriorated" in reasons
+            )
+            triggered = bool(is_entry_signal and not is_invalid)
+        else:
+            triggered = len(reasons) > 0
+
         return TriggerResult(
-            triggered=len(reasons) > 0,
+            triggered=triggered,
             reasons=reasons,
             details=details,
         )
@@ -199,6 +219,38 @@ class TriggerEvaluator:
     # ------------------------------------------------------------------
     # Individual conditions
     # ------------------------------------------------------------------
+    def _price_level_touched(
+        self,
+        decision: ExtendedDecision,
+        current_bar: Optional[Union[MarketPoint, dict, Any]] = None,
+    ) -> bool:
+        planned = getattr(decision, "planned_entry_price", None)
+        if planned is None or current_bar is None:
+            return False
+
+        low = current_bar.get("low") if isinstance(current_bar, dict) else getattr(current_bar, "low", None)
+        high = current_bar.get("high") if isinstance(current_bar, dict) else getattr(current_bar, "high", None)
+        if low is None or high is None:
+            return False
+
+        planned = float(planned)
+        action = getattr(decision, "futures_action", None) or getattr(decision, "action", None)
+        side = getattr(decision, "target_position_side", None) or getattr(decision, "side", None)
+        rating = getattr(decision, "agent_rating", None) or getattr(decision, "normalized_rating", None)
+
+        is_short = (
+            (action and "SHORT" in str(action).upper())
+            or (side and str(side).upper() == "SHORT")
+            or (rating and str(rating).lower() in ("sell", "underweight") and str(side).upper() == "SHORT")
+        )
+        is_buy = not is_short
+
+        if is_buy:
+            # Buy limit executes if market traded down to or through the limit price
+            return float(low) <= planned
+        else:
+            # Sell limit executes if market traded up to or through the limit price
+            return float(high) >= planned
     def _tp_sl_hit(self, risk_order: Optional[Any]) -> bool:
         if risk_order is None:
             return False
@@ -262,18 +314,7 @@ class TriggerEvaluator:
         today: ExtendedDecision,
         prev: ExtendedDecision,
     ) -> Optional[float]:
-        """
-        Compute a real R:R drop between yesterday and today.
-
-        Without an explicit entry price on the decision we cannot build the
-        classic ``(target - entry) / abs(entry - stop)`` ratio. Instead we
-        use the *band width* ``|take_profit - stop_price|`` as a proxy for
-        R:R health — a widening band means better expected reward vs risk;
-        a narrowing band means the trade is becoming a worse proposition.
-
-        Returns the fractional drop in band width (>= 0) or None when
-        either day is missing the required legs.
-        """
+        """Compute true R:R drop based on distance from reference price."""
         if (
             today.stop_price is None
             or today.take_profit is None
@@ -281,11 +322,30 @@ class TriggerEvaluator:
             or prev.take_profit is None
         ):
             return None
-        prev_band = abs(prev.take_profit - prev.stop_price)
-        today_band = abs(today.take_profit - today.stop_price)
-        if prev_band <= 0:
+
+        ref_today = getattr(today, "planned_entry_price", None)
+        ref_prev = getattr(prev, "planned_entry_price", None)
+
+        if ref_today is None:
+            ref_today = getattr(today, "reference_price", None) or (today.stop_price * 1.05 if today.stop_price else None)
+        if ref_prev is None:
+            ref_prev = getattr(prev, "reference_price", None) or (prev.stop_price * 1.05 if prev.stop_price else None)
+
+        if ref_today is None or ref_prev is None:
             return None
-        drop = (prev_band - today_band) / prev_band
+
+        prev_risk = abs(ref_prev - prev.stop_price)
+        prev_reward = abs(prev.take_profit - ref_prev)
+        today_risk = abs(ref_today - today.stop_price)
+        today_reward = abs(today.take_profit - ref_today)
+
+        if prev_risk <= 0 or today_risk <= 0:
+            return None
+        prev_rr = prev_reward / prev_risk
+        today_rr = today_reward / today_risk
+        if prev_rr <= 0:
+            return None
+        drop = (prev_rr - today_rr) / prev_rr
         return drop
 
     def _strong_exit_signal(

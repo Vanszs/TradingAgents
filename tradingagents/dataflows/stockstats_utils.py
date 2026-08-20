@@ -43,15 +43,16 @@ def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     for col in price_cols:
         data[col] = pd.to_numeric(data[col], errors="coerce")
     data = data.dropna(subset=["Close"])
-    data[price_cols] = data[price_cols].ffill().bfill()
+    data[price_cols] = data[price_cols].ffill()
+    data = data.dropna(subset=price_cols)
 
     return data
 
 
-def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
+def load_ohlcv(symbol: str, curr_date: str = None) -> pd.DataFrame:
     """Fetch OHLCV data with caching, filtered to prevent look-ahead bias.
 
-    Downloads 15 years of data up to today and caches per symbol. On
+    Downloads 15 years of data up to anchor date and caches per symbol. On
     subsequent calls the cache is reused. Rows after curr_date are
     filtered out so backtests never see future prices.
     """
@@ -60,13 +61,14 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     safe_symbol = safe_ticker_component(symbol)
 
     config = get_config()
-    curr_date_dt = pd.to_datetime(curr_date)
+    curr_date_dt = pd.to_datetime(curr_date) if curr_date else None
 
-    # Cache uses a fixed window (15y to today) so one file per symbol
-    today_date = pd.Timestamp.today()
-    start_date = today_date - pd.DateOffset(years=5)
+    # Cache uses a 15y window anchored to curr_date (or today)
+    anchor_dt = pd.to_datetime(curr_date) if curr_date else pd.Timestamp.today()
+    start_date = anchor_dt - pd.DateOffset(years=15)
+    end_date = anchor_dt + pd.DateOffset(days=1)
     start_str = start_date.strftime("%Y-%m-%d")
-    end_str = today_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
 
     os.makedirs(config["data_cache_dir"], exist_ok=True)
     data_file = os.path.join(
@@ -91,7 +93,8 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     data = _clean_dataframe(data)
 
     # Filter to curr_date to prevent look-ahead bias in backtesting
-    data = data[data["Date"] <= curr_date_dt]
+    if curr_date_dt is not None:
+        data = data[data["Date"] <= curr_date_dt]
 
     return data
 

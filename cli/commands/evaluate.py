@@ -103,7 +103,7 @@ def _run_forward_evaluation(
     effective_horizon: int,
     ohlcv_df: pd.DataFrame,
 ):
-    eval_side = {"BUY": "LONG", "SELL": "SHORT", "HOLD": "FLAT"}[signal.action]
+    eval_side = {"BUY": "LONG", "SELL": "SHORT", "HOLD": "FLAT", "WNS": "FLAT"}[signal.action]
     actual_entry_price = None
     actual_entry_timestamp = None
 
@@ -221,7 +221,7 @@ def _evaluate_signal_with_tui(
     except Exception as e:
         tui.fail_phase("Portfolio Manager", e)
         raise
-    if signal.action != "HOLD":
+    if signal.action not in ("HOLD", "WNS"):
         if signal.planned_entry_price is None:
             raise typer.BadParameter(
                 "actionable signals require an explicit planned entry price"

@@ -9,6 +9,7 @@ from .validators import validate_model
 _PASSTHROUGH_KWARGS = (
     "timeout", "max_retries", "api_key", "max_tokens",
     "callbacks", "http_client", "http_async_client", "effort",
+    "temperature", "top_p",
 )
 
 # Anthropic's extended-thinking ``effort`` parameter is accepted by Opus 4.5+

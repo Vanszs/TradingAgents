@@ -146,8 +146,10 @@ class DecisionMappingConfig:
     legacy_submode: str = "conservative"  # only used when mode == "legacy_prd"
     allow_reverse_on_buy_sell: bool = False
     allow_short_on_underweight: bool = False
-    allow_short_on_sell: bool = True
+    allow_short_on_sell: bool = False   # STRICT SPOT LONG-ONLY DEFAULT
+    short_allowed: bool = False        # STRICT SPOT LONG-ONLY DEFAULT
     allow_explicit_reverse: bool = False  # strict_5tier: never reverse unless True
+    spot_mode: bool = True
     overweight_size_multiplier: float = 0.5
     underweight_size_multiplier: float = 0.5
     default_reduce_pct: float = 0.5
@@ -169,6 +171,13 @@ class DecisionMappingConfig:
             raise ValueError(
                 f"legacy_submode must be 'conservative' or 'aggressive', got {self.legacy_submode!r}"
             )
+        if self.mode in ("conservative", "aggressive", "legacy_prd"):
+            if not self.allow_short_on_sell:
+                self.allow_short_on_sell = True
+            if not self.short_allowed:
+                self.short_allowed = True
+        elif self.allow_short_on_sell or self.allow_short_on_underweight:
+            self.short_allowed = True
 
 
 @dataclass

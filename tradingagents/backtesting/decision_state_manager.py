@@ -49,6 +49,7 @@ from .position import (
 RATING_BUY = "Buy"
 RATING_OVERWEIGHT = "Overweight"
 RATING_HOLD = "Hold"
+RATING_WNS = "WNS"
 RATING_UNDERWEIGHT = "Underweight"
 RATING_SELL = "Sell"
 
@@ -57,6 +58,10 @@ _RATING_CANONICAL = {
     "buy": RATING_BUY,
     "overweight": RATING_OVERWEIGHT,
     "hold": RATING_HOLD,
+    "wns": RATING_WNS,
+    "wait and see": RATING_WNS,
+    "wait_and_see": RATING_WNS,
+    "wait & see": RATING_WNS,
     "underweight": RATING_UNDERWEIGHT,
     "sell": RATING_SELL,
 }
@@ -106,6 +111,15 @@ class DecisionStateManager:
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------
+    def resolve(
+        self,
+        rating: Optional[str],
+        current_position: Position,
+    ) -> tuple[PositionIntent, str, OrderType]:
+        """Resolve rating against current position side."""
+        canonical = _canonical_rating(rating)
+        return self._strict_resolve(canonical, current_position.side.value)
+
     def map(
         self,
         decision: ExtendedDecision,
@@ -186,7 +200,7 @@ class DecisionStateManager:
         current_side: str,
     ) -> tuple[PositionIntent, str, OrderType]:
         """Apply the strict 5-tier table (rating × current_side → intent + order)."""
-        if rating == RATING_HOLD:
+        if rating in (RATING_HOLD, RATING_WNS, None):
             return PositionIntent.HOLD, current_side, OrderType.NO_ORDER
 
         if rating == RATING_BUY:
@@ -210,27 +224,36 @@ class DecisionStateManager:
                 return PositionIntent.REDUCE, "SHORT", OrderType.BUY_TO_REDUCE
             return PositionIntent.HOLD, current_side, OrderType.NO_ORDER
 
+        allow_short = bool(
+            getattr(self.config, "allow_short_on_sell", False)
+            and getattr(self.config, "short_allowed", False)
+        )
+        allow_short_underweight = bool(
+            getattr(self.config, "allow_short_on_underweight", False)
+            and getattr(self.config, "short_allowed", False)
+        )
+
         if rating == RATING_UNDERWEIGHT:
-            if current_side == "FLAT":
-                if self.config.allow_short_on_underweight and getattr(self.config, "short_allowed", True):
-                    return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
-                return PositionIntent.HOLD, "FLAT", OrderType.NO_ORDER
             if current_side == "LONG":
                 # Gradual exit: reduce long when rating opposite.
                 return PositionIntent.REDUCE, "LONG", OrderType.SELL_TO_REDUCE
+            if current_side == "FLAT":
+                if allow_short_underweight:
+                    return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
+                return PositionIntent.HOLD, "FLAT", OrderType.NO_ORDER
             if current_side == "SHORT":
                 # Pyramiding: add to short when rating aligned.
                 return PositionIntent.INCREASE, "SHORT", OrderType.SELL_TO_ADD
             return PositionIntent.HOLD, current_side, OrderType.NO_ORDER
 
         if rating == RATING_SELL:
-            if current_side == "FLAT":
-                if self.config.allow_short_on_sell and getattr(self.config, "short_allowed", True):
-                    return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
-                return PositionIntent.HOLD, "FLAT", OrderType.NO_ORDER
             if current_side == "LONG":
                 # Conservative: close the long, do NOT auto-reverse.
                 return PositionIntent.CLOSE, "FLAT", OrderType.SELL_TO_CLOSE
+            if current_side == "FLAT":
+                if allow_short:
+                    return PositionIntent.OPEN, "SHORT", OrderType.SELL_TO_OPEN
+                return PositionIntent.HOLD, "FLAT", OrderType.NO_ORDER
             if current_side == "SHORT":
                 return PositionIntent.HOLD, "SHORT", OrderType.NO_ORDER
             return PositionIntent.HOLD, current_side, OrderType.NO_ORDER

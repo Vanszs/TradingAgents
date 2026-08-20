@@ -39,7 +39,8 @@ class PortfolioRating(str, Enum):
 
     BUY = "Buy"
     OVERWEIGHT = "Overweight"
-    HOLD = "Hold"
+    HOLD = "Hold"          # Legacy alias mapped to WNS
+    WNS = "WNS"            # First-class Wait and See
     UNDERWEIGHT = "Underweight"
     SELL = "Sell"
 
@@ -52,17 +53,25 @@ class EntryMode(str, Enum):
 
 
 class TraderAction(str, Enum):
-    """3-tier transaction direction used by the Trader.
+    """Transaction direction used by the Trader.
 
     The Trader's job is to translate the Research Manager's investment plan
-    into a concrete transaction proposal: should the desk execute a Buy, a
-    Sell, or sit on Hold this round.  Position sizing and the nuanced
-    Overweight / Underweight calls happen later at the Portfolio Manager.
+    into a concrete transaction proposal: should the desk execute a Buy (Market/Limit),
+    WNS (Wait and See), or sit on Hold / Sell this round.
     """
 
     BUY = "Buy"
+    BUY_MARKET = "Buy Market"
+    BUY_LIMIT = "Buy Limit"
     HOLD = "Hold"
+    WNS = "WNS"
     SELL = "Sell"
+
+
+class WNSConditionType(str, Enum):
+    TIME_GATE = "TIME_GATE"       # "check after date X"
+    PRICE_TOUCH = "PRICE_TOUCH"   # "check again after touch price level Y"
+    BOTH = "BOTH"
 
 
 # ---------------------------------------------------------------------------
@@ -140,41 +149,41 @@ class TraderProposal(BaseModel):
     """
 
     action: TraderAction = Field(
-        description="The transaction direction. Exactly one of Buy / Hold / Sell.",
+        description="Action to take: Buy (Market/Limit), WNS (Wait and See), or Sell (Exit)",
     )
     reasoning: str = Field(
-        description=(
-            "The case for this action, anchored in the Research Manager's "
-            "investment plan. Two to four sentences."
-        ),
+        description="Detailed execution rationale including catalyst or structural price level",
     )
     entry_price: Optional[float] = Field(
         default=None,
-        description=(
-            "Entry price target in quote currency. "
-            "Provide a specific number. "
-            "Omit or set to null ONLY if no clear entry level."
-        ),
+        description="Limit entry price for Buy Limit or current market price for Buy Market",
     )
     stop_loss: Optional[float] = Field(
         default=None,
-        description=(
-            "Stop-loss price in quote currency. "
-            "Provide a specific number. "
-            "Omit or set to null ONLY if no clear stop level."
-        ),
+        description="Protective stop loss level strictly below entry",
     )
     take_profit: Optional[float] = Field(
         default=None,
-        description=(
-            "Take-profit target price in quote currency. "
-            "Provide a specific number. "
-            "Omit or set to null ONLY if no clear target."
-        ),
+        description="Profit target strictly above entry",
     )
     position_sizing: Optional[str] = Field(
         default=None,
-        description="Optional sizing guidance, e.g. '5% of portfolio'.",
+        description="Recommended position size (% of equity/cash)",
+    )
+
+    # WNS Specific Re-evaluation Terms
+    wns_condition_type: Optional[WNSConditionType] = Field(
+        default=None,
+        description="Condition type for WNS: TIME_GATE, PRICE_TOUCH, or BOTH",
+    )
+    wns_recheck_date: Optional[str] = Field(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Recheck date X (YYYY-MM-DD) post-catalyst",
+    )
+    wns_trigger_price: Optional[float] = Field(
+        default=None,
+        description="Structural price level Y that triggers re-analysis upon touch",
     )
 
     @field_validator("action", mode="before")
@@ -189,7 +198,7 @@ class TraderProposal(BaseModel):
                     return member
         return v
 
-    @field_validator("entry_price", "stop_loss", "take_profit", mode="before")
+    @field_validator("entry_price", "stop_loss", "take_profit", "wns_trigger_price", mode="before")
     @classmethod
     def _coerce_none_strings(cls, v):
         if isinstance(v, str):
@@ -212,19 +221,26 @@ class TraderProposal(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def _validate_risk_reward_expectancy(self):
-        if self.action in (TraderAction.BUY, TraderAction.HOLD):
+    def _validate_trader_proposal(self):
+        if self.action in (TraderAction.WNS,):
+            if not self.wns_recheck_date and not self.wns_trigger_price:
+                # If entry_price is provided, treat as limit accumulation, else require WNS terms
+                if self.entry_price is None:
+                    raise ValueError("WNS proposal requires either 'wns_recheck_date' (date X) or 'wns_trigger_price' (price level Y).")
+        elif self.action in (TraderAction.BUY, TraderAction.BUY_MARKET, TraderAction.BUY_LIMIT):
             if self.entry_price and self.stop_loss and self.take_profit:
+                if not (self.stop_loss < self.entry_price < self.take_profit):
+                    raise ValueError(f"BUY bounds invalid: stop_loss ({self.stop_loss}) < entry ({self.entry_price}) < take_profit ({self.take_profit}) required.")
                 risk = self.entry_price - self.stop_loss
                 reward = self.take_profit - self.entry_price
                 if risk > 0 and reward > 0:
                     rr = reward / risk
                     if rr < 1.95:
                         logger.warning("Trader proposal R:R ratio (%.2f) is below standard 2.0 desk threshold", rr)
-        elif self.action == TraderAction.SELL:
+        elif self.action == TraderAction.HOLD:
             if self.entry_price and self.stop_loss and self.take_profit:
-                risk = self.stop_loss - self.entry_price
-                reward = self.entry_price - self.take_profit
+                risk = self.entry_price - self.stop_loss
+                reward = self.take_profit - self.entry_price
                 if risk > 0 and reward > 0:
                     rr = reward / risk
                     if rr < 1.95:
@@ -308,6 +324,7 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Numeric planned limit accumulation entry price if staging conditional order on support.",
     )
+    entry_mode: Optional[EntryMode] = None
     time_horizon_days: int = Field(
         ge=1,
         le=252,
@@ -330,6 +347,27 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Optional review date YYYY-MM-DD. If omitted, calculated deterministically in Python.",
     )
+
+    # WNS Specific Fields
+    wns_condition_type: Optional[WNSConditionType] = None
+    wns_recheck_date: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    wns_trigger_price: Optional[float] = None
+
+    @model_validator(mode="after")
+    def _validate_portfolio_decision(self):
+        if self.rating in (PortfolioRating.WNS,):
+            has_date = bool(self.wns_recheck_date and self.wns_recheck_date.strip()) or bool(self.next_review_date and self.next_review_date.strip())
+            has_price = self.wns_trigger_price is not None or self.planned_entry_price is not None
+            if not (has_date or has_price):
+                # Fallback: check if date or price pattern is in executive summary
+                exec_sum = (self.executive_summary or "").lower()
+                if "check after" not in exec_sum and "touch" not in exec_sum:
+                    raise ValueError("WNS decision MUST specify 'check after date X' or 'touch price level Y'.")
+        elif self.rating in (PortfolioRating.BUY, PortfolioRating.OVERWEIGHT):
+            if self.planned_entry_price and self.stop_loss and self.take_profit:
+                if not (self.stop_loss < self.planned_entry_price < self.take_profit):
+                    raise ValueError("BUY bounds invalid: stop_loss < planned_entry < take_profit required.")
+        return self
 
     @model_validator(mode="before")
     @classmethod
@@ -568,7 +606,7 @@ class SignalContract(BaseModel):
     ticker: str = Field(min_length=1)
     signal_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     rating: PortfolioRating
-    action: Literal["BUY", "SELL", "HOLD"]
+    action: Literal["BUY", "SELL", "HOLD", "WNS"]
 
     @field_validator("rating", mode="before")
     @classmethod
@@ -607,16 +645,22 @@ class SignalContract(BaseModel):
     )
     thesis_summary: str = Field(default="", description="Core narrative thesis")
 
+    # WNS parameters
+    wns_condition_type: Optional[WNSConditionType] = None
+    wns_recheck_date: Optional[str] = None
+    wns_trigger_price: Optional[float] = None
+
     @model_validator(mode="after")
     def _validate_entry_contract(self):
         expected_action = {
             PortfolioRating.BUY: "BUY",
             PortfolioRating.OVERWEIGHT: "BUY",
             PortfolioRating.HOLD: "HOLD",
+            PortfolioRating.WNS: "WNS",
             PortfolioRating.UNDERWEIGHT: "SELL",
             PortfolioRating.SELL: "SELL",
         }[self.rating]
-        if self.action != expected_action:
+        if self.action != expected_action and not (self.rating == PortfolioRating.WNS and self.action == "HOLD"):
             raise ValueError("rating and action must use the same direction")
 
         for name in ("signal_timestamp", "reference_price_timestamp"):
@@ -638,27 +682,30 @@ class SignalContract(BaseModel):
             if price is not None and (not math.isfinite(price) or price <= 0):
                 raise ValueError(f"{name} must be finite and positive")
 
-        if self.action == "HOLD":
+        if self.action in ("HOLD", "WNS"):
             if self.planned_entry_price is not None and self.take_profit is not None and self.stop_loss is not None:
                 if not (self.stop_loss < self.planned_entry_price < self.take_profit):
-                    raise ValueError("HOLD limit accumulation: stop_loss < planned_entry_price < take_profit required")
+                    raise ValueError("HOLD/WNS limit accumulation: stop_loss < planned_entry_price < take_profit required")
                 if self.entry_mode is None:
                     object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
+            return self
+        if self.action == "SELL":
+            # In Spot Long-Only mode, SELL is an exit/liquidation.
+            if self.planned_entry_price is not None and self.entry_mode is None:
+                object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
+            elif self.entry_mode is None:
+                object.__setattr__(self, "entry_mode", EntryMode.T1_OPEN)
             return self
         if self.take_profit is None or self.stop_loss is None:
             raise ValueError("actionable signals require take_profit and stop_loss")
         if self.action == "BUY" and self.take_profit <= self.stop_loss:
             raise ValueError("BUY take_profit must be above stop_loss")
-        if self.action == "SELL" and self.take_profit >= self.stop_loss:
-            raise ValueError("SELL take_profit must be below stop_loss")
         if self.planned_entry_price is None:
             if self.entry_mode is None:
                 object.__setattr__(self, "entry_mode", EntryMode.T1_OPEN)
             return self
         if self.action == "BUY" and not (self.stop_loss < self.planned_entry_price < self.take_profit):
             raise ValueError("BUY take_profit and stop_loss must surround planned_entry_price")
-        if self.action == "SELL" and not (self.take_profit < self.planned_entry_price < self.stop_loss):
-            raise ValueError("SELL take_profit and stop_loss must surround planned_entry_price")
         if self.entry_mode is None:
             object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
         return self
@@ -675,17 +722,18 @@ def portfolio_decision_to_signal_contract(
         PortfolioRating.BUY: "BUY",
         PortfolioRating.OVERWEIGHT: "BUY",
         PortfolioRating.HOLD: "HOLD",
+        PortfolioRating.WNS: "WNS",
         PortfolioRating.UNDERWEIGHT: "SELL",
         PortfolioRating.SELL: "SELL",
     }[decision.rating]
     take_profit = decision.take_profit if decision.take_profit is not None else decision.price_target
-    if action != "HOLD" and (take_profit is None or decision.stop_loss is None):
+    if action not in ("HOLD", "WNS") and (take_profit is None or decision.stop_loss is None):
         raise ValueError("actionable ratings require take_profit and stop_loss")
 
     # Validate whether planned_entry_price is coherent with stop_loss and take_profit; fallback to T1_OPEN if bounded violated
     valid_planned_entry = None
     if planned_entry_price is not None and decision.stop_loss is not None and take_profit is not None:
-        if action in ("BUY", "HOLD") and decision.stop_loss < planned_entry_price < take_profit:
+        if action in ("BUY", "HOLD", "WNS") and decision.stop_loss < planned_entry_price < take_profit:
             valid_planned_entry = planned_entry_price
         elif action == "SELL" and take_profit < planned_entry_price < decision.stop_loss:
             valid_planned_entry = planned_entry_price
@@ -693,7 +741,7 @@ def portfolio_decision_to_signal_contract(
     entry_mode = None
     if valid_planned_entry is not None:
         entry_mode = EntryMode.ASSUMED_AI_ENTRY
-    elif action != "HOLD":
+    elif action not in ("HOLD", "WNS"):
         entry_mode = EntryMode.T1_OPEN
 
     return SignalContract(
@@ -709,4 +757,7 @@ def portfolio_decision_to_signal_contract(
         confidence=decision.confidence,
         time_horizon_label=decision.time_horizon,
         thesis_summary=decision.investment_thesis,
+        wns_condition_type=decision.wns_condition_type,
+        wns_recheck_date=decision.wns_recheck_date,
+        wns_trigger_price=decision.wns_trigger_price,
     )

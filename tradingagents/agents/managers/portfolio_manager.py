@@ -59,30 +59,32 @@ def create_portfolio_manager(llm):
             else ""
         )
 
-        prompt = f"""As the Senior Portfolio Manager & Risk Gatekeeper, evaluate the risk debate and trader proposal to deliver the final allocation decision.
+        company_name = state["company_of_interest"]
+        prompt = f"""You are the Chief Investment Officer making the final capital allocation decision for `{company_name}` under a strict **Spot Long-Only (BUY vs WNS)** mandate.
 
 {instrument_context}
 
----
-
-**Rating Scale** (use exactly one):
-- **Buy**: Strong conviction to enter/expand long exposure (Asymmetric R:R >= 2:1)
-- **Overweight**: Constructive accumulation; scaled tranche execution
-- **Hold**: Neutral prior; wait for confirmed stabilization or favorable R:R
-- **Underweight**: Distribution/derisking; trim long inventory
-- **Sell**: Complete exit of long exposure; capital preservation
-
-**Context Dossier:**
-- Current Trade Date: {trade_date}
-- Research Manager Synthesis: **{research_plan}**
-- Trader Execution Proposal: **{trader_plan}**
 {lessons_line}
-### Risk Debate Deliberation
-{history if history else 'No risk debate recorded.'}
+### Research Plan
+{research_plan}
 
----
+### Trader Proposal
+{trader_plan}
 
-Be decisive and ground your decision in empirical risk asymmetry and structural invalidation levels.{get_language_instruction()}"""
+### Risk Committee Debate
+{history if history else 'No risk debate history.'}
+
+**Final Allocation Policy**:
+- **Buy**: Authorize immediate Market Buy or staged Limit Buy. Planned entry, stop loss, and take profit must satisfy R:R >= 2:1.
+- **Overweight**: Constructive accumulation; scaled tranche execution.
+- **Hold**: Neutral prior; wait for confirmed stabilization.
+- **WNS (Wait and See)**: Zero capital allocated today. You MUST explicitly define:
+  1. `wns_recheck_date`: Specific future date X (YYYY-MM-DD) to re-analyze.
+  2. `wns_trigger_price`: Specific structural price level Y that will wake up the strategy upon touch.
+- **Underweight**: Distribution/derisking; trim long inventory.
+- **Sell**: Complete liquidation of long inventory to cash / capital preservation.
+
+Output your decision strictly matching the PortfolioDecision schema.{get_language_instruction()}"""
 
         typed_decision = None
         if structured_llm is not None:

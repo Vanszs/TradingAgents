@@ -105,7 +105,7 @@ def is_margin_call(
         quantity, mark_price, multiplier, maintenance_margin_pct
     )
     buffer = mm * float(buffer_pct)
-    return float(account_equity) < mm - buffer
+    return float(account_equity) < mm + buffer
 
 
 def is_intraday_margin_breach(

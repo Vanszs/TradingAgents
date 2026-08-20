@@ -441,22 +441,38 @@ def update_position_risk_levels(
     agent_stop = getattr(decision, "stop_price", None)
     agent_tp = getattr(decision, "take_profit", None)
 
-    if entry_price > 0:
+    current_mark = 0.0
+    if ohlcv_df is not None and hasattr(ohlcv_df, "empty") and not ohlcv_df.empty:
+        df_curr = ohlcv_df
+        if current_date and "date" in ohlcv_df.columns:
+            df_curr = ohlcv_df[ohlcv_df["date"].astype(str) <= str(current_date)]
+        elif current_date and "Date" in ohlcv_df.columns:
+            df_curr = ohlcv_df[ohlcv_df["Date"].astype(str) <= str(current_date)]
+
+        if not df_curr.empty:
+            if "Close" in df_curr.columns:
+                current_mark = float(df_curr["Close"].iloc[-1])
+            elif "close" in df_curr.columns:
+                current_mark = float(df_curr["close"].iloc[-1])
+
+    ref_price = current_mark if current_mark > 0 else entry_price
+
+    if ref_price > 0:
         if position.is_short():
             if agent_stop is not None and agent_tp is not None:
-                if agent_stop < entry_price and agent_tp > entry_price:
+                if agent_stop < ref_price and agent_tp > ref_price:
                     agent_stop, agent_tp = agent_tp, agent_stop
-            if agent_stop is not None and agent_stop <= entry_price:
+            if agent_stop is not None and agent_stop <= ref_price:
                 agent_stop = None
-            if agent_tp is not None and agent_tp >= entry_price:
+            if agent_tp is not None and agent_tp >= ref_price:
                 agent_tp = None
         elif position.is_long():
             if agent_stop is not None and agent_tp is not None:
-                if agent_stop > entry_price and agent_tp < entry_price:
+                if agent_stop > ref_price and agent_tp < ref_price:
                     agent_stop, agent_tp = agent_tp, agent_stop
-            if agent_stop is not None and agent_stop >= entry_price:
+            if agent_stop is not None and agent_stop >= ref_price:
                 agent_stop = None
-            if agent_tp is not None and agent_tp <= entry_price:
+            if agent_tp is not None and agent_tp <= ref_price:
                 agent_tp = None
 
     cached_atr = None
@@ -464,18 +480,28 @@ def update_position_risk_levels(
         cached_atr = compute_atr(ohlcv_df, getattr(risk_config, "atr_period", 14), current_date=current_date)
 
     if agent_stop is not None:
-        position.stop_price = agent_stop
-    elif entry_price > 0:
+        if position.is_long():
+            position.stop_price = max(position.stop_price or 0.0, agent_stop)
+        elif position.is_short():
+            position.stop_price = min(position.stop_price or float("inf"), agent_stop)
+        else:
+            position.stop_price = agent_stop
+    elif entry_price > 0 and position.stop_price is None:
+        # ONLY initialize default stop if position does NOT already have an active trailing stop
         if cached_atr is not None:
             mult = getattr(risk_config, "atr_stop_multiplier", 2.0)
             if position.is_long():
                 position.stop_price = entry_price - (cached_atr * mult)
+            elif position.is_short():
+                position.stop_price = entry_price + (cached_atr * mult)
             else:
                 position.stop_price = entry_price + (cached_atr * mult)
         else:
             stop_pct = getattr(risk_config, "default_stop_pct", 0.05)
             if position.is_long():
                 position.stop_price = entry_price * (1 - stop_pct)
+            elif position.is_short():
+                position.stop_price = entry_price * (1 + stop_pct)
             else:
                 position.stop_price = entry_price * (1 + stop_pct)
 

@@ -24,7 +24,9 @@ def get_stock_data(
         str: A formatted dataframe containing the stock price data for the specified ticker symbol in the specified date range.
     """
     if end_date is None:
-        end_date = datetime.now().strftime("%Y-%m-%d")
+        from tradingagents.dataflows.config import get_config
+        cfg = get_config()
+        end_date = cfg.get("trade_date") or cfg.get("curr_date") or datetime.now().strftime("%Y-%m-%d")
     if start_date is None:
         dt_end = datetime.strptime(str(end_date).split("T")[0].split(" ")[0], "%Y-%m-%d")
         start_date = (dt_end - relativedelta(days=60)).strftime("%Y-%m-%d")

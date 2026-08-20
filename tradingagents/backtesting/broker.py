@@ -17,7 +17,7 @@ import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 from uuid import uuid4
 
-from .decision_schema import MarginEvent, MarketPoint, OpenClose
+from .decision_schema import MarginEvent, MarketPoint, OpenClose, OrderSide
 from .portfolio import Portfolio
 from .position import (
     ExecutionConfig,
@@ -39,11 +39,11 @@ class SimulatedBroker:
 
     def __init__(
         self,
-        execution_config: ExecutionConfig,
-        margin_config: MarginConfig,
+        execution_config: Optional[ExecutionConfig] = None,
+        margin_config: Optional[MarginConfig] = None,
     ):
-        self.config = execution_config
-        self.margin_config = margin_config
+        self.config = execution_config or ExecutionConfig()
+        self.margin_config = margin_config or MarginConfig()
 
         self.pending_orders: list[Order] = []
         self.filled_orders: list[Order] = []
@@ -88,12 +88,13 @@ class SimulatedBroker:
             ):
                 trades = self._execute_reverse(order, market_point, portfolio, spec)
             else:
-                trades = [self._execute_order(order, market_point, portfolio, spec)]
+                trades = self._execute_order(order, market_point, portfolio, spec)
 
             for trade in trades:
                 portfolio.apply_trade(trade)
-            order.status = "FILLED"
-            self.filled_orders.append(order)
+            if trades:
+                order.status = "FILLED"
+                self.filled_orders.append(order)
             return trades
         except Exception as exc:
             order.status = "REJECTED"
@@ -216,13 +217,14 @@ class SimulatedBroker:
                 ):
                     new_trades = self._execute_reverse(order, market_point, portfolio, spec)
                 else:
-                    new_trades = [self._execute_order(order, market_point, portfolio, spec)]
+                    new_trades = self._execute_order(order, market_point, portfolio, spec)
 
-                for trade in new_trades:
-                    portfolio.apply_trade(trade)
-                order.status = "FILLED"
-                self.filled_orders.append(order)
-                trades.extend(new_trades)
+                if new_trades:
+                    for trade in new_trades:
+                        portfolio.apply_trade(trade)
+                    order.status = "FILLED"
+                    self.filled_orders.append(order)
+                    trades.extend(new_trades)
             except Exception as exc:
                 order.status = "REJECTED"
                 order.rejection_reason = str(exc)
@@ -236,13 +238,34 @@ class SimulatedBroker:
         self,
         order: Order,
         market_point: MarketPoint,
-        portfolio: Portfolio,
-        spec: InstrumentSpec,
-    ) -> "Trade":
+        portfolio: Optional[Portfolio] = None,
+        spec: Optional[InstrumentSpec] = None,
+    ) -> list["Trade"]:
         """Execute a single-leg order with percentage-based fees/slippage."""
-        from .decision_schema import Trade as LegacyTrade
+        from .decision_schema import Trade as LegacyTrade, InstrumentSpec
 
-        base_price = float(order.price) if order.price and order.price > 0 else float(market_point.open)
+        if spec is None:
+            spec = InstrumentSpec(ticker=order.ticker, multiplier=1.0, tick_size=0.01)
+
+        is_buy = order.order_type in (
+            OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD,
+            OrderType.BUY_TO_REDUCE, OrderType.BUY_TO_CLOSE,
+        ) or (getattr(order, "side", None) == OrderSide.BUY or getattr(getattr(order, "side", None), "value", None) == "BUY")
+
+        # Check boundary condition for price-specified / limit orders
+        if order.price and float(order.price) > 0:
+            limit_p = float(order.price)
+            # For buy limit: market low must be <= limit price
+            if is_buy and hasattr(market_point, "low") and float(market_point.low) > limit_p:
+                order.status = "UNFILLED"
+                return []
+            # For sell limit: market high must be >= limit price
+            if not is_buy and hasattr(market_point, "high") and float(market_point.high) < limit_p:
+                order.status = "UNFILLED"
+                return []
+            base_price = limit_p
+        else:
+            base_price = float(market_point.open)
 
         # PRD §13 — percentage-based slippage (new config) or tick-based (legacy)
         slippage_pct = getattr(self.config, "slippage", None)
@@ -284,10 +307,15 @@ class SimulatedBroker:
         # Portfolio computes realized PnL in _apply_close (single source of truth)
         realized = 0.0
 
-        return LegacyTrade(
+        ticker = portfolio.ticker if portfolio else order.ticker
+        open_close_val = OpenClose(order.open_close) if hasattr(order, 'open_close') and order.open_close else (
+            OpenClose.OPEN if order.order_type in (OrderType.BUY_TO_OPEN, OrderType.SELL_TO_OPEN, OrderType.BUY_TO_ADD, OrderType.SELL_TO_ADD) else OpenClose.CLOSE
+        )
+
+        return [LegacyTrade(
             date=market_point.date,
-            ticker=portfolio.ticker,
-            side="BUY" if is_buy else "SELL",
+            ticker=ticker,
+            side=OrderSide.BUY if is_buy else OrderSide.SELL,
             quantity=order.quantity,
             price=fill_price,
             gross_amount=gross,
@@ -299,13 +327,13 @@ class SimulatedBroker:
             slippage_ticks=slippage_ticks,
             realized_pnl_delta=realized,
             margin_delta=0.0,
-            open_close=OpenClose(order.open_close),
-            order_type=order.order_type.value,
+            open_close=open_close_val,
+            order_type=order.order_type.value if hasattr(order.order_type, 'value') else str(order.order_type),
             reason=order.reason,
             decision_id=order.decision_id,
             order_id=order.order_id,
             mark_price=market_point.close,
-        )
+        )]
 
     def _execute_reverse(
         self,

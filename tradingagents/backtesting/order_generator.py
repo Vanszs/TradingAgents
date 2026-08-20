@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 from uuid import uuid4
+import pandas as pd
 
 from .position import (
     BacktestConfig,
@@ -53,6 +54,7 @@ class OrderGenerator:
         decision: ExtendedDecision,
         current_position: Position,
         current_equity: float,
+        current_cash: Optional[float] = None,
         reference_price: float = 0.0,
     ) -> list[Order]:
         """
@@ -66,7 +68,11 @@ class OrderGenerator:
             return []
 
         ticker = decision.ticker
-        exec_date = decision.decision_valid_from or decision.trade_date
+        exec_date = decision.decision_valid_from
+        if not exec_date or exec_date == decision.trade_date:
+            exec_date = (pd.to_datetime(decision.trade_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+        limit_price = getattr(decision, "planned_entry_price", 0.0) or 0.0
 
         # For close orders, always close the full open position
         if order_type in (
@@ -75,7 +81,9 @@ class OrderGenerator:
             target_qty = current_position.abs_qty()
         else:
             # Calculate target quantity from allocation_pct
-            target_qty = self._allocation_to_qty(decision, current_position, current_equity, reference_price)
+            target_qty = self._allocation_to_qty(
+                decision, current_position, current_equity, current_cash, reference_price, limit_price
+            )
             # Lot-size rounding
             target_qty = self._round_to_lot(target_qty)
             # Max-leverage cap
@@ -91,6 +99,7 @@ class OrderGenerator:
             execution_date=exec_date,
             decision_id=decision.decision_id,
             current_position=current_position,
+            limit_price=limit_price,
         )
 
     # ==================================================================
@@ -265,6 +274,7 @@ class OrderGenerator:
         execution_date: str,
         decision_id: str,
         current_position: Position,
+        limit_price: float = 0.0,
     ) -> list[Order]:
         if order_type in (OrderType.REVERSE_TO_LONG, OrderType.REVERSE_TO_SHORT):
             # Two-leg reverse: close existing, then open new
@@ -294,6 +304,7 @@ class OrderGenerator:
                 ticker=ticker,
                 order_type=open_type,
                 quantity=target_qty,
+                price=limit_price,
                 execution_date=execution_date,
                 reason="reverse_open_leg",
                 is_reverse=False,
@@ -311,6 +322,8 @@ class OrderGenerator:
             OrderType.BUY_TO_CLOSE: "agent_cover_close",
         }
 
+        reason = "agent_buy_limit" if limit_price > 0 else reason_map.get(order_type, "agent_order")
+
         return [
             Order(
                 order_id=str(uuid4()),
@@ -318,8 +331,9 @@ class OrderGenerator:
                 ticker=ticker,
                 order_type=order_type,
                 quantity=target_qty,
+                price=limit_price,
                 execution_date=execution_date,
-                reason=reason_map.get(order_type, "agent_order"),
+                reason=reason,
             )
         ]
 
@@ -331,7 +345,9 @@ class OrderGenerator:
         decision: ExtendedDecision,
         position: Position,
         equity: float,
+        current_cash: Optional[float] = None,
         reference_price: float = 0.0,
+        limit_price: float = 0.0,
     ) -> int:
         """Convert allocation_pct to a share quantity.
 
@@ -358,15 +374,38 @@ class OrderGenerator:
 
         # For REDUCE: apply percentage to current position quantity
         if decision.position_intent == "reduce" and position.abs_qty() > 0:
-            return max(1, int(position.abs_qty() * alloc))
+            raw_qty = position.abs_qty() * alloc
+            if raw_qty < 1.0 and position.abs_qty() > 1:
+                return 0  # Do not force full lot trim if fraction is too small
+            return max(1, min(position.abs_qty(), int(round(raw_qty))))
 
         # For INCREASE: apply percentage to current position quantity
         if decision.position_intent == "increase" and position.abs_qty() > 0:
-            return max(1, int(position.abs_qty() * alloc))
+            raw_qty = position.abs_qty() * alloc
+            return max(1, int(round(raw_qty)))
 
-        # For OPEN: apply percentage to equity
+        # For OPEN: apply percentage to equity clamped by available cash in spot mode
         target_notional = equity * alloc
-        price_ref = reference_price or (position.mark_price if position.mark_price and position.mark_price > 0 else decision.stop_price)
+
+        # Spot Cash Clamp: In spot long-only mode, cannot spend more than free liquid cash
+        if getattr(self.margin_cfg, "spot_mode", True) or getattr(self.margin_cfg, "initial_margin_pct", 1.0) >= 1.0:
+            free_cash = max(0.0, current_cash if current_cash is not None else float(getattr(position, "cash", equity)))
+            if hasattr(self, "_current_cash") and self._current_cash is not None and current_cash is None:
+                free_cash = max(0.0, self._current_cash)
+            buy_fee = getattr(self.exec_cfg, "buy_fee", getattr(self.exec_cfg, "buy_fee_pct", 0.001))
+            slippage = getattr(self.exec_cfg, "slippage", getattr(self.exec_cfg, "slippage_pct", 0.0005))
+            fee_factor = 1.0 + float(buy_fee) + float(slippage)
+            target_notional = min(target_notional, free_cash / fee_factor)
+
+        price_ref = limit_price if limit_price > 0 else (
+            reference_price
+            if reference_price > 0
+            else (
+                position.mark_price
+                if position.mark_price and position.mark_price > 0
+                else (decision.stop_price if decision.stop_price and decision.stop_price > 0 else 100.0)
+            )
+        )
         if not price_ref or price_ref <= 0:
             logger.warning("Cannot size order: no reference price available for %s", decision.ticker)
             return 0

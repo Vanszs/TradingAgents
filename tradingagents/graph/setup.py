@@ -1,6 +1,9 @@
 # TradingAgents/graph/setup.py
 
+import logging
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
@@ -92,15 +95,21 @@ class GraphSetup:
         def analyst_node(spec, node):
             def run(state):
                 branch_state = dict(state)
-                branch_state["messages"] = state[spec.message_key]
-                result = invoke_node(node, branch_state)
+                branch_state["messages"] = state.get(spec.message_key, [])
+                try:
+                    result = invoke_node(node, branch_state)
+                except Exception as exc:
+                    logger.error(f"Error in analyst node {spec.agent_node}: {exc}", exc_info=True)
+                    result = {
+                        spec.message_key: branch_state["messages"],
+                        spec.report_key: f"Analysis failed for {spec.agent_node}: {exc}",
+                    }
                 return {
-                    "messages": result.get("messages", []),
-                    spec.message_key: result.get("messages", []),
+                    spec.message_key: result.get("messages", result.get(spec.message_key, [])),
                     **{
                         key: value
                         for key, value in result.items()
-                        if key != "messages"
+                        if key not in ("messages", spec.message_key)
                     },
                 }
 
@@ -109,11 +118,14 @@ class GraphSetup:
         def tool_node(spec, node):
             def run(state):
                 branch_state = dict(state)
-                branch_state["messages"] = state[spec.message_key]
-                result = invoke_node(node, branch_state)
+                branch_state["messages"] = state.get(spec.message_key, [])
+                try:
+                    result = invoke_node(node, branch_state)
+                except Exception as exc:
+                    logger.error(f"Error in tool node {spec.tool_node}: {exc}", exc_info=True)
+                    result = {"messages": branch_state["messages"]}
                 return {
-                    "messages": result.get("messages", []),
-                    spec.message_key: result.get("messages", []),
+                    spec.message_key: result.get("messages", result.get(spec.message_key, [])),
                 }
 
             return run
@@ -121,7 +133,7 @@ class GraphSetup:
         def analyst_route(spec, route):
             def run(state):
                 branch_state = dict(state)
-                branch_state["messages"] = state[spec.message_key]
+                branch_state["messages"] = state.get(spec.message_key, [])
                 destination = route(branch_state)
                 return spec.completion_node if destination == spec.clear_node else destination
 
@@ -166,6 +178,7 @@ class GraphSetup:
             "Bull Researcher",
             self.conditional_logic.should_continue_debate,
             {
+                "Bull Researcher": "Bull Researcher",
                 "Bear Researcher": "Bear Researcher",
                 "Research Manager": "Research Manager",
             },
@@ -175,6 +188,7 @@ class GraphSetup:
             self.conditional_logic.should_continue_debate,
             {
                 "Bull Researcher": "Bull Researcher",
+                "Bear Researcher": "Bear Researcher",
                 "Research Manager": "Research Manager",
             },
         )
@@ -184,7 +198,9 @@ class GraphSetup:
             "Aggressive Analyst",
             self.conditional_logic.should_continue_risk_analysis,
             {
+                "Aggressive Analyst": "Aggressive Analyst",
                 "Conservative Analyst": "Conservative Analyst",
+                "Neutral Analyst": "Neutral Analyst",
                 "Portfolio Manager": "Portfolio Manager",
             },
         )
@@ -192,6 +208,8 @@ class GraphSetup:
             "Conservative Analyst",
             self.conditional_logic.should_continue_risk_analysis,
             {
+                "Aggressive Analyst": "Aggressive Analyst",
+                "Conservative Analyst": "Conservative Analyst",
                 "Neutral Analyst": "Neutral Analyst",
                 "Portfolio Manager": "Portfolio Manager",
             },
@@ -201,6 +219,8 @@ class GraphSetup:
             self.conditional_logic.should_continue_risk_analysis,
             {
                 "Aggressive Analyst": "Aggressive Analyst",
+                "Conservative Analyst": "Conservative Analyst",
+                "Neutral Analyst": "Neutral Analyst",
                 "Portfolio Manager": "Portfolio Manager",
             },
         )

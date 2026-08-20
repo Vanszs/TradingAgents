@@ -19,7 +19,9 @@
     "allow_reverse_on_buy_sell": false,
     "allow_short_on_underweight": true,
     "allow_short_on_sell": true,
+    "short_allowed": true,
     "allow_explicit_reverse": false,
+    "spot_mode": true,
     "overweight_size_multiplier": 0.5,
     "underweight_size_multiplier": 0.5,
     "default_reduce_pct": 0.5,
@@ -121,6 +123,6 @@
     "use_atr_based_stops": true,
     "atr_period": 14,
     "atr_stop_multiplier": 1.5,
-    "atr_tp_multiplier": 2.0
+    "atr_tp_multiplier": 3.0
   }
 }

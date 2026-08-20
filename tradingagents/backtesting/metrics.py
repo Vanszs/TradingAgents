@@ -81,9 +81,12 @@ class MetricsCalculator:
         end_date = pd.Timestamp(df["date"].iloc[-1])
         days = max((end_date - start_date).days, 1)
         years = days / 365.25
-        cagr = 0.0
-        if years > 0 and initial_cash > 0 and final_equity > 0:
+        if final_equity <= 0:
+            cagr = -1.0
+        elif years > 0 and initial_cash > 0:
             cagr = (final_equity / initial_cash) ** (1 / years) - 1
+        else:
+            cagr = 0.0
 
         max_drawdown = float(df["drawdown"].min())
         daily_mean = float(returns.mean())
@@ -91,11 +94,14 @@ class MetricsCalculator:
         sharpe = 0.0
         if daily_std > 0:
             sharpe = (daily_mean / daily_std) * math.sqrt(252)
-        downside = returns[returns < 0].astype(float)
-        downside_std = float(downside.std(ddof=0))
+        # True Downside Semi-Deviation (root-mean-square of negative returns relative to 0 across ALL N days)
+        downside_diff = returns.clip(upper=0.0).astype(float)
+        downside_dev = math.sqrt(float((downside_diff ** 2).mean()))
         sortino = 0.0
-        if downside_std > 0:
-            sortino = (daily_mean / downside_std) * math.sqrt(252)
+        if downside_dev > 0:
+            sortino = (daily_mean / downside_dev) * math.sqrt(252)
+        elif daily_mean > 0:
+            sortino = float("inf")
 
         trade_stats = self._trade_stats(trades)
         exposure_time = float((df["position_qty"] != 0).mean())
@@ -132,7 +138,7 @@ class MetricsCalculator:
             "max_drawdown_pct": max_drawdown * 100,
             "sharpe_ratio": sharpe,
             "sortino_ratio": sortino,
-            "calmar_ratio": (cagr / abs(max_drawdown / 100)) if max_drawdown < 0 else 0.0,
+            "calmar_ratio": (cagr / abs(max_drawdown)) if max_drawdown < 0 else 0.0,
             "win_rate": trade_stats["win_rate"],
             "profit_factor": trade_stats["profit_factor"],
             "average_gain": trade_stats["average_gain"],
@@ -180,8 +186,8 @@ class MetricsCalculator:
         }
 
     def _trade_stats(self, trades: list[Trade]) -> dict[str, float]:
-        long_lots: list[tuple[int, float, float]] = []
-        short_lots: list[tuple[int, float, float]] = []
+        long_lots: list[tuple[int, float, float, Optional[str]]] = []
+        short_lots: list[tuple[int, float, float, Optional[str]]] = []
         realized_pnls: list[float] = []
         long_pnl_total = 0.0
         short_pnl_total = 0.0
@@ -191,7 +197,6 @@ class MetricsCalculator:
         holding_periods: list[int] = []
         long_holding_periods: list[int] = []
         short_holding_periods: list[int] = []
-        open_dates: dict[tuple[str, str], str] = {}
         long_wins = 0
         long_total = 0
         short_wins = 0
@@ -207,37 +212,32 @@ class MetricsCalculator:
             side_str = trade.side.value if hasattr(trade.side, 'value') else str(trade.side)
             oc_str = trade.open_close.value if hasattr(trade.open_close, 'value') else str(trade.open_close)
 
-            is_long_open = (side_str == "BUY" and oc_str in ("OPEN", "AUTO"))
-            is_long_close = (side_str == "SELL" and oc_str in ("CLOSE", "AUTO"))
-            is_short_open = (side_str == "SELL" and oc_str in ("OPEN", "AUTO"))
-            is_short_close = (side_str == "BUY" and oc_str in ("CLOSE", "AUTO"))
+            # Determine whether this trade opens or closes lots
+            if side_str == "BUY":
+                if oc_str == "CLOSE" or (oc_str == "AUTO" and len(short_lots) > 0):
+                    is_close, is_long = True, False
+                else:
+                    is_close, is_long = False, True
+            elif side_str == "SELL":
+                if oc_str == "CLOSE" or (oc_str == "AUTO" and len(long_lots) > 0):
+                    is_close, is_long = True, True
+                else:
+                    is_close, is_long = False, False
+            else:
+                continue
 
-            if oc_str == "CLOSE":
-                is_long_open = False
-                is_short_open = False
-            if oc_str == "OPEN":
-                is_long_close = False
-                is_short_close = False
-
-            if is_long_open:
-                long_lots.append((trade.quantity, trade.price, trade.multiplier))
-                open_dates[("L", trade.date)] = trade.date
-            elif is_short_open:
-                short_lots.append((trade.quantity, trade.price, trade.multiplier))
-                open_dates[("S", trade.date)] = trade.date
+            if not is_close:
+                if is_long:
+                    long_lots.append((trade.quantity, trade.price, trade.multiplier, trade.date))
+                else:
+                    short_lots.append((trade.quantity, trade.price, trade.multiplier, trade.date))
             else:
                 qty_to_close = trade.quantity
                 close_price = trade.price
-                is_long = is_long_close or (
-                    side_str == "SELL"
-                    and oc_str == "AUTO"
-                    and long_lots != []
-                    and (sum(q for q, _, _ in long_lots) >= qty_to_close)
-                )
                 lots = long_lots if is_long else short_lots
 
                 while qty_to_close > 0 and lots:
-                    lot_qty, lot_price, lot_mult = lots.pop(0)
+                    lot_qty, lot_price, lot_mult, entry_date = lots.pop(0)
                     matched = min(qty_to_close, lot_qty)
                     if is_long:
                         pnl = (close_price - lot_price) * matched * lot_mult
@@ -254,26 +254,32 @@ class MetricsCalculator:
                         short_total += 1
                         if pnl > 0:
                             short_wins += 1
+
+                    if trade.date and entry_date:
+                        try:
+                            from datetime import datetime
+                            d_open = datetime.fromisoformat(str(entry_date)[:10])
+                            d_close = datetime.fromisoformat(str(trade.date)[:10])
+                            days = max(0, (d_close - d_open).days)
+                            holding_periods.append(days)
+                            if is_long:
+                                long_holding_periods.append(days)
+                            else:
+                                short_holding_periods.append(days)
+                        except Exception:
+                            pass
+
                     remaining = lot_qty - matched
                     if remaining > 0:
-                        lots.insert(0, (remaining, lot_price, lot_mult))
+                        lots.insert(0, (remaining, lot_price, lot_mult, entry_date))
                     qty_to_close -= matched
 
-                key = ("L" if is_long else "S", trade.date)
-                if key in open_dates and trade.date:
-                    try:
-                        from datetime import datetime
-                        d_open = datetime.fromisoformat(open_dates[key][:10])
-                        d_close = datetime.fromisoformat(trade.date[:10])
-                        days = max(0, (d_close - d_open).days)
-                        holding_periods.append(days)
-                        if is_long:
-                            long_holding_periods.append(days)
-                        else:
-                            short_holding_periods.append(days)
-                    except ValueError:
-                        pass
-                    del open_dates[key]
+                # If closing order exceeded existing lots (position reversal), add residual to opposing inventory
+                if qty_to_close > 0:
+                    if is_long:  # Excess SELL becomes a short open lot
+                        short_lots.append((qty_to_close, close_price, trade.multiplier, trade.date))
+                    else:        # Excess BUY becomes a long open lot
+                        long_lots.append((qty_to_close, close_price, trade.multiplier, trade.date))
 
         wins = [p for p in realized_pnls if p > 0]
         losses = [p for p in realized_pnls if p < 0]

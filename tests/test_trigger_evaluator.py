@@ -238,5 +238,33 @@ class TestPerTriggerToggle(unittest.TestCase):
             self.assertNotIn(cond.replace("trigger_on_", ""), r.reasons)
 
 
+class TestPriceLevelTouched(unittest.TestCase):
+    def test_price_touch_triggers_when_flat(self):
+        ev = TriggerEvaluator()
+        d = _dec("Hold")
+        d.planned_entry_price = 150.0
+
+        class MockBar:
+            low = 148.0
+            high = 152.0
+
+        r = ev.evaluate(d, _dec("Hold"), _pos(), current_bar=MockBar())
+        self.assertTrue(r.triggered)
+        self.assertIn("price_level_touched", r.reasons)
+
+    def test_price_not_touch_does_not_trigger(self):
+        ev = TriggerEvaluator()
+        d = _dec("Hold")
+        d.planned_entry_price = 150.0
+
+        class MockBar:
+            low = 155.0
+            high = 160.0
+
+        r = ev.evaluate(d, _dec("Hold"), _pos(), current_bar=MockBar())
+        self.assertFalse(r.triggered)
+        self.assertNotIn("price_level_touched", r.reasons)
+
+
 if __name__ == "__main__":
     unittest.main()

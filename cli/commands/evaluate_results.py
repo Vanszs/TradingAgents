@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import pandas as pd
+import numpy as np
 
 from tradingagents.dataflows.utils import safe_ticker_component
 
@@ -68,6 +69,14 @@ def _validated_records(
 
 
 def _json_safe(value: Any) -> Any:
+    if isinstance(value, (np.bool_, bool)):
+        return bool(value)
+    if isinstance(value, (np.integer, int)):
+        return int(value)
+    if isinstance(value, (np.floating, float)):
+        return float(value)
+    if isinstance(value, np.ndarray):
+        return [_json_safe(x) for x in value.tolist()]
     if hasattr(value, "model_dump"):
         return _json_safe(value.model_dump(mode="python"))
     if hasattr(value, "to_dict"):

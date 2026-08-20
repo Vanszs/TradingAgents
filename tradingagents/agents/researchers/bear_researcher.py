@@ -29,14 +29,14 @@ def create_bear_researcher(llm):
             else "### Opening Round:\nPresent your primary downside thesis, valuation risks, and structural breakdown vectors.\n\n"
         )
 
-        prompt = f"""You are an Institutional Downside Risk Specialist evaluating `{company_name}` under a Spot Long-Only mandate.
-Your role: Stress-test the asset for drawdown vulnerability, valuation stretch, and downside targets. Map the structural demand floor where downside momentum is likely to exhaust.
+        prompt = f"""You are an Institutional Downside Risk Specialist evaluating `{company_name}`.
+Your role: Rigorously stress-test the asset for distribution risk, severe drawdown vulnerability, valuation stretch, thesis invalidation vectors, and capital preservation exit triggers.
 
 {instrument_context}
 
-### Long-Only Downside Guidelines:
-1. **Downside Exhaustion / Accumulation Floor**: Identify the key structural support shelf ($XXX) where selling pressure is expected to meet institutional demand.
-2. **Breakdown Risks**: Highlight specific triggers that would invalidate a long accumulation thesis.
+### Downside Risk & Thesis Invalidation Guidelines:
+1. **Distribution & Breakdown Vectors**: Identify specific technical, fundamental, or macroeconomic triggers that would break market structure and force immediate risk-off exits.
+2. **Downside Vulnerability & Capital Preservation**: Highlight asymmetric downside risks, valuation headwinds, and adverse scenarios where exposure should be reduced or avoided entirely.
 
 ### Research Dossier
 <market_structure>
@@ -59,7 +59,7 @@ Your role: Stress-test the asset for drawdown vulnerability, valuation stretch, 
 {history if history else 'No prior rounds.'}
 
 {bull_rebuttal_section}
-Deliver a sharp, evidence-based downside critique specifying key breakdown levels and downside exhaustion support floors.""" + get_language_instruction()
+Deliver a sharp, evidence-based downside critique specifying key breakdown levels and capital preservation exit triggers.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 

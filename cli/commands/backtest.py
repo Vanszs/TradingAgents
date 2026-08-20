@@ -567,25 +567,28 @@ def _print_results_table(
     table.add_column("Metric", style="cyan")
     table.add_column("Value", style="white", justify="right")
 
+    def _fmt(val, fmt=".2f", default="—"):
+        return f"{val:{fmt}}" if val is not None else default
+
     rows = [
         ("Ticker", summary.get("ticker", "?")),
         ("Period", f"{summary.get('start_date', '?')} → {summary.get('end_date', '?')}"),
         ("Lookback (days)", str(summary.get("lookback_days", "—"))),
         ("Decision mapping", summary.get("decision_mapping_mode", "?")),
-        ("Initial cash", f"{summary.get('initial_cash', 0):,.0f} IDR"),
-        ("Final equity", f"{summary.get('final_equity', 0):,.0f} IDR"),
-        ("Total return", f"{summary.get('total_return_pct', 0):+.2f}%"),
-        ("Max drawdown", f"{summary.get('max_drawdown_pct', 0):.2f}%"),
-        ("Sharpe ratio", f"{summary.get('sharpe_ratio', 0):.2f}"),
-        ("Total trades", str(summary.get("number_of_trades", 0))),
-        ("Long win rate", f"{summary.get('long_win_rate', 0):.2f}%"),
-        ("Short win rate", f"{summary.get('short_win_rate', 0):.2f}%"),
-        ("Trigger hit rate", f"{summary.get('trigger_hit_rate', 0) * 100:5.1f}%"),
-        ("Trigger triggered", f"{summary.get('trigger_triggered', 0)}/{summary.get('trigger_total_decisions', 0)}"),
-        ("Avg hold (long)", f"{summary.get('avg_holding_period_long_days', 0):.1f} d"),
-        ("Avg hold (short)", f"{summary.get('avg_holding_period_short_days', 0):.1f} d"),
-        ("Margin calls", str(summary.get("margin_calls_count", 0))),
-        ("Liquidations", str(summary.get("liquidations_count", 0))),
+        ("Initial cash", f"{_fmt(summary.get('initial_cash'), ',.0f', '0')} IDR"),
+        ("Final equity", f"{_fmt(summary.get('final_equity'), ',.0f', '0')} IDR"),
+        ("Total return", f"{_fmt(summary.get('total_return_pct'), '+.2f', '0.00')}%" if summary.get('total_return_pct') is not None else "—"),
+        ("Max drawdown", f"{_fmt(summary.get('max_drawdown_pct'), '.2f', '0.00')}%" if summary.get('max_drawdown_pct') is not None else "—"),
+        ("Sharpe ratio", _fmt(summary.get("sharpe_ratio"))),
+        ("Total trades", str(summary.get("number_of_trades") or 0)),
+        ("Long win rate", f"{_fmt(summary.get('long_win_rate'), '.2f', '0.00')}%"),
+        ("Short win rate", f"{_fmt(summary.get('short_win_rate'), '.2f', '0.00')}%"),
+        ("Trigger hit rate", f"{(summary.get('trigger_hit_rate') or 0.0) * 100:5.1f}%"),
+        ("Trigger triggered", f"{summary.get('trigger_triggered') or 0}/{summary.get('trigger_total_decisions') or 0}"),
+        ("Avg hold (long)", f"{_fmt(summary.get('avg_holding_period_long_days'), '.1f', '0.0')} d"),
+        ("Avg hold (short)", f"{_fmt(summary.get('avg_holding_period_short_days'), '.1f', '0.0')} d"),
+        ("Margin calls", str(summary.get("margin_calls_count") or 0)),
+        ("Liquidations", str(summary.get("liquidations_count") or 0)),
     ]
     for k, v in rows:
         table.add_row(k, v)

@@ -70,9 +70,11 @@ class Portfolio:
         initial_position_price: float = 0.0,
         initial_multiplier: float = 1.0,
         initial_tick_size: float = 0.01,
+        enable_daily_settlement: bool = False,
     ):
         self.initial_cash = float(initial_cash)
         self.ticker = ticker
+        self.enable_daily_settlement = enable_daily_settlement
 
         self.position = LegacyPosition(
             ticker=ticker,
@@ -198,7 +200,12 @@ class Portfolio:
         self.position.realized_pnl += trade.realized_pnl_delta
         self.lifetime_realized_pnl += trade.realized_pnl_delta
         self.daily_realized_pnl += trade.realized_pnl_delta
-        self.cash += trade.realized_pnl_delta
+        if self.enable_daily_settlement:
+            prev_mark = self.last_mark if self.last_mark is not None else float(trade.price)
+            close_pnl = (float(trade.price) - prev_mark) * trade.quantity * trade.multiplier if trade.side == OrderSide.SELL else (prev_mark - float(trade.price)) * trade.quantity * trade.multiplier
+            self.cash += close_pnl
+        else:
+            self.cash += trade.realized_pnl_delta
 
     def _apply_open(self, trade: Trade) -> None:
         if self.position.quantity != 0:
@@ -333,6 +340,7 @@ class Portfolio:
         self.lifetime_realized_pnl += pnl
         self.position.realized_pnl += pnl
         self.last_close = float(today_close)
+        self.last_mark = float(today_close)
         return pnl
 
     # ------------------------------------------------------------------
@@ -515,10 +523,11 @@ class PortfolioV2:
         initial_position_qty: int = 0,
         initial_position_price: float = 0.0,
         initial_multiplier: float = 1.0,
+        margin_cfg: Optional[MarginConfig] = None,
     ):
         self.initial_cash = float(initial_cash)
         self.ticker = ticker
-        self.margin_cfg = margin_config or MarginConfig()
+        self.margin_cfg = margin_config or margin_cfg or MarginConfig()
 
         self.position = V2Position(
             ticker=ticker,
@@ -753,6 +762,13 @@ class PortfolioV2:
                 f"have {equity:.2f}."
             )
 
+        if signed_qty > 0 and self.margin_cfg.initial_margin_pct >= 1.0:
+            total_cost = add_notional_val + fill.fee
+            if total_cost > self.cash + 1e-7:
+                raise InsufficientMarginError(
+                    f"Spot cash insufficient: requires {total_cost:.2f} IDR, available {self.cash:.2f} IDR"
+                )
+
         # 2. THEN mutate position (safe — margin already validated)
         if self.position.is_flat():
             self.position.quantity = signed_qty
@@ -895,8 +911,8 @@ class PortfolioV2:
     def mark_to_market(self, date: str, close_price: float) -> PortfolioSnapshot:
         """PRD §17 step 3 — mark-to-market at daily close."""
         mark = float(close_price)
+        equity = self.account_equity(mark)
         unrealized = self.position.unrealized_pnl_calc(mark)
-        equity = self.cash + unrealized
 
         if equity > self.peak_equity:
             self.peak_equity = equity
