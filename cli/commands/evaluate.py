@@ -23,7 +23,11 @@ from cli.commands.evaluate_tui import (
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import detect_asset_type
 from tradingagents.agents.schemas import SignalContract
-from tradingagents.backtesting.horizon_evaluator import HorizonEvaluator
+from tradingagents.backtesting.horizon_evaluator import (
+    EvaluationOutcome,
+    EvaluationResult,
+    HorizonEvaluator,
+)
 from tradingagents.dataflows.y_finance import get_YFin_data_online
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.trading_graph import TradingAgentsGraph
@@ -103,10 +107,39 @@ def _run_forward_evaluation(
     effective_horizon: int,
     ohlcv_df: pd.DataFrame,
 ):
-    eval_side = {"BUY": "LONG", "SELL": "SHORT", "HOLD": "FLAT", "WNS": "FLAT"}[signal.action]
+    entry_policy = "ASSUMED_AI_ENTRY" if signal.planned_entry_price is not None else "T1_OPEN"
+
+    if signal.action == "BUY":
+        eval_side = "LONG"
+    else:
+        # Spot Long-Only: SELL from FLAT inventory or WNS evaluates as NO_ORDER (0% return)
+        eval_side = "FLAT"
+
+    if eval_side == "FLAT":
+        result = EvaluationResult(
+            ticker=ticker,
+            signal_date=trade_date,
+            entry_date=None,
+            actual_entry_price=None,
+            exit_date=None,
+            exit_price=0.0,
+            outcome=EvaluationOutcome.NO_ORDER,
+            side="FLAT",
+            take_profit=signal.take_profit,
+            stop_loss=signal.stop_loss,
+            planned_time_horizon_days=effective_horizon,
+            actual_holding_days=0,
+            realized_return_pct=0.0,
+            max_favorable_excursion_pct=0.0,
+            max_adverse_excursion_pct=0.0,
+            planned_entry_price=signal.planned_entry_price,
+            entry_policy=entry_policy,
+            reference_price_at_signal=signal.reference_price_at_signal,
+        )
+        return result, {}
+
     actual_entry_price = signal.planned_entry_price
     actual_entry_timestamp = signal.signal_timestamp
-    entry_policy = "ASSUMED_AI_ENTRY" if signal.planned_entry_price is not None else "T1_OPEN"
 
     result = HorizonEvaluator.evaluate(
         ticker=ticker,
@@ -124,7 +157,7 @@ def _run_forward_evaluation(
         entry_timestamp=actual_entry_timestamp,
         reference_price_at_signal=signal.reference_price_at_signal,
         trailing_stop_pct=getattr(signal, "trailing_stop_pct", None),
-        break_even_trigger_pct=getattr(signal, "break_even_trigger_pct", 0.03),
+        break_even_trigger_pct=getattr(signal, "break_even_trigger_pct", None),
         max_holding_days=getattr(signal, "max_holding_days", None),
     )
 

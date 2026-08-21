@@ -17,7 +17,7 @@ def test_portfolio_decision_requires_agent_selected_horizon():
             rating=PortfolioRating.HOLD,
             executive_summary="Wait.",
             investment_thesis="No clear edge.",
-            next_review_date="2026-01-20",
+            wns_recheck_date="2026-01-20",
         )
 
 
@@ -40,7 +40,7 @@ def test_portfolio_decision_preserves_typed_trader_entry_as_planned_price():
     )
 
     assert signal.planned_entry_price == 183.75
-    assert signal.entry_mode.value == "ASSUMED_AI_ENTRY"
+    assert signal.entry_mode.value == "T1_LIMIT"
 
 
 def test_portfolio_decision_converts_to_buy_signal_without_prose_inference():
@@ -85,7 +85,7 @@ def test_hold_signal_can_omit_execution_levels():
         executive_summary="Wait.",
         investment_thesis="No clear edge.",
         time_horizon_days=20,
-        next_review_date="2026-01-20",
+        wns_recheck_date="2026-01-20",
     )
 
     signal = portfolio_decision_to_signal_contract(decision, "NVDA", "2026-01-10")
@@ -235,3 +235,71 @@ def test_signal_contract_rejects_actionable_missing_levels_without_reading_thesi
 
     with pytest.raises(ValueError, match="take_profit and stop_loss"):
         portfolio_decision_to_signal_contract(decision, "NVDA", "2026-01-10")
+
+
+def test_strict_wns_without_date_or_price_raises_validation_error():
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="WNS .* must explicitly specify"):
+        PortfolioDecision(
+            rating=PortfolioRating.WNS,
+            executive_summary="Watching the market closely.",
+            investment_thesis="Waiting for technical setup.",
+            time_horizon_days=10,
+        )
+
+
+def test_limit_entry_price_preservation_in_signal_contract():
+    from tradingagents.agents.schemas import EntryMode
+
+    decision = PortfolioDecision(
+        rating=PortfolioRating.BUY,
+        executive_summary="Accumulate on dips.",
+        investment_thesis="Solid support level.",
+        planned_entry_price=215.32,
+        take_profit=250.0,
+        stop_loss=200.0,
+        time_horizon_days=30,
+        next_review_date="2026-02-01",
+    )
+
+    signal = portfolio_decision_to_signal_contract(decision, "AAPL", "2026-01-15")
+
+    assert signal.planned_entry_price == 215.32
+    assert signal.entry_mode == EntryMode.T1_LIMIT
+
+
+def test_single_shot_sell_evaluates_to_no_order():
+    import pandas as pd
+    from cli.commands.evaluate import _run_forward_evaluation
+    from tradingagents.backtesting.horizon_evaluator import EvaluationOutcome
+
+    signal = SignalContract(
+        ticker="AAPL",
+        signal_date="2026-01-15",
+        rating=PortfolioRating.SELL,
+        action="SELL",
+        stop_loss=210.0,
+        take_profit=190.0,
+        time_horizon_days=10,
+    )
+
+    df = pd.DataFrame({
+        "date": ["2026-01-15", "2026-01-16", "2026-01-17"],
+        "open": [200.0, 195.0, 185.0],
+        "high": [205.0, 198.0, 190.0],
+        "low": [198.0, 190.0, 180.0],
+        "close": [202.0, 192.0, 188.0],
+    })
+
+    result, _ = _run_forward_evaluation(
+        ticker="AAPL",
+        trade_date="2026-01-15",
+        signal=signal,
+        effective_horizon=10,
+        ohlcv_df=df,
+    )
+
+    assert result.outcome == EvaluationOutcome.NO_ORDER
+    assert result.side == "FLAT"
+    assert result.realized_return_pct == 0.0

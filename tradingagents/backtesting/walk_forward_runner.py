@@ -296,8 +296,11 @@ class WalkForwardBacktestRunner:
 
         # Notify about executed trades so the CLI can display them
         if executed_trades:
-            # Immediately initialize risk levels for newly opened positions
-            if not self.portfolio.is_flat() and self.prev_decision is not None:
+            if self.portfolio.is_flat():
+                self._next_reanalysis_date = None
+                self._pending_wns_price_trigger = None
+            elif self.prev_decision is not None:
+                # Immediately initialize risk levels for newly opened positions
                 self._update_risk_levels(
                     self.prev_decision,
                     self._ohlcv_df,
@@ -533,34 +536,28 @@ class WalkForwardBacktestRunner:
             )
 
             # Update _next_reanalysis_date and _pending_wns_price_trigger from decision
-            if getattr(decision, "agent_rating", "").upper() in ("WNS", "HOLD"):
-                if getattr(decision, "next_review_date", None):
-                    self._next_reanalysis_date = decision.next_review_date
-                if getattr(decision, "planned_entry_price", None):
-                    self._pending_wns_price_trigger = float(decision.planned_entry_price)
-
-            if decision.next_review_date:
-                self._next_reanalysis_date = decision.next_review_date
-            else:
-                logger.warning(
-                    f"[BACKTEST] next_review_date NOT FOUND in report for {current_date}. "
-                    f"Rating={decision.agent_rating}. "
-                    f"This usually means the PM free-text response didn't include "
-                    f"'**Next Review Date**: YYYY-MM-DD'. "
-                    f"Using next trading day as default."
-                )
-                # Default to next trading day
-                next_date_str = self.calendar.next_trading_day(current_date)
-                if next_date_str:
-                    decision.next_review_date = next_date_str
+            # ONLY set sleep catalyst date if rating is WNS / HOLD and position is FLAT
+            is_wns = (
+                getattr(decision, "agent_rating", "").upper() in ("WNS", "HOLD")
+                or getattr(decision, "normalized_rating", "").upper() in ("WNS", "HOLD")
+            )
+            if is_wns and self.portfolio.is_flat():
+                if getattr(decision, "wns_recheck_date", None):
+                    self._next_reanalysis_date = str(decision.wns_recheck_date)
+                elif getattr(decision, "next_review_date", None):
+                    self._next_reanalysis_date = str(decision.next_review_date)
                 else:
-                    # Fallback if calendar doesn't have next trading day
-                    base_date = datetime.strptime(current_date, "%Y-%m-%d")
-                    next_date = base_date + timedelta(days=1)
-                    while next_date.weekday() >= 5:  # skip weekends
-                        next_date += timedelta(days=1)
-                    decision.next_review_date = next_date.strftime("%Y-%m-%d")
-                self._next_reanalysis_date = decision.next_review_date
+                    self._next_reanalysis_date = None
+
+                if getattr(decision, "wns_trigger_price", None):
+                    self._pending_wns_price_trigger = float(decision.wns_trigger_price)
+                elif getattr(decision, "planned_entry_price", None):
+                    self._pending_wns_price_trigger = float(decision.planned_entry_price)
+                else:
+                    self._pending_wns_price_trigger = None
+            else:
+                self._next_reanalysis_date = None
+                self._pending_wns_price_trigger = None
 
         # PRD §17 step 8: Save decision
         step_start = time.time()
@@ -706,6 +703,9 @@ class WalkForwardBacktestRunner:
                 spec=self.spec,
             )
             if immediate_trades:
+                if self.portfolio.is_flat():
+                    self._next_reanalysis_date = None
+                    self._pending_wns_price_trigger = None
                 # Notify about risk-triggered trades
                 trade_dicts = []
                 for t in immediate_trades:

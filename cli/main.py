@@ -30,6 +30,7 @@ from cli.progress_contract import (
     ANALYST_MAPPING,
     ANALYST_ORDER as PROGRESS_ANALYST_ORDER,
     ANALYST_REPORT_MAP,
+    CANONICAL_ANALYST_ORDER,
     FIXED_AGENTS,
     REPORT_SECTIONS,
     classify_message_type,
@@ -894,7 +895,7 @@ def run_analysis(
         analyst.value if hasattr(analyst, "value") else str(analyst)
         for analyst in selections.get("analysts", [])
     }
-    selected_analyst_keys = [a for a in PROGRESS_ANALYST_ORDER if a in selected_set]
+    selected_analyst_keys = [a for a in CANONICAL_ANALYST_ORDER if a in selected_set]
     analyst_execution_plan = build_analyst_execution_plan(
         selected_analyst_keys,
         concurrency_limit=config["analyst_concurrency_limit"],

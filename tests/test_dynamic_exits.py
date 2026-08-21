@@ -136,3 +136,34 @@ def test_time_stop_exit():
     )
     assert res.outcome == EvaluationOutcome.HIT_TIME_STOP
     assert res.actual_holding_days == 5
+
+
+def test_pure_static_broker_execution_no_ratchet():
+    """When trailing_stop_pct and break_even_trigger_pct are None, order remains static.
+    Stock gains +10% (from 100 to 110) then falls below initial SL (88). Must hit HIT_STOP_LOSS at 88.0.
+    """
+    df = pd.DataFrame({
+        "date": [
+            "2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"
+        ],
+        "open": [100.0, 100.0, 108.0, 105.0, 90.0],
+        "high": [102.0, 105.0, 110.0, 106.0, 91.0],
+        "low": [99.0, 99.0, 104.0, 95.0, 85.0],
+        "close": [101.0, 104.0, 109.0, 98.0, 87.0],
+    })
+    res = HorizonEvaluator.evaluate(
+        ticker="STATIC_TEST",
+        signal_date="2026-01-01",
+        side="LONG",
+        take_profit=130.0,
+        stop_loss=88.0,
+        time_horizon_days=10,
+        ohlcv_df=df,
+        planned_entry_price=100.0,
+        actual_entry_price=100.0,
+        trailing_stop_pct=None,
+        break_even_trigger_pct=None,
+    )
+    assert res.outcome == EvaluationOutcome.HIT_STOP_LOSS
+    assert res.exit_price == 88.0
+    assert res.realized_return_pct < 0.0

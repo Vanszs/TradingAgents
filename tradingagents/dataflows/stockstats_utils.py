@@ -185,6 +185,9 @@ class StockstatsUtils:
             matching_rows = data[data["Date"].str.startswith(curr_date_str)]
             if not matching_rows.empty:
                 return matching_rows[indicator_lower].values[0]
+            causal_rows = data[data["Date"] <= curr_date_str].dropna(subset=[indicator_lower])
+            if not causal_rows.empty:
+                return causal_rows[indicator_lower].iloc[-1]
             return "N/A: Not a trading day (weekend or holiday)"
 
         if indicator_lower in ("atr_14", "atr_20"):
@@ -196,6 +199,9 @@ class StockstatsUtils:
             matching_rows = data[data["Date"].str.startswith(curr_date_str)]
             if not matching_rows.empty:
                 return matching_rows[indicator_lower].values[0]
+            causal_rows = data[data["Date"] <= curr_date_str].dropna(subset=[indicator_lower])
+            if not causal_rows.empty:
+                return causal_rows[indicator_lower].iloc[-1]
             return "N/A: Not a trading day (weekend or holiday)"
 
         df = wrap(data)
@@ -209,4 +215,7 @@ class StockstatsUtils:
             indicator_value = matching_rows[indicator].values[0]
             return indicator_value
         else:
+            causal_rows = df[df["Date"] <= curr_date_str].dropna(subset=[indicator])
+            if not causal_rows.empty:
+                return causal_rows[indicator].iloc[-1]
             return "N/A: Not a trading day (weekend or holiday)"

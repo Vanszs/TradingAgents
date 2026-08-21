@@ -36,7 +36,8 @@ ALL_TEAMS = {
     "Portfolio": ["Portfolio Manager"],
 }
 
-ANALYST_ORDER = ["market", "social", "news", "fundamentals"]
+CANONICAL_ANALYST_ORDER = ("market", "social", "news", "fundamentals")
+ANALYST_ORDER = list(CANONICAL_ANALYST_ORDER)
 ANALYST_AGENT_NAMES = ANALYST_MAPPING
 ANALYST_REPORT_MAP = {
     key: section for section, (key, _) in REPORT_SECTIONS.items() if key is not None

@@ -17,7 +17,7 @@ from .position import ExtendedDecision, ParsedDecision
 
 class MarkdownDecisionParser:
     RATING_PATTERN = re.compile(
-        r"\b(Sell|Buy|Hold|Underweight|Overweight"
+        r"\b(Sell|Buy|Hold|WNS|Wait\s+and\s+See|Wait-and-See|Underweight|Overweight"
         r"|Jual|Beli|Tahan)\b",
         re.IGNORECASE,
     )
@@ -151,6 +151,33 @@ class MarkdownDecisionParser:
             ],
         )
 
+        planned_entry_price = self._extract_float(
+            text,
+            patterns=[
+                r"(?:planned[_\s-]*entry[_\s-]*(?:price)?|entry[_\s-]*price)\s*\*{0,2}\s*[:=]\s*\*{0,2}\s*(\d+(?:\.\d+)?)",
+                r"harga\s+masuk\s*[:=]?\s*(\d+(?:\.\d+)?)",
+                r"entry\s+di\s*(\d+(?:\.\d+)?)",
+            ],
+        )
+
+        wns_trigger_price = self._extract_float(
+            text,
+            patterns=[
+                r"wns[_\s-]*trigger[_\s-]*price\s*\*{0,2}\s*[:=]\s*\*{0,2}\s*(\d+(?:\.\d+)?)",
+                r"trigger[_\s-]*price\s*\*{0,2}\s*[:=]\s*\*{0,2}\s*(\d+(?:\.\d+)?)",
+                r"touch\s+(?:price\s+level\s+)?(\d+(?:\.\d+)?)",
+            ],
+        )
+
+        wns_recheck_date = self._extract_text(
+            text,
+            patterns=[
+                r"wns[_\s-]*recheck[_\s-]*date\s*\*{0,2}\s*[:=]\s*\*{0,2}(\d{4}-\d{2}-\d{2})",
+                r"recheck[_\s-]*date\s*\*{0,2}\s*[:=]\s*\*{0,2}(\d{4}-\d{2}-\d{2})",
+                r"check\s+after\s+(?:date\s+)?(\d{4}-\d{2}-\d{2})",
+            ],
+        )
+
         time_horizon_label = self._extract_text(
             text,
             patterns=[
@@ -204,6 +231,9 @@ class MarkdownDecisionParser:
             leverage=leverage,
             stop_price=stop_price,
             take_profit=take_profit,
+            planned_entry_price=planned_entry_price,
+            wns_trigger_price=wns_trigger_price,
+            wns_recheck_date=wns_recheck_date,
             time_horizon_days=time_horizon_days,
             time_horizon_label=time_horizon_label,
             allow_new_position=allow_new_position,
@@ -246,6 +276,7 @@ class MarkdownDecisionParser:
             "buy": Rating.BUY, "beli": Rating.BUY,
             "sell": Rating.SELL, "jual": Rating.SELL,
             "hold": Rating.HOLD, "tahan": Rating.HOLD,
+            "wns": Rating.WNS, "wait and see": Rating.WNS, "wait-and-see": Rating.WNS,
             "underweight": Rating.UNDERWEIGHT,
             "overweight": Rating.OVERWEIGHT,
         }

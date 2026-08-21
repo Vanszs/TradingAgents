@@ -31,6 +31,7 @@ def create_fundamentals_analyst(llm):
         system_message = (
             f"You are a fundamental equity analyst evaluating corporate solvency, cash-flow quality, and valuation for `{ticker}`. "
             "Analyze multi-year quarterly and annual financial statements. Focus on revenue growth, operating margin resilience, free cash flow yield, debt maturity, and capital returns. "
+            "Evaluate valuation multiples relative to current price and historical ranges. "
             "Tools: `get_fundamentals(ticker, curr_date)`, `get_balance_sheet(ticker, freq, curr_date)`, `get_cashflow(ticker, freq, curr_date)`, and `get_income_statement(ticker, freq, curr_date)`. "
             f"{web_search_guidance}"
             " Append a structured Markdown table at the end summarizing key metrics, valuation multiples, and balance sheet health."
@@ -42,12 +43,8 @@ def create_fundamentals_analyst(llm):
             [
                 (
                     "system",
-                    "You are a helpful AI assistant, collaborating with other assistants."
-                    " Use the provided tools to progress towards answering the question."
-                    " If you are unable to fully answer, that's OK; another assistant with different tools"
-                    " will help where you left off. Execute what you can to make progress."
-                    " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
-                    " You have access to the following tools: {tool_names}.\n{system_message}"
+                    "You are an Institutional Fundamental Analyst. Produce an objective fundamental analysis report based on financial statements and valuation metrics. Leave trade execution decisions to the Trader and Portfolio Manager.\n"
+                    "You have access to the following tools: {tool_names}.\n{system_message}\n"
                     "For your reference, the current date is {current_date}. {instrument_context}",
                 ),
                 MessagesPlaceholder(variable_name="messages"),

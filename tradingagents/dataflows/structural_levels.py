@@ -28,7 +28,10 @@ def compute_1h_micro_levels(df_1h: pd.DataFrame, trade_date: str) -> Dict[str, A
         date_col = date_candidates[0]
         work_df["ts_utc"] = pd.to_datetime(work_df[date_col], errors="coerce", utc=True)
         work_df = work_df.dropna(subset=["ts_utc"])
-        cutoff_ts = pd.Timestamp(f"{str(trade_date)[:10]} 23:59:59", tz="UTC")
+        if len(str(trade_date)) > 10:
+            cutoff_ts = pd.Timestamp(trade_date, tz="UTC")
+        else:
+            cutoff_ts = pd.Timestamp(f"{str(trade_date)[:10]} 23:59:59", tz="UTC")
         history = work_df[work_df["ts_utc"] <= cutoff_ts].sort_values("ts_utc").copy()
     else:
         history = work_df.copy()
@@ -107,10 +110,12 @@ def compute_structural_levels(
     latest = history.iloc[-1]
     last_close = float(latest["Close"])
 
-    # 52-Week (~252 trading days) High / Low
+    # 52-Week (~252 trading days) or Available History High / Low
+    n_bars = len(history)
     w52 = history.tail(252)
     h52 = float(w52["High"].max()) if "High" in w52 else float(w52["Close"].max())
     l52 = float(w52["Low"].min()) if "Low" in w52 else float(w52["Close"].min())
+    is_full_52w = n_bars >= 180
 
     # Multi-month Swing Lows & Highs (60D and 20D)
     w60 = history.tail(60).reset_index(drop=True)
@@ -151,6 +156,8 @@ def compute_structural_levels(
     result: Dict[str, Any] = {
         "trade_date": str(latest["date_str"]),
         "last_close": round(last_close, 2),
+        "is_full_52w": is_full_52w,
+        "history_bars": n_bars,
         "52_week_high": round(h52, 2),
         "52_week_low": round(l52, 2),
         "60d_swing_low": round(l60, 2),
@@ -216,11 +223,17 @@ def get_market_structural_summary(
     if not levels:
         return ""
 
+    range_label = (
+        "52-Week Range"
+        if levels.get("is_full_52w", True)
+        else f"Available History Range ({levels.get('history_bars', len(df_1d))} bars)"
+    )
+
     summary = (
         f"Quantitative Structural Price Levels (as of {levels['trade_date']}):\n"
         f"1. **Macro Structure (1D Timeframe)**:\n"
         f"   - Last Close (1D): {levels['last_close']}\n"
-        f"   - 52-Week Range: Low = {levels['52_week_low']} | High = {levels['52_week_high']}\n"
+        f"   - {range_label}: Low = {levels['52_week_low']} | High = {levels['52_week_high']}\n"
         f"   - 60D Swing Range: Low = {levels['60d_swing_low']} | High = {levels['60d_swing_high']}\n"
         f"   - 20D Swing Range: Low = {levels['20d_swing_low']} | High = {levels['20d_swing_high']}\n"
         f"   - Key Retracements: Fib 50% = {levels['fib_50_level']} | Fib 61.8% = {levels['fib_618_level']}\n"
@@ -243,7 +256,4 @@ def get_market_structural_summary(
     else:
         summary += "2. **Micro Structure (1H Timeframe)**: Intraday 1H data not available (rely on 1D macro structure).\n"
 
-    summary += (
-        "Rule: Trading proposals must ensure multi-timeframe confluence — align 1D macro direction with 1H entry triggers."
-    )
     return summary

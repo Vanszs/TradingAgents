@@ -123,3 +123,27 @@ class TestMarkdownParserPhase4:
         assert d.ticker == "BUMI.JK"
         assert d.trade_date == "2026-05-25"
         assert d.decision_valid_from == "2026-05-26"
+
+    def test_extracts_wns_and_price_triggers(self):
+        wns_report = """\
+# Trading Analysis Report: BBRI.JK
+
+Generated: 2026-06-01 16:30:00
+Trade Date: 2026-06-01
+Decision Valid From: 2026-06-02
+
+## Portfolio Manager Decision
+
+Rating: Wait and See
+Planned Entry Price: 4200.0
+WNS Trigger Price: 4150.0
+WNS Recheck Date: 2026-06-10
+Time Horizon Days: 15
+"""
+        d = self.parser.parse_text(wns_report)
+        assert d.agent_rating == "WNS"
+        assert d.normalized_rating == "WNS"
+        assert d.planned_entry_price == 4200.0
+        assert d.wns_trigger_price == 4150.0
+        assert d.wns_recheck_date == "2026-06-10"
+        assert d.time_horizon_days == 15

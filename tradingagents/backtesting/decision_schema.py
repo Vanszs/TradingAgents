@@ -38,6 +38,7 @@ class Rating(str, Enum):
     BUY = "Buy"
     SELL = "Sell"
     HOLD = "Hold"
+    WNS = "WNS"
     UNDERWEIGHT = "Underweight"
     OVERWEIGHT = "Overweight"
     INVALID = "Invalid"

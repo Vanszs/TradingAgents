@@ -240,11 +240,11 @@ def get_stock_stats_indicators_window(
     try:
         indicator_data = _get_stock_stats_bulk(symbol, indicator, curr_date)
         
-        # Generate the date range we need (trading days only)
-        current_dt = curr_date_dt
+        # Generate the date range we need (trading days only, ascending order: past -> present)
+        current_dt = before
         date_values = []
         
-        while current_dt >= before:
+        while current_dt <= curr_date_dt:
             date_str = current_dt.strftime('%Y-%m-%d')
             
             # Look up the indicator value for this date (skip non-trading days to maximize token density)
@@ -252,7 +252,7 @@ def get_stock_stats_indicators_window(
                 indicator_value = indicator_data[date_str]
                 date_values.append((date_str, indicator_value))
             
-            current_dt = current_dt - relativedelta(days=1)
+            current_dt = current_dt + relativedelta(days=1)
         
         # Build the result string
         ind_string = "".join(f"{d}: {v}\n" for d, v in date_values)
@@ -263,6 +263,7 @@ def get_stock_stats_indicators_window(
 
     result_str = (
         f"## {indicator} values from {before.strftime('%Y-%m-%d')} to {end_date}:\n\n"
+        + "# Time Series (Ascending Order: Past -> Present)\n"
         + ind_string
         + "\n\n"
         + best_ind_params.get(indicator, "No description available.")

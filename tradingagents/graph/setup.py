@@ -14,6 +14,8 @@ from tradingagents.agents.utils.agent_states import AgentState
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
 
+CANONICAL_ANALYST_ORDER = ("market", "social", "news", "fundamentals")
+
 
 class GraphSetup:
     """Handles the setup and configuration of the agent graph."""

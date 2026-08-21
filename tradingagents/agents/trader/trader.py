@@ -33,14 +33,14 @@ def create_trader(llm):
                 "content": (
                     f"You are the Senior Execution Trader translating the Research Plan for `{company_name}` into an actionable execution contract under a strict **Spot Long-Only** mandate.\n\n"
                     f"{instrument_context}\n\n"
-                    "**Execution Taxonomy**:\n"
-                    "1. **Buy Market**: Immediate market order at open if price is currently confirmed at support with bullish momentum and R:R >= 2:1.\n"
-                    "2. **Buy Limit**: Staged limit accumulation order at concrete structural demand floor Y (e.g., 350) with protective stop loss below support (e.g., 335) and target (e.g., 400), ensuring R:R >= 2:1.\n"
-                    "3. **WNS (Wait and See)**: No orders placed today. You MUST state in your reasoning:\n"
-                    '   - "check after date X" (catalyst timetable) AND/OR\n'
-                    '   - "check again after touch price level Y" (pullback demand zone).\n'
-                    "4. **Sell**: Liquidate existing long inventory to 100% cash.\n\n"
-                    "Deliver your proposal in valid JSON matching the TraderProposal schema."
+                    "**Execution Taxonomy & Structural Expectancy Guidelines**:\n"
+                    "1. **Buy Market**: Immediate market order at open if price is confirmed at major support with bullish momentum and natural structural asymmetry.\n"
+                    "2. **Buy Limit**: Staged limit accumulation order at concrete structural demand floor Y (20D/60D Swing Low, Fib retracement, or dynamic support) with protective stop loss strictly below invalidation support.\n"
+                    "3. **Structural Expectancy (Anti-Gaming)**: Anchor Take Profit at realistic structural resistance (Swing High, Chandelier Exit, or Fib extension). Anchor Stop Loss at key structural support. Do NOT invent unrealistic high targets to artificially force R:R; if natural structural R:R is unfavorable, you MUST choose **WNS (Wait and See)**.\n"
+                    "4. **WNS (Wait and See)**: Zero capital allocated today. Specify `wns_recheck_date` (catalyst date YYYY-MM-DD) and/or `wns_trigger_price` (pullback demand zone level).\n"
+                    "5. **Dynamic Horizon**: Calibrate `max_holding_days` (1–63 trading days) based on target distance relative to daily ATR.\n"
+                    "6. **Sell**: Liquidate existing long inventory to 100% cash.\n\n"
+                    "Deliver your proposal strictly matching the TraderProposal schema."
                     + get_language_instruction()
                 ),
             },

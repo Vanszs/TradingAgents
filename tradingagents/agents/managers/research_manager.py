@@ -33,7 +33,7 @@ def create_research_manager(llm):
 {instrument_context}
 
 **Decision Scale & Mandate (Spot Long-Only)**:
-- **Buy**: Strong conviction in asymmetric long upside (R:R >= 2.0). Formulate clear entry, stop loss, and take profit targets.
+- **Buy**: Strong conviction in asymmetric long upside. Formulate high-level strategic directional consensus and catalyst timeline.
 - **Overweight**: Constructive view; accumulation warranted.
 - **Hold**: Neutral prior; wait for confirmed stabilization.
 - **WNS (Wait and See)**: The default prior whenever entry placement or timing cannot be committed immediately. You MUST provide at least one explicit re-evaluation term:

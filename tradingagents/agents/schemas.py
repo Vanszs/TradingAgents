@@ -50,6 +50,7 @@ class EntryMode(str, Enum):
 
     ASSUMED_AI_ENTRY = "ASSUMED_AI_ENTRY"
     T1_OPEN = "T1_OPEN"
+    T1_LIMIT = "T1_LIMIT"
 
 
 class EvaluationOutcome(str, Enum):
@@ -191,7 +192,7 @@ class TraderProposal(BaseModel):
         description="Trailing stop percentage below peak high once active (e.g. 0.05 for 5%)",
     )
     break_even_trigger_pct: Optional[float] = Field(
-        default=0.03,
+        default=None,
         ge=0.01,
         le=0.15,
         description="Runup percentage required to move SL to break-even entry price",
@@ -404,7 +405,7 @@ class PortfolioDecision(BaseModel):
         description="Trailing stop percentage below peak high once active (e.g. 0.05 for 5%)",
     )
     break_even_trigger_pct: Optional[float] = Field(
-        default=0.03,
+        default=None,
         ge=0.01,
         le=0.15,
         description="Runup percentage required to move SL to break-even entry price",
@@ -423,14 +424,14 @@ class PortfolioDecision(BaseModel):
 
     @model_validator(mode="after")
     def _validate_portfolio_decision(self):
-        if self.rating in (PortfolioRating.WNS,):
-            has_date = bool(self.wns_recheck_date and self.wns_recheck_date.strip()) or bool(self.next_review_date and self.next_review_date.strip())
-            has_price = self.wns_trigger_price is not None or self.planned_entry_price is not None
-            if not (has_date or has_price):
-                # Fallback: check if date or price pattern is in executive summary
-                exec_sum = (self.executive_summary or "").lower()
-                if "check after" not in exec_sum and "touch" not in exec_sum:
-                    raise ValueError("WNS decision MUST specify 'check after date X' or 'touch price level Y'.")
+        if self.rating in (PortfolioRating.WNS, PortfolioRating.HOLD):
+            has_explicit_date = bool(self.wns_recheck_date and self.wns_recheck_date.strip())
+            has_explicit_price = self.wns_trigger_price is not None and float(self.wns_trigger_price) > 0
+            if not (has_explicit_date or has_explicit_price):
+                raise ValueError(
+                    "WNS (Wait-and-See) decisions must explicitly specify either 'wns_recheck_date' "
+                    "(e.g. catalyst date YYYY-MM-DD) OR 'wns_trigger_price' (support/resistance level)."
+                )
         elif self.rating in (PortfolioRating.BUY, PortfolioRating.OVERWEIGHT):
             if self.planned_entry_price and self.stop_loss and self.take_profit:
                 if not (self.stop_loss < self.planned_entry_price < self.take_profit):
@@ -737,7 +738,7 @@ class SignalContract(BaseModel):
         description="Trailing stop percentage below peak high once active",
     )
     break_even_trigger_pct: Optional[float] = Field(
-        default=0.03,
+        default=None,
         ge=0.01,
         le=0.15,
         description="Runup percentage required to move SL to break-even entry price",
@@ -791,13 +792,11 @@ class SignalContract(BaseModel):
                 if not (self.stop_loss < self.planned_entry_price < self.take_profit):
                     raise ValueError("HOLD/WNS limit accumulation: stop_loss < planned_entry_price < take_profit required")
                 if self.entry_mode is None:
-                    object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
+                    object.__setattr__(self, "entry_mode", EntryMode.T1_LIMIT)
             return self
         if self.action == "SELL":
             # In Spot Long-Only mode, SELL is an exit/liquidation.
-            if self.planned_entry_price is not None and self.entry_mode is None:
-                object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
-            elif self.entry_mode is None:
+            if self.entry_mode is None:
                 object.__setattr__(self, "entry_mode", EntryMode.T1_OPEN)
             return self
         if self.take_profit is None or self.stop_loss is None:
@@ -811,7 +810,7 @@ class SignalContract(BaseModel):
         if self.action == "BUY" and not (self.stop_loss < self.planned_entry_price < self.take_profit):
             raise ValueError("BUY take_profit and stop_loss must surround planned_entry_price")
         if self.entry_mode is None:
-            object.__setattr__(self, "entry_mode", EntryMode.ASSUMED_AI_ENTRY)
+            object.__setattr__(self, "entry_mode", EntryMode.T1_LIMIT)
         return self
 
 
@@ -834,19 +833,40 @@ def portfolio_decision_to_signal_contract(
     if action not in ("HOLD", "WNS") and (take_profit is None or decision.stop_loss is None):
         raise ValueError("actionable ratings require take_profit and stop_loss")
 
-    # Validate whether planned_entry_price is coherent with stop_loss and take_profit; fallback to T1_OPEN if bounded violated
-    valid_planned_entry = None
-    if planned_entry_price is not None and decision.stop_loss is not None and take_profit is not None:
-        if action in ("BUY", "HOLD", "WNS") and decision.stop_loss < planned_entry_price < take_profit:
-            valid_planned_entry = planned_entry_price
-        elif action == "SELL" and take_profit < planned_entry_price < decision.stop_loss:
-            valid_planned_entry = planned_entry_price
+    raw_planned_entry = (
+        planned_entry_price
+        if planned_entry_price is not None
+        else getattr(decision, "planned_entry_price", None)
+    )
 
+    planned_entry = None
+    if raw_planned_entry is not None:
+        try:
+            planned_entry = float(raw_planned_entry)
+        except (ValueError, TypeError):
+            planned_entry = None
+
+    valid_planned_entry = None
     entry_mode = None
-    if valid_planned_entry is not None:
-        entry_mode = EntryMode.ASSUMED_AI_ENTRY
-    elif action not in ("HOLD", "WNS"):
+
+    if action == "BUY":
+        if take_profit is not None and decision.stop_loss is not None and decision.stop_loss < take_profit:
+            if planned_entry is not None and decision.stop_loss < planned_entry < take_profit:
+                valid_planned_entry = planned_entry
+                entry_mode = EntryMode.T1_LIMIT
+            else:
+                entry_mode = EntryMode.T1_OPEN
+        else:
+            entry_mode = EntryMode.T1_OPEN
+    elif action == "SELL":
         entry_mode = EntryMode.T1_OPEN
+    else:
+        # HOLD or WNS
+        if planned_entry is not None and decision.stop_loss is not None and take_profit is not None and decision.stop_loss < planned_entry < take_profit:
+            valid_planned_entry = planned_entry
+            entry_mode = EntryMode.T1_LIMIT
+        else:
+            entry_mode = None
 
     return SignalContract(
         ticker=ticker,

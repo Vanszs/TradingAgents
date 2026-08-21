@@ -526,6 +526,9 @@ class ParsedDecision:
     futures_action: str = "NO_ORDER"
     stop_price: Optional[float] = None
     take_profit: Optional[float] = None
+    planned_entry_price: Optional[float] = None
+    wns_trigger_price: Optional[float] = None
+    wns_recheck_date: Optional[str] = None
     time_horizon_days: Optional[int] = None
     time_horizon_label: Optional[str] = None
     thesis_summary: str = ""

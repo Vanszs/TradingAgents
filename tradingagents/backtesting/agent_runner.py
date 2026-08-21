@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.graph.setup import CANONICAL_ANALYST_ORDER
 
 from .decision_schema import AgentConfig, AssetClass, ensure_dir
 from .portfolio import Portfolio
@@ -406,7 +407,7 @@ class TradingAgentsRunner:
         safe_config: dict[str, Any],
         agent_callback: Optional[Any] = None,
     ) -> Any:
-        selected_analysts = ["market", "news", "social", "fundamentals"]
+        selected_analysts = list(CANONICAL_ANALYST_ORDER)
         asset_type = safe_config.get("asset_type", "stock")
         # Callback list passed to TradingAgentsGraph; the LLM client
         # constructor forwards it to ChatOpenAI / ChatAnthropic / etc.
