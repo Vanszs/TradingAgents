@@ -1,4 +1,9 @@
-from typing import Optional
+import functools
+import logging
+from typing import Any, Mapping, Optional
+
+import yfinance as yf
+from langchain_core.messages import HumanMessage, RemoveMessage
 
 # Import tools from separate utility files
 from tradingagents.agents.utils.core_stock_tools import get_stock_data
@@ -14,6 +19,45 @@ from tradingagents.agents.utils.news_data_tools import (
     get_news,
 )
 from tradingagents.agents.utils.technical_indicators_tools import get_indicators
+
+logger = logging.getLogger(__name__)
+
+
+def _clean_identity_value(value: Any) -> Optional[str]:
+    """Return a trimmed string, or None for empty / placeholder-ish values."""
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if not cleaned or cleaned.lower() in {"none", "n/a", "nan", "null"}:
+        return None
+    return cleaned
+
+
+@functools.lru_cache(maxsize=256)
+def resolve_instrument_identity(ticker: str) -> dict:
+    """Resolve deterministic identity metadata (company name, sector, …) for a ticker."""
+    try:
+        info = yf.Ticker(ticker.upper()).info or {}
+    except Exception as exc:
+        logger.debug("Could not resolve instrument identity for %s: %s", ticker, exc)
+        return {}
+
+    identity: dict[str, str] = {}
+    company_name = _clean_identity_value(info.get("longName")) or _clean_identity_value(
+        info.get("shortName")
+    )
+    if company_name:
+        identity["company_name"] = company_name
+    for source_key, target_key in (
+        ("sector", "sector"),
+        ("industry", "industry"),
+        ("exchange", "exchange"),
+        ("quoteType", "quote_type"),
+    ):
+        value = _clean_identity_value(info.get(source_key))
+        if value:
+            identity[target_key] = value
+    return identity
 
 
 def get_language_instruction() -> str:
@@ -105,5 +149,38 @@ def build_exchange_filing_context(ticker: str, asset_type: str = "stock") -> str
         "(Form 10-K Annual Reports, Form 10-Q Quarterly Reports, Form 8-K Material Events) "
         "and Investor Relations disclosures."
     )
+
+
+def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
+    """Return the instrument context for the current run."""
+    context = state.get("instrument_context")
+    if isinstance(context, str) and context.strip():
+        return context
+    trade_date = state.get("trade_date")
+    return build_instrument_context(
+        str(state["company_of_interest"]),
+        state.get("asset_type", "stock"),
+        trade_date=str(trade_date) if trade_date else None,
+    )
+
+
+def create_msg_delete():
+    def delete_messages(state):
+        """Clear messages and add a context-anchored placeholder."""
+        messages = state["messages"]
+        removal_operations = [RemoveMessage(id=m.id) for m in messages]
+
+        instrument_context = get_instrument_context_from_state(state)
+        trade_date = state.get("trade_date", "the requested date")
+        placeholder = HumanMessage(
+            content=(
+                f"Proceed with your assigned analysis for this workflow. "
+                f"{instrument_context} The analysis date is {trade_date}."
+            )
+        )
+        return {"messages": removal_operations + [placeholder]}
+
+    return delete_messages
+
 
 
