@@ -488,24 +488,29 @@ def _render_footer(
     if ui.status == "complete" and summary:
         body = Text()
         body.append("✅ Backtest Complete\n\n", style="bold green")
+        final_eq = summary.get("final_equity")
+        final_eq_val = 0.0 if final_eq is None else float(final_eq)
         body.append(
-            f"Final equity:     {summary.get('final_equity', 0):,.0f} IDR\n",
+            f"Final equity:     {final_eq_val:,.0f} IDR\n",
             style="bold",
         )
-        pnl_pct = summary.get("total_return_pct", 0)
-        color = "green" if pnl_pct >= 0 else "red"
+        pnl_pct = summary.get("total_return_pct")
+        pnl_pct_val = 0.0 if pnl_pct is None else float(pnl_pct)
+        color = "green" if pnl_pct_val >= 0 else "red"
         body.append(
-            f"Total return:     {pnl_pct:+.2f}%\n",
+            f"Total return:     {pnl_pct_val:+.2f}%\n",
             style=f"bold {color}",
         )
         body.append(
-            f"Trades:           {summary.get('number_of_trades', 0)}\n"
+            f"Trades:           {summary.get('number_of_trades') or 0}\n"
         )
+        hit_rate = summary.get("trigger_hit_rate")
+        hit_rate_val = 0.0 if hit_rate is None else float(hit_rate)
         body.append(
             f"Trigger hit rate: "
-            f"{summary.get('trigger_hit_rate', 0) * 100:5.1f}% "
-            f"({summary.get('trigger_triggered', 0)}/"
-            f"{summary.get('trigger_total_decisions', 0)})\n"
+            f"{hit_rate_val * 100:5.1f}% "
+            f"({summary.get('trigger_triggered') or 0}/"
+            f"{summary.get('trigger_total_decisions') or 0})\n"
         )
         if summary.get("lookback_days") is not None:
             body.append(
