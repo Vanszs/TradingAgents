@@ -153,6 +153,15 @@ def compute_structural_levels(
     chan_long_val = round(float(chan_df["chandelier_long"].iloc[-1]), 2) if chan_df is not None and not pd.isna(chan_df["chandelier_long"].iloc[-1]) else None
     chan_short_val = round(float(chan_df["chandelier_short"].iloc[-1]), 2) if chan_df is not None and not pd.isna(chan_df["chandelier_short"].iloc[-1]) else None
 
+    # Fibonacci Extension Targets (1.272x and 1.618x above 60D High for Breakouts)
+    fib_ext_1272 = round(h60 + (0.272 * fib_range), 2) if fib_range > 0 else round(last_close * 1.05, 2)
+    fib_ext_1618 = round(h60 + (0.618 * fib_range), 2) if fib_range > 0 else round(last_close * 1.10, 2)
+
+    # Forward ATR Volatility Target Channels
+    atr_val = atr_14_val or (last_close * 0.02)
+    atr_target_2x = round(last_close + (2.0 * atr_val), 2)
+    atr_target_3x = round(last_close + (3.0 * atr_val), 2)
+
     result: Dict[str, Any] = {
         "trade_date": str(latest["date_str"]),
         "last_close": round(last_close, 2),
@@ -166,9 +175,13 @@ def compute_structural_levels(
         "20d_swing_high": round(h20, 2),
         "fib_50_level": fib_50,
         "fib_618_level": fib_618,
+        "fib_ext_1272": fib_ext_1272,
+        "fib_ext_1618": fib_ext_1618,
         "atr_14": atr_14_val,
         "atr_20": atr_20_val,
         "atr_14_pct": atr_14_pct,
+        "atr_target_2x": atr_target_2x,
+        "atr_target_3x": atr_target_3x,
         "chandelier_long": chan_long_val,
         "chandelier_short": chan_short_val,
     }
@@ -237,6 +250,8 @@ def get_market_structural_summary(
         f"   - 60D Swing Range: Low = {levels['60d_swing_low']} | High = {levels['60d_swing_high']}\n"
         f"   - 20D Swing Range: Low = {levels['20d_swing_low']} | High = {levels['20d_swing_high']}\n"
         f"   - Key Retracements: Fib 50% = {levels['fib_50_level']} | Fib 61.8% = {levels['fib_618_level']}\n"
+        f"   - Forward Expansion Targets (Breakout Upside): Fib 1.272x = {levels.get('fib_ext_1272')} | Fib 1.618x = {levels.get('fib_ext_1618')}\n"
+        f"   - Expected Volatility Target Channels: +2x ATR = {levels.get('atr_target_2x')} | +3x ATR = {levels.get('atr_target_3x')}\n"
     )
 
     if levels.get("atr_14") is not None:

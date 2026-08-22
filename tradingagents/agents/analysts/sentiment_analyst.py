@@ -67,7 +67,9 @@ def create_sentiment_analyst(llm):
         end_date = state["trade_date"]
         start_date = _seven_days_back(end_date)
         asset_type = state.get("asset_type", "stock")
-        instrument_context = build_instrument_context(ticker, asset_type=asset_type)
+        instrument_context = build_instrument_context(
+            ticker, asset_type=asset_type, trade_date=end_date
+        )
 
         # Check backtest mode
         from tradingagents.dataflows.config import get_config, is_point_in_time_mode

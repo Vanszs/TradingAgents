@@ -106,8 +106,8 @@ class ResearchPlan(BaseModel):
     recommendation: PortfolioRating = Field(
         description=(
             "The investment recommendation. Exactly one of Buy / Overweight / "
-            "Hold / Underweight / Sell. Reserve Hold for situations where the "
-            "evidence on both sides is genuinely balanced; otherwise commit to "
+            "Hold / WNS / Underweight / Sell. Reserve Hold / WNS for situations where the "
+            "evidence on both sides is genuinely balanced or unfavorable; otherwise commit to "
             "the side with the stronger arguments."
         ),
     )

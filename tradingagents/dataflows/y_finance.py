@@ -138,6 +138,16 @@ def get_stock_stats_indicators_window(
     look_back_days: Annotated[int, "how many days to look back"],
 ) -> str:
 
+    indicator_aliases = {
+        "rsi_14": "rsi",
+        "atr_14": "atr",
+        "close_50_sma": "close_50_sma",
+        "close_200_sma": "close_200_sma",
+        "close_10_ema": "close_10_ema",
+    }
+    indicator = indicator.strip().lower()
+    indicator = indicator_aliases.get(indicator, indicator)
+
     best_ind_params = {
         # Moving Averages
         "close_50_sma": (
@@ -294,8 +304,8 @@ def _get_stock_stats_bulk(
         data[ind_lower] = chan_df[ind_lower]
         return dict(zip(data["Date"], data[ind_lower].fillna("N/A").astype(str)))
 
-    if ind_lower in ("atr_14", "atr_20"):
-        period = int(ind_lower.split("_")[1])
+    if ind_lower in ("atr", "atr_14", "atr_20"):
+        period = int(ind_lower.split("_")[1]) if "_" in ind_lower else 14
         atr_series = compute_atr(data, period=period)
         data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
         data[ind_lower] = atr_series

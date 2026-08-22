@@ -89,7 +89,9 @@ def create_crypto_fundamentals_analyst(llm):
     def crypto_fundamentals_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
-        instrument_context = build_instrument_context(ticker, asset_type="crypto")
+        instrument_context = build_instrument_context(
+            ticker, asset_type="crypto", trade_date=current_date
+        )
 
         filled_prompt = prompt.partial(
             current_date=current_date,

@@ -17,7 +17,9 @@ def create_fundamentals_analyst(llm):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
         asset_type = state.get("asset_type", "stock")
-        instrument_context = build_instrument_context(ticker, asset_type)
+        instrument_context = build_instrument_context(
+            ticker, asset_type, trade_date=current_date
+        )
         filing_context = build_exchange_filing_context(ticker, asset_type)
 
         from tradingagents.dataflows.config import get_config

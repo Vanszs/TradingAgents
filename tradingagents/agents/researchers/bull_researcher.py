@@ -36,8 +36,9 @@ Your role: Build a high-expectancy upside thesis grounded in Spot Equity Long-On
 
 ### Long-Only Execution Guidelines:
 1. **Spot Long Mandate**: Focus on long accumulation (no shorting).
-2. **Limit Accumulation on Dips**: If price is pulling back, identify the optimal **Limit Accumulation Zone ($XXX)** anchored near structural support (Fibonacci levels, 20D/60D swing floors, or 1H micro support) with R:R >= 2:1.
-3. **Structural Invalidation**: Define hard protective invalidation below confirmed support.
+2. **Oversold Mean-Reversion & Double-Bottom Reversals**: When price prints a multi-day support test / double bottom (near 20D/60D swing low) or RSI exits extreme oversold (<35), build an active mean-reversion upside thesis targeting the 20 SMA / 50 SMA / Fib 50% with protective invalidation strictly below the support floor.
+3. **Limit Accumulation on Dips**: If price is pulling back, identify the optimal **Limit Accumulation Zone ($XXX)** anchored near structural support (Fibonacci levels, 20D/60D swing floors, or 1H micro support) with R:R >= 2:1.
+4. **Structural Invalidation**: Define hard protective invalidation below confirmed support.
 
 ### Research Dossier
 <market_structure>

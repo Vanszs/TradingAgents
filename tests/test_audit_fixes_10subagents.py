@@ -39,6 +39,13 @@ class TestAuditFixes10Subagents(unittest.TestCase):
         levels = compute_structural_levels(df, "2024-04-05")
         self.assertEqual(levels["fib_50_level"], 150.0)
         self.assertEqual(levels["fib_618_level"], 138.2)
+        # h60 = 200, fib_range = 100
+        # fib_ext_1272 = 200 + 0.272 * 100 = 227.2
+        # fib_ext_1618 = 200 + 0.618 * 100 = 261.8
+        self.assertEqual(levels["fib_ext_1272"], 227.2)
+        self.assertEqual(levels["fib_ext_1618"], 261.8)
+        self.assertIn("atr_target_2x", levels)
+        self.assertIn("atr_target_3x", levels)
 
     def test_order_generator_reverse_open_order_flag(self):
         from tradingagents.backtesting.position import BacktestConfig, ExtendedDecision
