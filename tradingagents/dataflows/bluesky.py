@@ -40,7 +40,7 @@ def fetch_bluesky_posts(query: str, limit: int = 25, timeout: float = 10.0) -> s
         with urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
     except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
-        logger.warning("Bluesky fetch failed for %s: %s", query, exc)
+        logger.debug("Bluesky fetch failed for %s: %s", query, exc)
         return f"<bluesky unavailable: {type(exc).__name__}>"
 
     posts = data.get("posts", []) if isinstance(data, dict) else []

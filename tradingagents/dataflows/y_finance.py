@@ -1,4 +1,5 @@
-import os
+import logging
+import math
 from datetime import datetime
 from typing import Annotated
 
@@ -6,14 +7,85 @@ import pandas as pd
 import yfinance as yf
 from dateutil.relativedelta import relativedelta
 
+from .config import is_point_in_time_mode
 from .stockstats_utils import (
-    StockstatsUtils,
-    _clean_dataframe,
     filter_financials_by_date,
     load_ohlcv,
     yf_retry,
 )
-from .symbol_utils import NoMarketDataError, normalize_symbol
+
+logger = logging.getLogger(__name__)
+
+_SUPPORTED_INTERVALS = ("1m", "5m", "10m", "15m", "30m", "1h", "2h", "3h", "4h", "1d")
+
+
+def get_intraday_data(
+    symbol: str,
+    start: str,
+    end: str,
+    interval: str,
+    timezone: str = "UTC",
+) -> pd.DataFrame:
+    """Fetch validated timezone-aware OHLCV data for an execution interval."""
+    if interval not in _SUPPORTED_INTERVALS:
+        raise ValueError(f"unsupported execution interval: {interval}")
+    is_daily = interval == "1d"
+    start_dt = pd.Timestamp(start)
+    end_dt = pd.Timestamp(end)
+    if not is_daily and (start_dt.tzinfo is None or end_dt.tzinfo is None):
+        raise ValueError("intraday window must include timezone")
+    if is_daily:
+        if end_dt < start_dt:
+            raise ValueError("data end must be after start")
+    else:
+        if end_dt <= start_dt:
+            raise ValueError("data end must be after start")
+    # yfinance expects date strings YYYY-MM-DD or unix timestamps, not ISO8601 with tz offset.
+    # For daily intervals, yfinance end date is exclusive, so if start and end fall on the same day,
+    # advance end by 1 day to capture that session.
+    if is_daily:
+        start_arg = start_dt.strftime("%Y-%m-%d")
+        end_arg = (
+            (end_dt + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+            if end_dt.date() == start_dt.date()
+            else end_dt.strftime("%Y-%m-%d")
+        )
+    else:
+        start_arg = start_dt.floor("s").to_pydatetime()
+        end_arg = end_dt.floor("s").to_pydatetime()
+    frame = yf_retry(
+        lambda: yf.Ticker(symbol.upper()).history(
+            start=start_arg, end=end_arg, interval=interval,
+            auto_adjust=False,
+        )
+    )
+    if frame.empty:
+        raise ValueError(f"no {interval} data for {symbol}")
+    frame = frame.copy()
+    if frame.index.tz is None:
+        if not is_daily:
+            raise ValueError("intraday provider returned naive timestamps")
+        # Daily bars carry a session date, not an instant. Attach the requested
+        # timezone without shifting the provider's calendar date.
+        frame.index = frame.index.tz_localize(timezone)
+    elif is_daily:
+        frame.index = pd.DatetimeIndex(
+            [timestamp.date() for timestamp in frame.index]
+        ).tz_localize(timezone)
+    else:
+        frame.index = frame.index.tz_convert(timezone)
+    frame = frame.rename(columns={column: column.lower() for column in frame.columns})
+    required = {"open", "high", "low", "close"}
+    if not required.issubset(frame.columns):
+        raise ValueError(f"intraday data missing columns: {sorted(required - set(frame.columns))}")
+    frame = frame.sort_index()
+    if frame.index.duplicated().any():
+        raise ValueError("intraday data contains duplicate timestamps")
+    numeric = frame[list(required)].apply(pd.to_numeric, errors="raise")
+    if not numeric.map(lambda value: math.isfinite(float(value)) and float(value) > 0).all().all():
+        raise ValueError("intraday prices must be finite and positive")
+    frame[list(required)] = numeric
+    return frame
 
 
 def get_YFin_data_online(
@@ -25,19 +97,16 @@ def get_YFin_data_online(
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
 
-    # Resolve broker/forex symbols to Yahoo's convention (XAUUSD+ -> GC=F).
-    canonical = normalize_symbol(symbol)
-    ticker = yf.Ticker(canonical)
+    # Create ticker object
+    ticker = yf.Ticker(symbol.upper())
 
     # Fetch historical data for the specified date range
     data = yf_retry(lambda: ticker.history(start=start_date, end=end_date))
 
-    # Empty result means the symbol is unknown/delisted. Raise a typed error
-    # instead of returning prose: the routing layer turns it into a single
-    # unambiguous "no data" signal so the agent never fabricates a price.
+    # Check if data is empty
     if data.empty:
-        raise NoMarketDataError(
-            symbol, canonical, f"no rows between {start_date} and {end_date}"
+        return (
+            f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
         )
 
     # Remove timezone info from index for cleaner output
@@ -53,10 +122,8 @@ def get_YFin_data_online(
     # Convert DataFrame to CSV string
     csv_string = data.to_csv()
 
-    # Add header information; note the resolved symbol when it differs so the
-    # agent (and user) can see which instrument was actually priced.
-    label = canonical if canonical == symbol.upper() else f"{canonical} (from {symbol})"
-    header = f"# Stock data for {label} from {start_date} to {end_date}\n"
+    # Add header information
+    header = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n"
     header += f"# Total records: {len(data)}\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
@@ -70,6 +137,16 @@ def get_stock_stats_indicators_window(
     ],
     look_back_days: Annotated[int, "how many days to look back"],
 ) -> str:
+
+    indicator_aliases = {
+        "rsi_14": "rsi",
+        "atr_14": "atr",
+        "close_50_sma": "close_50_sma",
+        "close_200_sma": "close_200_sma",
+        "close_10_ema": "close_10_ema",
+    }
+    indicator = indicator.strip().lower()
+    indicator = indicator_aliases.get(indicator, indicator)
 
     best_ind_params = {
         # Moving Averages
@@ -131,6 +208,22 @@ def get_stock_stats_indicators_window(
             "Usage: Set stop-loss levels and adjust position sizes based on current market volatility. "
             "Tips: It's a reactive measure, so use it as part of a broader risk management strategy."
         ),
+        "atr_14": (
+            "ATR (14): 14-period Average True Range measuring market volatility. "
+            "Usage: Establish dynamic stop losses and breakout buffer zones."
+        ),
+        "atr_20": (
+            "ATR (20): 20-period Average True Range measuring swing volatility. "
+            "Usage: Gauge multi-week volatility bands."
+        ),
+        "chandelier_long": (
+            "Chandelier Exit Long: Highest High (22) - 3.0 * ATR (22). "
+            "Usage: Trailing stop loss level for long positions."
+        ),
+        "chandelier_short": (
+            "Chandelier Exit Short: Lowest Low (22) + 3.0 * ATR (22). "
+            "Usage: Trailing stop loss level for short positions."
+        ),
         # Volume-Based Indicators
         "vwma": (
             "VWMA: A moving average weighted by volume. "
@@ -157,43 +250,30 @@ def get_stock_stats_indicators_window(
     try:
         indicator_data = _get_stock_stats_bulk(symbol, indicator, curr_date)
         
-        # Generate the date range we need
-        current_dt = curr_date_dt
+        # Generate the date range we need (trading days only, ascending order: past -> present)
+        current_dt = before
         date_values = []
         
-        while current_dt >= before:
+        while current_dt <= curr_date_dt:
             date_str = current_dt.strftime('%Y-%m-%d')
             
-            # Look up the indicator value for this date
+            # Look up the indicator value for this date (skip non-trading days to maximize token density)
             if date_str in indicator_data:
                 indicator_value = indicator_data[date_str]
-            else:
-                indicator_value = "N/A: Not a trading day (weekend or holiday)"
+                date_values.append((date_str, indicator_value))
             
-            date_values.append((date_str, indicator_value))
-            current_dt = current_dt - relativedelta(days=1)
+            current_dt = current_dt + relativedelta(days=1)
         
         # Build the result string
-        ind_string = ""
-        for date_str, value in date_values:
-            ind_string += f"{date_str}: {value}\n"
-
-    except NoMarketDataError:
-        raise  # Unknown/delisted symbol — let the router emit the sentinel
+        ind_string = "".join(f"{d}: {v}\n" for d, v in date_values)
+        
     except Exception as e:
-        print(f"Error getting bulk stockstats data: {e}")
-        # Fallback to original implementation if bulk method fails
+        logger.warning(f"Error getting bulk stockstats data for {symbol} {indicator}: {e}")
         ind_string = ""
-        curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-        while curr_date_dt >= before:
-            indicator_value = get_stockstats_indicator(
-                symbol, indicator, curr_date_dt.strftime("%Y-%m-%d")
-            )
-            ind_string += f"{curr_date_dt.strftime('%Y-%m-%d')}: {indicator_value}\n"
-            curr_date_dt = curr_date_dt - relativedelta(days=1)
 
     result_str = (
         f"## {indicator} values from {before.strftime('%Y-%m-%d')} to {end_date}:\n\n"
+        + "# Time Series (Ascending Order: Past -> Present)\n"
         + ind_string
         + "\n\n"
         + best_ind_params.get(indicator, "No description available.")
@@ -213,55 +293,28 @@ def _get_stock_stats_bulk(
     Returns dict mapping date strings to indicator values.
     """
     from stockstats import wrap
+    from .stockstats_utils import compute_atr, compute_chandelier_exit
 
     data = load_ohlcv(symbol, curr_date)
+    ind_lower = indicator.strip().lower()
+
+    if ind_lower in ("chandelier_long", "chandelier_short"):
+        chan_df = compute_chandelier_exit(data, period=22, multiplier=3.0)
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        data[ind_lower] = chan_df[ind_lower]
+        return dict(zip(data["Date"], data[ind_lower].fillna("N/A").astype(str)))
+
+    if ind_lower in ("atr", "atr_14", "atr_20"):
+        period = int(ind_lower.split("_")[1]) if "_" in ind_lower else 14
+        atr_series = compute_atr(data, period=period)
+        data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        data[ind_lower] = atr_series
+        return dict(zip(data["Date"], data[ind_lower].fillna("N/A").astype(str)))
+
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
-    
-    # Calculate the indicator for all rows at once
-    df[indicator]  # This triggers stockstats to calculate the indicator
-    
-    # Create a dictionary mapping date strings to indicator values
-    result_dict = {}
-    for _, row in df.iterrows():
-        date_str = row["Date"]
-        indicator_value = row[indicator]
-        
-        # Handle NaN/None values
-        if pd.isna(indicator_value):
-            result_dict[date_str] = "N/A"
-        else:
-            result_dict[date_str] = str(indicator_value)
-    
-    return result_dict
-
-
-def get_stockstats_indicator(
-    symbol: Annotated[str, "ticker symbol of the company"],
-    indicator: Annotated[str, "technical indicator to get the analysis and report of"],
-    curr_date: Annotated[
-        str, "The current trading date you are trading on, YYYY-mm-dd"
-    ],
-) -> str:
-
-    curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-    curr_date = curr_date_dt.strftime("%Y-%m-%d")
-
-    try:
-        indicator_value = StockstatsUtils.get_stock_stats(
-            symbol,
-            indicator,
-            curr_date,
-        )
-    except NoMarketDataError:
-        raise  # Unknown/delisted symbol — let the router emit the sentinel
-    except Exception as e:
-        print(
-            f"Error getting stockstats indicator data for indicator {indicator} on {curr_date}: {e}"
-        )
-        return ""
-
-    return str(indicator_value)
+    df[indicator]
+    return dict(zip(df["Date"], df[indicator].fillna("N/A").astype(str)))
 
 
 def get_fundamentals(
@@ -269,13 +322,27 @@ def get_fundamentals(
     curr_date: Annotated[str, "current date (not used for yfinance)"] = None
 ):
     """Get company fundamentals overview from yfinance."""
-    canonical = normalize_symbol(ticker)
     try:
-        ticker_obj = yf.Ticker(canonical)
+        ticker_obj = yf.Ticker(ticker.upper())
         info = yf_retry(lambda: ticker_obj.info)
 
         if not info:
-            raise NoMarketDataError(ticker, canonical, "no fundamentals returned")
+            return f"No fundamentals data found for symbol '{ticker}'"
+
+        if is_point_in_time_mode() and curr_date:
+            publication = next(
+                (info.get(field) for field in (
+                    "available_date", "availableDate", "reportedDate",
+                    "filingDate", "publicationDate", "publishedAt", "published_at",
+                ) if info.get(field)),
+                None,
+            )
+            try:
+                publication_date = pd.Timestamp(publication).date().isoformat() if publication else None
+            except (TypeError, ValueError):
+                publication_date = None
+            if not publication_date or publication_date > curr_date:
+                return f"No fundamentally available data for {ticker} on {curr_date}."
 
         fields = [
             ("Name", info.get("longName")),
@@ -313,20 +380,11 @@ def get_fundamentals(
             if value is not None:
                 lines.append(f"{label}: {value}")
 
-        # yfinance returns a stub dict (e.g. {"trailingPegRatio": None}) for
-        # unknown symbols, so `info` is truthy but every field is empty. Treat
-        # "no usable fields" as no data rather than emitting a bare header the
-        # agent might fabricate around.
-        if not lines:
-            raise NoMarketDataError(ticker, canonical, "no fundamental fields returned")
-
-        header = f"# Company Fundamentals for {canonical}\n"
+        header = f"# Company Fundamentals for {ticker.upper()}\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
         return header + "\n".join(lines)
 
-    except NoMarketDataError:
-        raise
     except Exception as e:
         return f"Error retrieving fundamentals for {ticker}: {str(e)}"
 
@@ -337,9 +395,8 @@ def get_balance_sheet(
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
     """Get balance sheet data from yfinance."""
-    canonical = normalize_symbol(ticker)
     try:
-        ticker_obj = yf.Ticker(canonical)
+        ticker_obj = yf.Ticker(ticker.upper())
 
         if freq.lower() == "quarterly":
             data = yf_retry(lambda: ticker_obj.quarterly_balance_sheet)
@@ -348,20 +405,20 @@ def get_balance_sheet(
 
         data = filter_financials_by_date(data, curr_date)
 
+        if is_point_in_time_mode():
+            data = data.iloc[0:0]
         if data.empty:
-            raise NoMarketDataError(ticker, canonical, "no balance sheet data")
-
+            return f"No balance sheet data found for symbol '{ticker}'"
+            
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-
+        
         # Add header information
-        header = f"# Balance Sheet data for {canonical} ({freq})\n"
+        header = f"# Balance Sheet data for {ticker.upper()} ({freq})\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
+        
         return header + csv_string
-
-    except NoMarketDataError:
-        raise
+        
     except Exception as e:
         return f"Error retrieving balance sheet for {ticker}: {str(e)}"
 
@@ -372,9 +429,8 @@ def get_cashflow(
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
     """Get cash flow data from yfinance."""
-    canonical = normalize_symbol(ticker)
     try:
-        ticker_obj = yf.Ticker(canonical)
+        ticker_obj = yf.Ticker(ticker.upper())
 
         if freq.lower() == "quarterly":
             data = yf_retry(lambda: ticker_obj.quarterly_cashflow)
@@ -383,20 +439,20 @@ def get_cashflow(
 
         data = filter_financials_by_date(data, curr_date)
 
+        if is_point_in_time_mode():
+            data = data.iloc[0:0]
         if data.empty:
-            raise NoMarketDataError(ticker, canonical, "no cash flow data")
-
+            return f"No cash flow data found for symbol '{ticker}'"
+            
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-
+        
         # Add header information
-        header = f"# Cash Flow data for {canonical} ({freq})\n"
+        header = f"# Cash Flow data for {ticker.upper()} ({freq})\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
+        
         return header + csv_string
-
-    except NoMarketDataError:
-        raise
+        
     except Exception as e:
         return f"Error retrieving cash flow for {ticker}: {str(e)}"
 
@@ -407,9 +463,8 @@ def get_income_statement(
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
     """Get income statement data from yfinance."""
-    canonical = normalize_symbol(ticker)
     try:
-        ticker_obj = yf.Ticker(canonical)
+        ticker_obj = yf.Ticker(ticker.upper())
 
         if freq.lower() == "quarterly":
             data = yf_retry(lambda: ticker_obj.quarterly_income_stmt)
@@ -418,20 +473,20 @@ def get_income_statement(
 
         data = filter_financials_by_date(data, curr_date)
 
+        if is_point_in_time_mode():
+            data = data.iloc[0:0]
         if data.empty:
-            raise NoMarketDataError(ticker, canonical, "no income statement data")
-
+            return f"No income statement data found for symbol '{ticker}'"
+            
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-
+        
         # Add header information
-        header = f"# Income Statement data for {canonical} ({freq})\n"
+        header = f"# Income Statement data for {ticker.upper()} ({freq})\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
+        
         return header + csv_string
-
-    except NoMarketDataError:
-        raise
+        
     except Exception as e:
         return f"Error retrieving income statement for {ticker}: {str(e)}"
 
@@ -440,21 +495,18 @@ def get_insider_transactions(
     ticker: Annotated[str, "ticker symbol of the company"]
 ):
     """Get insider transactions data from yfinance."""
-    canonical = normalize_symbol(ticker)
     try:
-        ticker_obj = yf.Ticker(canonical)
+        ticker_obj = yf.Ticker(ticker.upper())
         data = yf_retry(lambda: ticker_obj.insider_transactions)
-
-        # Empty is normal here (many valid symbols have no insider filings),
-        # so report it plainly rather than treating the symbol as invalid.
+        
         if data is None or data.empty:
-            return f"No insider transactions reported for symbol '{canonical}'"
-
+            return f"No insider transactions data found for symbol '{ticker}'"
+            
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-
+        
         # Add header information
-        header = f"# Insider Transactions data for {canonical}\n"
+        header = f"# Insider Transactions data for {ticker.upper()}\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
         return header + csv_string

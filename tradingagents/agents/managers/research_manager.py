@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from tradingagents.agents.schemas import ResearchPlan, render_research_plan
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
+    build_instrument_context,
     get_language_instruction,
 )
 from tradingagents.agents.utils.structured import (
@@ -17,30 +17,35 @@ def create_research_manager(llm):
     structured_llm = bind_structured(llm, ResearchPlan, "Research Manager")
 
     def research_manager_node(state) -> dict:
-        instrument_context = get_instrument_context_from_state(state)
+        trade_date = state.get("trade_date", "")
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            state.get("asset_type", "stock"),
+            trade_date=trade_date,
+        )
         history = state["investment_debate_state"].get("history", "")
 
         investment_debate_state = state["investment_debate_state"]
 
-        prompt = f"""As the Research Manager and debate facilitator, your role is to critically evaluate this round of debate and deliver a clear, actionable investment plan for the trader.
+        company_name = state["company_of_interest"]
+        prompt = f"""You are the Lead Research Manager synthesizing the dialectical debate for `{company_name}` under a strict **Spot Long-Only (BUY vs WNS)** mandate.
 
 {instrument_context}
 
----
+**Decision Scale & Mandate (Spot Long-Only)**:
+- **Buy**: Strong conviction in asymmetric long upside. Formulate high-level strategic directional consensus and catalyst timeline.
+- **Overweight**: Constructive view; accumulation warranted.
+- **Hold**: Neutral prior; wait for confirmed stabilization.
+- **WNS (Wait and See)**: The default prior whenever entry placement or timing cannot be committed immediately. You MUST provide at least one explicit re-evaluation term:
+  1. Temporal Gate: "check after date X" (e.g., post-earnings release, macro catalyst, CPI).
+  2. Structural Price Gate: "check again after touch price level Y" (e.g., pullback to 200 SMA demand zone $YYY).
+- **Underweight**: Cautious view; trim exposure/distribution.
+- **Sell**: Complete liquidation / capital preservation exit of existing long inventory to cash.
 
-**Rating Scale** (use exactly one):
-- **Buy**: Strong conviction in the bull thesis; recommend taking or growing the position
-- **Overweight**: Constructive view; recommend gradually increasing exposure
-- **Hold**: Balanced view; recommend maintaining the current position
-- **Underweight**: Cautious view; recommend trimming exposure
-- **Sell**: Strong conviction in the bear thesis; recommend exiting or avoiding the position
+### Debate History
+{history if history else 'No debate history available.'}
 
-Commit to a clear stance whenever the debate's strongest arguments warrant one; reserve Hold for situations where the evidence on both sides is genuinely balanced.
-
----
-
-**Debate History:**
-{history}""" + get_language_instruction()
+Deliver a decisive, evidence-based judgment in valid JSON matching the ResearchPlan schema.""" + get_language_instruction()
 
         investment_plan = invoke_structured_or_freetext(
             structured_llm,

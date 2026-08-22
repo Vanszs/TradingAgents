@@ -1,5 +1,5 @@
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
+    build_instrument_context,
     get_language_instruction,
 )
 
@@ -9,53 +9,69 @@ def create_bear_researcher(llm):
         investment_debate_state = state["investment_debate_state"]
         history = investment_debate_state.get("history", "")
         bear_history = investment_debate_state.get("bear_history", "")
-
         current_response = investment_debate_state.get("current_response", "")
-        market_research_report = state["market_report"]
-        sentiment_report = state["sentiment_report"]
-        news_report = state["news_report"]
-        fundamentals_report = state["fundamentals_report"]
-        instrument_context = get_instrument_context_from_state(state)
+
+        market_research_report = state.get("market_report", "N/A")
+        sentiment_report = state.get("sentiment_report", "N/A")
+        news_report = state.get("news_report", "N/A")
+        fundamentals_report = state.get("fundamentals_report", "N/A")
         asset_type = state.get("asset_type", "stock")
-        target_label = "stock" if asset_type == "stock" else "asset"
-        fundamentals_label = (
-            "Company fundamentals report"
-            if asset_type == "stock"
-            else "Crypto fundamentals report (tokenomics, on-chain metrics, dev activity)"
+        company_name = state["company_of_interest"]
+        trade_date = state.get("trade_date", "")
+
+        instrument_context = build_instrument_context(
+            company_name, asset_type, trade_date=trade_date
         )
 
-        prompt = f"""You are a Bear Analyst making the case against investing in the {target_label}. Your goal is to present a well-reasoned argument emphasizing risks, challenges, and negative indicators. Leverage the provided research and data to highlight potential downsides and counter bullish arguments effectively.
+        bull_rebuttal_section = (
+            f"### Opposing Bull Argument to Refute:\n{current_response}\n\n"
+            if current_response
+            else "### Opening Round:\nPresent your primary downside thesis, valuation risks, and structural breakdown vectors.\n\n"
+        )
 
-Key points to focus on:
-
-- Risks and Challenges: Highlight factors like market saturation, financial instability, or macroeconomic threats that could hinder the stock's performance.
-- Competitive Weaknesses: Emphasize vulnerabilities such as weaker market positioning, declining innovation, or threats from competitors.
-- Negative Indicators: Use evidence from financial data, market trends, or recent adverse news to support your position.
-- Bull Counterpoints: Critically analyze the bull argument with specific data and sound reasoning, exposing weaknesses or over-optimistic assumptions.
-- Engagement: Present your argument in a conversational style, directly engaging with the bull analyst's points and debating effectively rather than simply listing facts.
-
-Resources available:
+        prompt = f"""You are an Institutional Downside Risk Specialist evaluating `{company_name}`.
+Your role: Rigorously stress-test the asset for distribution risk, severe drawdown vulnerability, valuation stretch, thesis invalidation vectors, and capital preservation exit triggers.
 
 {instrument_context}
-Market research report: {market_research_report}
-Social media sentiment report: {sentiment_report}
-Latest world affairs news: {news_report}
-{fundamentals_label}: {fundamentals_report}
-Conversation history of the debate: {history}
-Last bull argument: {current_response}
-Use this information to deliver a compelling bear argument, refute the bull's claims, and engage in a dynamic debate that demonstrates the risks and weaknesses of investing in the {target_label}.
-""" + get_language_instruction()
+
+### Downside Risk & Thesis Invalidation Guidelines:
+1. **Distribution & Breakdown Vectors**: Identify specific technical, fundamental, or macroeconomic triggers that would break market structure and force immediate risk-off exits.
+2. **Downside Vulnerability & Capital Preservation**: Highlight asymmetric downside risks, valuation headwinds, and adverse scenarios where exposure should be reduced or avoided entirely.
+
+### Research Dossier
+<market_structure>
+{market_research_report}
+</market_structure>
+
+<fundamentals>
+{fundamentals_report}
+</fundamentals>
+
+<news_and_macro>
+{news_report}
+</news_report>
+
+<sentiment>
+{sentiment_report}
+</sentiment>
+
+### Debate History
+{history if history else 'No prior rounds.'}
+
+{bull_rebuttal_section}
+Deliver a sharp, evidence-based downside critique specifying key breakdown levels and capital preservation exit triggers.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 
         argument = f"Bear Analyst: {response.content}"
 
         new_investment_debate_state = {
-            "history": history + "\n" + argument,
-            "bear_history": bear_history + "\n" + argument,
+            "history": history + "\n" + argument if history else argument,
+            "bear_history": bear_history + "\n" + argument if bear_history else argument,
             "bull_history": investment_debate_state.get("bull_history", ""),
             "current_response": argument,
-            "count": investment_debate_state["count"] + 1,
+            "judge_decision": investment_debate_state.get("judge_decision", ""),
+            "count": investment_debate_state.get("count", 0) + 1,
         }
 
         return {"investment_debate_state": new_investment_debate_state}

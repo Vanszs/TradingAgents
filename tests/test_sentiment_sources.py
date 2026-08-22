@@ -143,10 +143,11 @@ class TestSentimentNode:
         llm.with_structured_output.return_value = structured
 
         with patch("tradingagents.agents.analysts.sentiment_analyst.get_news") as gn, \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value="ST_DATA"), \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_reddit_posts", return_value="RD_DATA"), \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_bluesky_posts", return_value="BSKY_DATA") as fb, \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_mastodon_posts", return_value="MASTO_DATA") as fm, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value="ST_DATA") as stocktwits, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_reddit_posts", return_value="RD_DATA") as reddit, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_bluesky_posts", return_value="BSKY_DATA") as bluesky, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_mastodon_posts", return_value="MASTO_DATA") as mastodon, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.ExaTimeTravelSearch.search", return_value="RETAIL_EXA_DATA"), \
              patch("tradingagents.agents.analysts.sentiment_analyst.get_fear_greed_index", return_value="FG_DATA") as fg:
             gn.invoke.return_value = "NEWS_DATA"
 
@@ -158,15 +159,16 @@ class TestSentimentNode:
                 "messages": [],
             })
 
-        # Fetchers called with the expected ticker-derived args.
-        fb.assert_called_once_with("$NVDA")
-        fm.assert_called_once_with("NVDA")
         fg.assert_called_once()
-        # Every source's data made it into the formatted prompt messages.
+        stocktwits.assert_called_once_with("NVDA")
+        reddit.assert_called_once_with("NVDA")
+        bluesky.assert_called_once()
+        mastodon.assert_called_once_with("NVDA")
         prompt_text = " ".join(m.content for m in captured["prompt"])
-        for data in ("NEWS_DATA", "ST_DATA", "RD_DATA", "BSKY_DATA", "MASTO_DATA", "FG_DATA"):
+        for data in ("NEWS_DATA", "ST_DATA", "RD_DATA", "BSKY_DATA", "MASTO_DATA", "RETAIL_EXA_DATA", "FG_DATA"):
             assert data in prompt_text
-        # Output is the rendered structured report (deterministic header).
+        assert "RETAIL_EXA_DATA" not in prompt_text.split("<start_of_reddit>", 1)[1].split("<end_of_reddit>", 1)[0]
+        assert "RETAIL_EXA_DATA" in prompt_text.split("<start_of_web_search>", 1)[1].split("<end_of_web_search>", 1)[0]
         assert "**Overall Sentiment:** **Bullish** (Score: 7.5/10)" in result["sentiment_report"]
 
     @pytest.mark.unit
@@ -181,10 +183,8 @@ class TestSentimentNode:
         llm.with_structured_output.return_value = structured
 
         with patch("tradingagents.agents.analysts.sentiment_analyst.get_news") as gn, \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value=""), \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_reddit_posts", return_value=""), \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_bluesky_posts", return_value="") as fb, \
-             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_mastodon_posts", return_value="") as fm, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.fetch_stocktwits_messages", return_value="") as st, \
+             patch("tradingagents.agents.analysts.sentiment_analyst.ExaTimeTravelSearch.search", return_value="") as ex, \
              patch("tradingagents.agents.analysts.sentiment_analyst.get_fear_greed_index", return_value=""):
             gn.invoke.return_value = ""
             node = create_sentiment_analyst(llm)
@@ -194,8 +194,8 @@ class TestSentimentNode:
                 "asset_type": "crypto",
                 "messages": [],
             })
-        fb.assert_called_once_with("$BTC")
-        fm.assert_called_once_with("BTC")
+        st.assert_called_once_with("BTC-USD")
+        assert "BTC-USD" in ex.call_args[1]["query"]
 
     @pytest.mark.unit
     def test_falls_back_to_freetext_when_structured_unavailable(self):

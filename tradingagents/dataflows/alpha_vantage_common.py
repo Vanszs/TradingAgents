@@ -8,24 +8,11 @@ import requests
 
 API_BASE_URL = "https://www.alphavantage.co/query"
 
-
-class AlphaVantageNotConfiguredError(ValueError):
-    """Raised when Alpha Vantage is selected but no API key is configured.
-
-    Subclasses ValueError for backward compatibility with callers that
-    already catch ValueError, while letting the routing layer distinguish a
-    "vendor unavailable" condition from a genuine data error.
-    """
-    pass
-
-
 def get_api_key() -> str:
     """Retrieve the API key for Alpha Vantage from environment variables."""
     api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
     if not api_key:
-        raise AlphaVantageNotConfiguredError(
-            "ALPHA_VANTAGE_API_KEY environment variable is not set."
-        )
+        raise ValueError("ALPHA_VANTAGE_API_KEY environment variable is not set.")
     return api_key
 
 def format_datetime_for_api(date_input) -> str:
@@ -77,24 +64,23 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
         # Remove entitlement if it's None or empty
         api_params.pop("entitlement", None)
     
-    response = requests.get(API_BASE_URL, params=api_params)
+    response = requests.get(API_BASE_URL, params=api_params, timeout=15)
     response.raise_for_status()
 
     response_text = response.text
     
-    # Check if response is JSON (error responses are typically JSON)
+    # Check if response is JSON (error responses or overview/news are typically JSON)
     try:
         response_json = json.loads(response_text)
         # Check for rate limit error
-        if "Information" in response_json:
-            info_message = response_json["Information"]
-            if "rate limit" in info_message.lower() or "api key" in info_message.lower():
-                raise AlphaVantageRateLimitError(f"Alpha Vantage rate limit exceeded: {info_message}")
+        if "Information" in response_json or "Note" in response_json:
+            msg = str(response_json.get("Information") or response_json.get("Note"))
+            if "rate limit" in msg.lower() or "api key" in msg.lower() or "frequency" in msg.lower():
+                raise AlphaVantageRateLimitError(f"Alpha Vantage rate limit exceeded: {msg}")
+        return response_json
     except json.JSONDecodeError:
-        # Response is not JSON (likely CSV data), which is normal
-        pass
-
-    return response_text
+        # Response is not JSON (likely CSV data)
+        return response_text
 
 
 

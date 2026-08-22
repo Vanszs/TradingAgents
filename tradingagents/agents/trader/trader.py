@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage
 
 from tradingagents.agents.schemas import TraderProposal, render_trader_proposal
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
+    build_instrument_context,
     get_language_instruction,
 )
 from tradingagents.agents.utils.structured import (
@@ -22,43 +22,57 @@ def create_trader(llm):
 
     def trader_node(state, name):
         company_name = state["company_of_interest"]
-        instrument_context = get_instrument_context_from_state(state)
+        asset_type = state.get("asset_type", "stock")
+        trade_date = state.get("trade_date", "")
+        instrument_context = build_instrument_context(company_name, asset_type, trade_date=trade_date)
         investment_plan = state["investment_plan"]
 
         messages = [
             {
                 "role": "system",
                 "content": (
-                    "You are a trading agent analyzing market data to make investment decisions. "
-                    "Based on your analysis, provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the analysts' reports and the research plan."
+                    f"You are the Senior Execution Trader translating the Research Plan for `{company_name}` into an actionable execution contract under a strict **Spot Long-Only** mandate.\n\n"
+                    f"{instrument_context}\n\n"
+                    "**Execution Taxonomy & Structural Expectancy Guidelines**:\n"
+                    "1. **Buy Market**: Use for **Momentum Breakouts / Reclaims** (reclaiming 20D high or key moving averages) and **Confirmed Oversold Bounces** (immediate market entry at open to capture momentum and avoid missing runaway gaps).\n"
+                    "2. **Buy Limit**: Use for **Orderly Pullbacks** with staged limit accumulation at concrete structural demand floor (20D/60D Swing Low, Fib retracement, or dynamic support) with protective stop loss strictly below invalidation support.\n"
+                    "3. **Target Selection & Structural Expectancy (Anti-Gaming)**: Anchor Take Profit at realistic structural resistance (Fib 50%/61.8%, 60D High, 200 SMA, or Fib Extensions 1.272x / 1.618x for breakouts). Anchor Stop Loss at key structural support. Do NOT invent unrealistic high targets to artificially force R:R; if natural structural R:R < 1.8:1 or market is choppy / trend ambiguous, you MUST choose **WNS (Wait and See)**.\n"
+                    "4. **WNS (Wait and See)**: Zero capital allocated today. Use when market is choppy, trend is ambiguous, or natural structural R:R < 1.8:1. Specify `wns_recheck_date` (catalyst date YYYY-MM-DD) and/or `wns_trigger_price` (pullback demand zone level).\n"
+                    "5. **Dynamic Horizon**: Calibrate `max_holding_days` (1–63 trading days) based on target distance relative to daily ATR.\n"
+                    "6. **Sell**: Liquidate existing long inventory to 100% cash.\n\n"
+                    "Deliver your proposal strictly matching the TraderProposal schema."
                     + get_language_instruction()
                 ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"Based on a comprehensive analysis by a team of analysts, here is an investment "
-                    f"plan tailored for {company_name}. {instrument_context} This plan incorporates "
-                    f"insights from current technical market trends, macroeconomic indicators, and "
-                    f"social media sentiment. Use this plan as a foundation for evaluating your next "
-                    f"trading decision.\n\nProposed Investment Plan: {investment_plan}\n\n"
-                    f"Leverage these insights to make an informed and strategic decision."
+                    f"### Target Instrument & Market Structure\n{instrument_context}\n\n"
+                    f"### Research Manager Investment Plan\n{investment_plan}\n\n"
+                    f"### Execution Assignment\n"
+                    f"Evaluate execution feasibility for `{company_name}`. Provide concrete action, reasoning, entry price, stop loss, take profit, and sizing guidance."
                 ),
             },
         ]
 
-        trader_plan = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            messages,
-            render_trader_proposal,
-            "Trader",
-        )
+        typed_proposal = None
+        if structured_llm is not None:
+            try:
+                typed_proposal = structured_llm.invoke(messages)
+                trader_plan = render_trader_proposal(typed_proposal)
+            except Exception:
+                trader_plan = invoke_structured_or_freetext(
+                    None, llm, messages, render_trader_proposal, "Trader"
+                )
+        else:
+            trader_plan = invoke_structured_or_freetext(
+                None, llm, messages, render_trader_proposal, "Trader"
+            )
 
         return {
             "messages": [AIMessage(content=trader_plan)],
             "trader_investment_plan": trader_plan,
+            "trader_proposal": typed_proposal,
             "sender": name,
         }
 

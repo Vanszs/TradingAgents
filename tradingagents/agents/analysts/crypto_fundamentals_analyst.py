@@ -33,8 +33,11 @@ def create_crypto_fundamentals_analyst(llm):
         get_crypto_network_metrics,
         get_crypto_market_sentiment,
         get_crypto_onchain_news,
-        get_web_search,
     ]
+    # Only add web_search in live mode (not backtest)
+    from tradingagents.dataflows.config import get_config
+    if not get_config().get("backtest_mode", False):
+        tools.append(get_web_search)
 
     system_message = (
         "You are a crypto fundamentals researcher analyzing a digital asset. "
@@ -52,20 +55,14 @@ def create_crypto_fundamentals_analyst(llm):
         "`get_crypto_network_metrics`, `get_crypto_market_sentiment`, `get_crypto_onchain_news`. "
         "Use `get_web_search(query)` for the latest real-time context not covered by the other "
         "tools — exchange listings, regulatory news, protocol upgrades, hacks, or partnerships.\n\n"
-        "Apply this evidence-based grading rubric:\n"
-        "- **Tokenomics**: Is supply deflationary (capped max supply)? "
-        "What % is circulating? High supply ratio = less future dilution risk.\n"
-        "- **Dev Activity**: >50 commits/4w = very active; 20-50 = active; "
-        "5-20 = moderate; <5 = concerning (possible abandonment).\n"
-        "- **Sentiment**: Fear & Greed <25 = extreme fear (contrarian buy signal possible); "
-        ">75 = extreme greed (caution, possible top).\n"
-        "- **BTC Dominance**: Rising dominance = altcoin headwinds; "
-        "falling dominance = altcoin season potential.\n"
-        "- **On-Chain Supply**: Compare on-chain circulating supply vs CoinGecko reported supply. "
-        "Large discrepancy may indicate locked/burned tokens. "
-        "For EVM tokens: contract address confirms legitimacy.\n\n"
-        "Write a comprehensive report covering all four areas. "
-        "Append a Markdown table at the end summarizing key metrics with grades. "
+        "Apply this objective evaluation rubric:\n"
+        "- **Tokenomics**: Analyze circulating ratio, scheduled unlock cliffs, and net emission rate.\n"
+        "- **Protocol Revenue & TVL**: Evaluate organic fee capture vs token incentive dilution.\n"
+        "- **Dev Activity**: Track core engineering velocity and active repositories.\n"
+        "- **Sentiment & Regime**: Contextualize Fear & Greed without assuming automatic contrarian buy; respect trend momentum.\n"
+        "- **BTC Dominance**: Evaluate capital rotation dynamics between Bitcoin and altcoin sectors.\n\n"
+        "Write a comprehensive report covering tokenomics, protocol health, on-chain metrics, and sentiment. "
+        "Append a Markdown table at the end summarizing key metrics. "
         "Provide specific, actionable insights to help traders make informed decisions."
         + get_language_instruction()
     )
@@ -78,8 +75,7 @@ def create_crypto_fundamentals_analyst(llm):
                 " Use the provided tools to progress towards answering the question."
                 " If you are unable to fully answer, that's OK; another assistant with different tools"
                 " will help where you left off. Execute what you can to make progress."
-                " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
+                " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
                 " You have access to the following tools: {tool_names}.\n{system_message}"
                 "For your reference, the current date is {current_date}. {instrument_context}",
             ),
@@ -93,7 +89,9 @@ def create_crypto_fundamentals_analyst(llm):
     def crypto_fundamentals_analyst_node(state):
         current_date = state["trade_date"]
         ticker = state["company_of_interest"]
-        instrument_context = build_instrument_context(ticker, asset_type="crypto")
+        instrument_context = build_instrument_context(
+            ticker, asset_type="crypto", trade_date=current_date
+        )
 
         filled_prompt = prompt.partial(
             current_date=current_date,
@@ -102,7 +100,7 @@ def create_crypto_fundamentals_analyst(llm):
         chain = filled_prompt | llm.bind_tools(tools)
         result = chain.invoke(state["messages"])
 
-        report = result.content or ""
+        report = result.content if len(result.tool_calls) == 0 else ""
         return {
             "messages": [result],
             "fundamentals_report": report,

@@ -1,54 +1,52 @@
 """yfinance-based news data fetching functions."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import yfinance as yf
 from dateutil.relativedelta import relativedelta
 
-from .config import get_config
+from .config import get_config, is_point_in_time_mode
 from .stockstats_utils import yf_retry
 
 
 def _extract_article_data(article: dict) -> dict:
-    """Extract article data from yfinance news format (handles nested 'content' structure)."""
-    # Handle nested content structure
-    if "content" in article:
-        content = article["content"]
-        title = content.get("title", "No title")
-        summary = content.get("summary", "")
-        provider = content.get("provider", {})
-        publisher = provider.get("displayName", "Unknown")
-
-        # Get URL from canonicalUrl or clickThroughUrl
-        url_obj = content.get("canonicalUrl") or content.get("clickThroughUrl") or {}
-        link = url_obj.get("url", "")
-
-        # Get publish date
-        pub_date_str = content.get("pubDate", "")
-        pub_date = None
-        if pub_date_str:
-            try:
-                pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
-            except (ValueError, AttributeError):
-                pass
-
-        return {
-            "title": title,
-            "summary": summary,
-            "publisher": publisher,
-            "link": link,
-            "pub_date": pub_date,
-        }
-    else:
-        # Fallback for flat structure
-        return {
-            "title": article.get("title", "No title"),
-            "summary": article.get("summary", ""),
-            "publisher": article.get("publisher", "Unknown"),
-            "link": article.get("link", ""),
-            "pub_date": None,
-        }
+    """Normalize nested and flat yfinance article shapes."""
+    content = article.get("content", article)
+    provider = content.get("provider", {})
+    publisher = (
+        provider.get("displayName", "Unknown")
+        if isinstance(provider, dict) and provider.get("displayName")
+        else content.get("publisher", "Unknown")
+    )
+    url_obj = content.get("canonicalUrl") or content.get("clickThroughUrl") or {}
+    link = url_obj.get("url", "") if isinstance(url_obj, dict) else content.get("link", "")
+    raw_date = (
+        content.get("pubDate")
+        or content.get("published_at")
+        or content.get("publishedAt")
+        or content.get("providerPublishTime")
+    )
+    pub_date = None
+    if raw_date:
+        try:
+            if isinstance(raw_date, (int, float)):
+                pub_date = datetime.fromtimestamp(raw_date, tz=timezone.utc)
+            else:
+                pub_date = datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
+                if pub_date.tzinfo is None:
+                    pub_date = pub_date.replace(tzinfo=timezone.utc)
+                else:
+                    pub_date = pub_date.astimezone(timezone.utc)
+        except (ValueError, TypeError, OSError):
+            pass
+    return {
+        "title": content.get("title", "No title"),
+        "summary": content.get("summary", content.get("description", "")),
+        "publisher": publisher,
+        "link": link,
+        "pub_date": pub_date,
+    }
 
 
 def get_news_yfinance(
@@ -76,8 +74,12 @@ def get_news_yfinance(
             return f"No news found for {ticker}"
 
         # Parse date range for filtering
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(
+            hour=0, minute=0, second=0, tzinfo=timezone.utc
+        )
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59, tzinfo=timezone.utc
+        )
 
         news_str = ""
         filtered_count = 0
@@ -85,18 +87,18 @@ def get_news_yfinance(
         for article in news:
             data = _extract_article_data(article)
 
-            # Filter by date if publish time is available
+            if is_point_in_time_mode() and not data["pub_date"]:
+                continue
             if data["pub_date"]:
-                pub_date_naive = data["pub_date"].replace(tzinfo=None)
-                if not (start_dt <= pub_date_naive <= end_dt + relativedelta(days=1)):
+                pub_date = data["pub_date"].astimezone(timezone.utc)
+                upper_bound = end_dt if is_point_in_time_mode() else (end_dt + relativedelta(days=1))
+                if not (start_dt <= pub_date <= upper_bound):
                     continue
 
-            news_str += f"### {data['title']} (source: {data['publisher']})\n"
+            date_badge = f" [{pub_date.strftime('%Y-%m-%d %H:%M UTC')}]" if data["pub_date"] else ""
+            news_str += f"###{date_badge} {data['title']} (source: {data['publisher']})\n"
             if data["summary"]:
-                news_str += f"{data['summary']}\n"
-            if data["link"]:
-                news_str += f"Link: {data['link']}\n"
-            news_str += "\n"
+                news_str += f"{data['summary'].strip()}\n\n"
             filtered_count += 1
 
         if filtered_count == 0:
@@ -146,12 +148,10 @@ def get_global_news_yfinance(
 
             if search.news:
                 for article in search.news:
-                    # Handle both flat and nested structures
-                    if "content" in article:
-                        data = _extract_article_data(article)
-                        title = data["title"]
-                    else:
-                        title = article.get("title", "")
+                    data = _extract_article_data(article)
+                    title = data["title"]
+                    if is_point_in_time_mode() and not data["pub_date"]:
+                        continue
 
                     # Deduplicate by title
                     if title and title not in seen_titles:
@@ -165,29 +165,28 @@ def get_global_news_yfinance(
             return f"No global news found for {curr_date}"
 
         # Calculate date range
-        curr_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-        start_dt = curr_dt - relativedelta(days=look_back_days)
+        curr_dt = datetime.strptime(curr_date, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59, tzinfo=timezone.utc
+        )
+        start_dt = (curr_dt - relativedelta(days=look_back_days)).replace(
+            hour=0, minute=0, second=0
+        )
         start_date = start_dt.strftime("%Y-%m-%d")
 
         news_str = ""
         for article in all_news[:limit]:
-            # Handle both flat and nested structures
-            if "content" in article:
-                data = _extract_article_data(article)
-                # Skip articles published after curr_date (look-ahead guard)
-                if data.get("pub_date"):
-                    pub_naive = data["pub_date"].replace(tzinfo=None) if hasattr(data["pub_date"], "replace") else data["pub_date"]
-                    if pub_naive > curr_dt + relativedelta(days=1):
-                        continue
-                title = data["title"]
-                publisher = data["publisher"]
-                link = data["link"]
-                summary = data["summary"]
-            else:
-                title = article.get("title", "No title")
-                publisher = article.get("publisher", "Unknown")
-                link = article.get("link", "")
-                summary = ""
+            data = _extract_article_data(article)
+            if is_point_in_time_mode() and not data["pub_date"]:
+                continue
+            if data["pub_date"]:
+                pub_date = data["pub_date"].astimezone(timezone.utc)
+                upper_bound = curr_dt if is_point_in_time_mode() else (curr_dt + relativedelta(days=1))
+                if pub_date < start_dt or pub_date > upper_bound:
+                    continue
+            title = data["title"]
+            publisher = data["publisher"]
+            link = data["link"]
+            summary = data["summary"]
 
             news_str += f"### {title} (source: {publisher})\n"
             if summary:

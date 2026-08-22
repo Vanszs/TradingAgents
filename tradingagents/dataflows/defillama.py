@@ -171,7 +171,7 @@ def _pct_change(current: float, previous: float) -> str:
     return f"{(current - previous) / previous * 100:+.1f}%"
 
 
-def get_tvl(ticker: str) -> str:
+def get_tvl(ticker: str, trade_date: Optional[str] = None) -> str:
     """Return formatted TVL/protocol data string for a ticker."""
     base = ticker.strip().upper().split("-")[0]
 
@@ -204,6 +204,17 @@ def get_tvl(ticker: str) -> str:
     )
 
     tvl_history = data.get("tvl", [])
+    if trade_date:
+        try:
+            from datetime import datetime, timezone
+            dt = datetime.fromisoformat(trade_date[:10]).replace(tzinfo=timezone.utc)
+            cutoff_ts = int(dt.timestamp())
+            tvl_history = [item for item in tvl_history if item.get("date", 0) <= cutoff_ts]
+            if tvl_history and "totalLiquidityUSD" in tvl_history[-1]:
+                total_tvl = tvl_history[-1]["totalLiquidityUSD"]
+        except Exception:
+            pass
+
     tvl_7d_ago = tvl_history[-8]["totalLiquidityUSD"] if len(tvl_history) > 8 else None
     tvl_30d_ago = tvl_history[-31]["totalLiquidityUSD"] if len(tvl_history) > 31 else None
 

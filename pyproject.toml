@@ -10,7 +10,6 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "langchain-core>=1.4,<2",
-    "backtrader>=1.9.78.123",
     "langchain-anthropic>=1.4,<2",
     "langchain-experimental>=0.4,<1",
     "langchain-google-genai>=4.2,<5",
@@ -18,18 +17,12 @@ dependencies = [
     "langgraph>=1.2,<2",
     "langgraph-checkpoint-sqlite>=3.1,<4",
     "pandas>=2.3.0",
-    "parsel>=1.10.0",
-    "pytz>=2025.2",
     "questionary>=2.1.0",
-    "redis>=6.2.0",
     "requests>=2.32.4",
     "rich>=14.0.0",
     "typer>=0.21.0",
-    "setuptools>=80.9.0",
     "stockstats>=0.6.5",
-    "tqdm>=4.67.1",
-    "typing-extensions>=4.14.0",
-    "yfinance>=1.4.1",
+    "yfinance>=0.2.63",
 ]
 
 [project.scripts]

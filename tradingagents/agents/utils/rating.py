@@ -15,35 +15,23 @@ import re
 from typing import Tuple
 
 # Canonical, ordered 5-tier scale (most bullish to most bearish).
-RATINGS_5_TIER: Tuple[str, ...] = (
-    "Buy", "Overweight", "Hold", "Underweight", "Sell",
+RATINGS_5_TIER: Tuple[str, ...] = ("Buy", "Overweight", "Hold", "WNS", "Underweight", "Sell")
+_RATING_SET = {r.lower() for r in RATINGS_5_TIER} | {"wait and see", "wait & see", "wns"}
+
+_RATING_LABEL_RE = re.compile(
+    r"(?i)^\s*(?:[-*#\d.]+\s*)?(?:\*{1,2})?(?:portfolio\s+)?(?:recommendation|rating)(?:\*{1,2})?\s*[:\-]\s*\**\b(Buy|Overweight|Hold|WNS|Wait\s+and\s+See|Wait\s*&\s*See|Underweight|Sell)\b"
 )
-
-_RATING_SET = {r.lower() for r in RATINGS_5_TIER}
-
-# Matches "Rating: X" / "rating - X" / "Rating: **X**" — tolerates markdown
-# bold wrappers and either a colon or hyphen separator.
-_RATING_LABEL_RE = re.compile(r"rating.*?[:\-][\s*]*(\w+)", re.IGNORECASE)
 
 
 def parse_rating(text: str, default: str = "Hold") -> str:
-    """Heuristically extract a 5-tier rating from prose text.
-
-    Two-pass strategy:
-    1. Look for an explicit "Rating: X" label (tolerant of markdown bold).
-    2. Fall back to the first 5-tier rating word found anywhere in the text.
-
-    Returns a Title-cased rating string, or ``default`` if no rating word appears.
-    """
+    """Extract a rating from prose text using line-anchored matching."""
     for line in text.splitlines():
         m = _RATING_LABEL_RE.search(line)
-        if m and m.group(1).lower() in _RATING_SET:
-            return m.group(1).capitalize()
-
-    for line in text.splitlines():
-        for word in line.lower().split():
-            clean = word.strip("*:.,")
-            if clean in _RATING_SET:
-                return clean.capitalize()
+        if m:
+            raw = m.group(1).lower().strip()
+            if raw in ("wns", "wait and see", "wait & see"):
+                return "WNS"
+            if raw in _RATING_SET:
+                return m.group(1).capitalize()
 
     return default

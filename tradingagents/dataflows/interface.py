@@ -30,8 +30,19 @@ from .alpha_vantage import (
 from .alpha_vantage_common import AlphaVantageRateLimitError
 
 # Configuration and routing logic
-from .config import get_config
-from .symbol_utils import NoMarketDataError
+from .config import get_config, is_point_in_time_mode
+from .snapshot import (
+    snapshot_get_balance_sheet,
+    snapshot_get_cashflow,
+    snapshot_get_fundamentals,
+    snapshot_get_global_news,
+    snapshot_get_income_statement,
+    snapshot_get_indicators,
+    snapshot_get_insider_transactions,
+    snapshot_get_news,
+    snapshot_get_stock_data,
+)
+from .stockstats_utils import YFRateLimitError
 from .y_finance import (
     get_balance_sheet as get_yfinance_balance_sheet,
 )
@@ -88,52 +99,56 @@ TOOLS_CATEGORIES = {
     }
 }
 
-VENDOR_LIST = [
-    "yfinance",
-    "alpha_vantage",
-]
-
 # Mapping of methods to their vendor-specific implementations
 VENDOR_METHODS = {
     # core_stock_apis
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
+        "snapshot": snapshot_get_stock_data,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
+        "snapshot": snapshot_get_indicators,
     },
     # fundamental_data
     "get_fundamentals": {
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "yfinance": get_yfinance_fundamentals,
+        "snapshot": snapshot_get_fundamentals,
     },
     "get_balance_sheet": {
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
+        "snapshot": snapshot_get_balance_sheet,
     },
     "get_cashflow": {
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
+        "snapshot": snapshot_get_cashflow,
     },
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
+        "snapshot": snapshot_get_income_statement,
     },
     # news_data
     "get_news": {
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
+        "snapshot": snapshot_get_news,
     },
     "get_global_news": {
         "yfinance": get_global_news_yfinance,
         "alpha_vantage": get_alpha_vantage_global_news,
+        "snapshot": snapshot_get_global_news,
     },
     "get_insider_transactions": {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
+        "snapshot": snapshot_get_insider_transactions,
     },
 }
 
@@ -175,8 +190,10 @@ def route_to_vendor(method: str, *args, **kwargs):
         if vendor not in fallback_vendors:
             fallback_vendors.append(vendor)
 
-    last_no_data: NoMarketDataError | None = None
-    first_error: Exception | None = None
+    # PIT mode is fail-closed: never fall back from snapshot to a live vendor.
+    if is_point_in_time_mode():
+        fallback_vendors = ["snapshot"]
+
     for vendor in fallback_vendors:
         if vendor not in VENDOR_METHODS[method]:
             continue
@@ -186,38 +203,9 @@ def route_to_vendor(method: str, *args, **kwargs):
 
         try:
             return impl_func(*args, **kwargs)
-        except AlphaVantageRateLimitError:
-            continue  # Rate limits: try the next vendor
-        except NoMarketDataError as e:
-            last_no_data = e  # No data here; another vendor may have it
-            continue
-        except Exception as e:
-            # A fallback vendor failing for an incidental reason (e.g. no API
-            # key configured) must not crash the call when another vendor
-            # already determined the symbol simply has no data. Remember the
-            # first error so a genuine primary-vendor failure still surfaces.
-            if first_error is None:
-                first_error = e
-            continue
-
-    # If any vendor reported "no data", the symbol is genuinely unavailable.
-    # Return one explicit, instructive sentinel rather than a vendor-specific
-    # empty string, so the agent reports "unavailable" instead of inventing a
-    # value. This takes precedence over incidental fallback errors.
-    if last_no_data is not None:
-        sym = last_no_data.symbol
-        canonical = last_no_data.canonical
-        resolved = "" if canonical == sym else f" (resolved to '{canonical}')"
-        return (
-            f"NO_DATA_AVAILABLE: No market data found for '{sym}'{resolved} from "
-            f"any configured vendor. The symbol may be invalid, delisted, or not "
-            f"covered by Yahoo Finance / Alpha Vantage. Do not estimate or "
-            f"fabricate values — report that data is unavailable for this symbol."
-        )
-
-    # No vendor returned data and none reported clean "no data" — surface the
-    # first real error (e.g. the primary vendor's network failure).
-    if first_error is not None:
-        raise first_error
+        except (AlphaVantageRateLimitError, YFRateLimitError):
+            continue  # Rate limits trigger fallback to next vendor
+        except (ConnectionError, TimeoutError, OSError):
+            continue  # Network errors also trigger fallback
 
     raise RuntimeError(f"No available vendor for '{method}'")

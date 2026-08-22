@@ -1,8 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.utils.agent_utils import (
+    build_exchange_filing_context,
+    build_instrument_context,
     get_global_news,
-    get_instrument_context_from_state,
+    get_insider_transactions,
     get_language_instruction,
     get_news,
 )
@@ -14,17 +16,32 @@ def create_news_analyst(llm):
         current_date = state["trade_date"]
         asset_type = state.get("asset_type", "stock")
         asset_label = "company" if asset_type == "stock" else "asset"
-        instrument_context = get_instrument_context_from_state(state)
+        ticker = state["company_of_interest"]
+        instrument_context = build_instrument_context(
+            ticker, asset_type, trade_date=current_date
+        )
+        filing_context = build_exchange_filing_context(ticker, asset_type)
 
-        tools = [
-            get_news,
-            get_global_news,
-            get_web_search,
-        ]
+        from tradingagents.dataflows.config import get_config
+
+        tools = [get_news, get_global_news]
+        if asset_type != "crypto":
+            tools.append(get_insider_transactions)
+        web_search_guidance = ""
+        if not get_config().get("backtest_mode", False):
+            tools.append(get_web_search)
+            web_search_guidance = " Use get_web_search(query) for real-time catalysts and breaking developments."
 
         system_message = (
-            f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for {asset_label}-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Use get_web_search(query) to find the latest real-time information, recent news, and current analysis not covered by other tools. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
-            + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
+            f"You are an institutional news and catalyst analyst evaluating `{ticker}` for Spot Equity Long-Only accumulation. "
+            f"Use get_news(ticker, start_date, end_date) for {asset_label}-specific developments, get_insider_transactions(ticker) for insider accumulation, "
+            f"and get_global_news(curr_date, look_back_days, limit) for macroeconomic context.{web_search_guidance}\n\n"
+            "Catalyst & Valuation Framework:\n"
+            "1. Classify catalysts: Structural Growth, Transitory Panic/Overreaction, Regulatory Clearance, or Fundamental Deterioration.\n"
+            "2. Assess market pricing status: Fresh vs Priced-In vs Sentiment Divergence.\n"
+            "3. If price is pulling back on non-fatal noise, identify catalyst-backed Limit Accumulation opportunity near key structural support.\n"
+            "Append a structured Markdown table summarizing: Catalyst Event, Date/Source, Impact (Bullish/Bearish), Pricing Status, and Accumulation Implication."
+            + f"\n\n{filing_context}"
             + get_language_instruction()
         )
 
@@ -36,8 +53,7 @@ def create_news_analyst(llm):
                     " Use the provided tools to progress towards answering the question."
                     " If you are unable to fully answer, that's OK; another assistant with different tools"
                     " will help where you left off. Execute what you can to make progress."
-                    " If you or any other assistant has the FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** or deliverable,"
-                    " prefix your response with FINAL TRANSACTION PROPOSAL: **BUY/HOLD/SELL** so the team knows to stop."
+                    " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
                     " You have access to the following tools: {tool_names}.\n{system_message}"
                     "For your reference, the current date is {current_date}. {instrument_context}",
                 ),

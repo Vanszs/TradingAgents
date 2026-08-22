@@ -7,12 +7,13 @@ from dotenv import find_dotenv, set_key
 from rich.console import Console
 
 from cli.models import AnalystType, AssetType
+from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.llm_clients.api_key_env import get_api_key_env
 from tradingagents.llm_clients.model_catalog import get_model_options
 
 console = Console()
 
-TICKER_INPUT_EXAMPLES = "SPY, 0700.HK, BTC-USD"
+TICKER_INPUT_EXAMPLES = "Examples: SPY, CNC.TO, 7203.T, 0700.HK"
 
 ANALYST_ORDER = [
     ("Market Analyst", AnalystType.MARKET),
@@ -25,19 +26,10 @@ CRYPTO_SUFFIXES = ("-USD", "-USDT", "-USDC", "-BTC", "-ETH")
 
 
 def get_ticker() -> str:
-    """Prompt the user to enter a ticker symbol, preserving exchange suffixes.
-
-    Uses questionary.text (not typer.prompt, which strips trailing dot-suffixes
-    like ``000404.SH`` on some shells) and validates the symbol charset so an
-    obvious typo is caught before the run starts.
-    """
+    """Prompt the user to enter a ticker symbol."""
     ticker = questionary.text(
-        f"Enter ticker symbol (e.g. {TICKER_INPUT_EXAMPLES}):",
-        validate=lambda x: (
-            not x.strip()
-            or (all(ch.isalnum() or ch in "._-^" for ch in x.strip()) and len(x.strip()) <= 32)
-            or "Please enter a valid ticker symbol, e.g. AAPL, 000404.SZ, 0700.HK."
-        ),
+        f"Enter the exact ticker symbol to analyze ({TICKER_INPUT_EXAMPLES}):",
+        validate=lambda x: len(x.strip()) > 0 or "Please enter a valid ticker symbol.",
         style=questionary.Style(
             [
                 ("text", "fg:green"),
@@ -46,16 +38,17 @@ def get_ticker() -> str:
         ),
     ).ask()
 
-    if ticker is None:
+    if not ticker:
         console.print("\n[red]No ticker symbol provided. Exiting...[/red]")
         exit(1)
 
-    return normalize_ticker_symbol(ticker) if ticker.strip() else "SPY"
+    return normalize_ticker_symbol(ticker)
 
 
 def normalize_ticker_symbol(ticker: str) -> str:
-    """Normalize ticker input while preserving exchange suffixes."""
-    return ticker.strip().upper()
+    """Normalize ticker input, validate filesystem safety, and preserve exchange suffixes."""
+    cleaned = ticker.strip().upper()
+    return safe_ticker_component(cleaned)
 
 
 def detect_asset_type(ticker: str) -> AssetType:
@@ -74,21 +67,23 @@ def filter_analysts_for_asset_type(
 
 def get_analysis_date() -> str:
     """Prompt the user to enter a date in YYYY-MM-DD format."""
-    import re
     from datetime import datetime
 
+    default_today = datetime.now().strftime("%Y-%m-%d")
+
     def validate_date(date_str: str) -> bool:
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-            return False
+        if not date_str.strip():
+            return True
         try:
-            datetime.strptime(date_str, "%Y-%m-%d")
+            datetime.strptime(date_str.strip(), "%Y-%m-%d")
             return True
         except ValueError:
             return False
 
     date = questionary.text(
         "Enter the analysis date (YYYY-MM-DD):",
-        validate=lambda x: validate_date(x.strip())
+        default=default_today,
+        validate=lambda x: validate_date(x)
         or "Please enter a valid date in YYYY-MM-DD format.",
         style=questionary.Style(
             [
@@ -99,8 +94,7 @@ def get_analysis_date() -> str:
     ).ask()
 
     if not date:
-        console.print("\n[red]No date provided. Exiting...[/red]")
-        exit(1)
+        return default_today
 
     return date.strip()
 
@@ -269,17 +263,14 @@ def select_deep_thinking_agent(provider) -> str:
     """Select deep thinking llm engine using an interactive selection."""
     return _select_model(provider, "deep")
 
-def _llm_provider_table() -> list[tuple[str, str, str | None]]:
-    """(display_name, provider_key, base_url) for every supported provider.
-
-    Shared by the interactive picker and by env-driven configuration so an
-    env-set provider resolves to the same default endpoint the menu uses.
-    Ollama users can point at a remote ollama-serve via OLLAMA_BASE_URL
-    (convention from the broader Ollama ecosystem); falls back to the
-    localhost default when unset.
-    """
+def select_llm_provider() -> tuple[str, str | None]:
+    """Select the LLM provider and its API endpoint."""
+    # Ollama users can point at a remote ollama-serve via OLLAMA_BASE_URL
+    # (convention from the broader Ollama ecosystem); falls back to the
+    # localhost default when unset.
     ollama_url = os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
-    return [
+    # (display_name, provider_key, base_url)
+    PROVIDERS = [
         ("OpenAI", "openai", "https://api.openai.com/v1"),
         ("Google", "google", None),
         ("Anthropic", "anthropic", "https://api.anthropic.com/"),
@@ -292,21 +283,9 @@ def _llm_provider_table() -> list[tuple[str, str, str | None]]:
         ("BluesMind", "bluesmind", "https://api.bluesminds.com/v1"),
         ("Azure OpenAI", "azure", None),
         ("Ollama", "ollama", ollama_url),
+        ("Sumopod", "sumopod", "https://ai.sumopod.com/v1"),
+        ("TokenRouter", "tokenrouter", "https://api.tokenrouter.com/v1"),
     ]
-
-
-def provider_default_url(provider_key: str) -> str | None:
-    """Return the default backend URL for a provider key, or None if unknown."""
-    key = provider_key.lower()
-    for _, pk, url in _llm_provider_table():
-        if pk == key:
-            return url
-    return None
-
-
-def select_llm_provider() -> tuple[str, str | None]:
-    """Select the LLM provider and its API endpoint."""
-    PROVIDERS = _llm_provider_table()
 
     choice = questionary.select(
         "Select your LLM Provider:",
@@ -500,6 +479,7 @@ def confirm_ollama_endpoint(url: str) -> None:
             f"Make sure your remote ollama-serve listens on the port "
             f"shown above.[/yellow]"
         )
+    
 
 
 def ensure_api_key(provider: str) -> Optional[str]:
@@ -561,6 +541,7 @@ def ask_output_language() -> str:
             questionary.Choice("German (Deutsch)", "German"),
             questionary.Choice("Arabic (العربية)", "Arabic"),
             questionary.Choice("Russian (Русский)", "Russian"),
+            questionary.Choice("Indonesian (Bahasa Indonesia)", "Indonesian"),
             questionary.Choice("Custom language", "custom"),
         ],
         style=questionary.Style([
@@ -577,3 +558,23 @@ def ask_output_language() -> str:
         ).ask().strip()
 
     return choice
+
+
+def create_cli_layout():
+    """Standard 3-column Layout: header, main (upper: progress/messages, analysis), footer."""
+    from rich.layout import Layout
+
+    layout = Layout()
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="main"),
+        Layout(name="footer", size=3),
+    )
+    layout["main"].split_column(
+        Layout(name="upper", ratio=3), Layout(name="analysis", ratio=5)
+    )
+    layout["upper"].split_row(
+        Layout(name="progress", ratio=2), Layout(name="messages", ratio=3)
+    )
+    return layout
+

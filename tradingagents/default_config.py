@@ -18,7 +18,9 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
     "TRADINGAGENTS_ANALYST_CONCURRENCY":  "analyst_concurrency_limit",
-    "TRADINGAGENTS_TEMPERATURE":          "temperature",
+    "TRADINGAGENTS_GOOGLE_THINKING_LEVEL": "google_thinking_level",
+    "TRADINGAGENTS_OPENAI_REASONING_EFFORT": "openai_reasoning_effort",
+    "TRADINGAGENTS_ANTHROPIC_EFFORT":     "anthropic_effort",
 }
 
 
@@ -53,8 +55,8 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # Pending entries are never pruned. None disables rotation entirely.
     "memory_log_max_entries": None,
     # LLM settings
-    "llm_provider": "openai",
-    "deep_think_llm": "gpt-5.5",
+    "llm_provider": "openai",  # Options: openai, google, anthropic, bluesmind, etc.
+    "deep_think_llm": "gpt-5.4",
     "quick_think_llm": "gpt-5.4-mini",
     # When None, each provider's client falls back to its own default endpoint
     # (api.openai.com for OpenAI, generativelanguage.googleapis.com for Gemini, ...).
@@ -66,11 +68,6 @@ DEFAULT_CONFIG = _apply_env_overrides({
     "google_thinking_level": None,      # "high", "minimal", etc.
     "openai_reasoning_effort": None,    # "medium", "high", "low"
     "anthropic_effort": None,           # "high", "medium", "low"
-    # Sampling temperature, forwarded to every provider when set. None leaves
-    # each provider at its own default. Lower values reduce run-to-run
-    # variation on models that honor it; reasoning models largely ignore it
-    # and no setting makes LLM output bit-identical across runs (see README).
-    "temperature": None,
     # Checkpoint/resume: when True, LangGraph saves state after each node
     # so a crashed run can resume from the last successful step.
     "checkpoint_enabled": False,
@@ -97,6 +94,8 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "ECB Bank of England BOJ central bank policy",
         "oil commodities supply chain energy",
     ],
+    # Historical runs must use dated snapshots, never live vendor data.
+    "point_in_time_mode": False,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {
@@ -117,15 +116,13 @@ DEFAULT_CONFIG = _apply_env_overrides({
     # while non-US tickers get their regional index automatically.
     "benchmark_ticker": None,
     "benchmark_map": {
-        ".NS":  "^NSEI",       # NSE India (Nifty 50)
-        ".BO":  "^BSESN",      # BSE India (Sensex)
-        ".T":   "^N225",       # Tokyo (Nikkei 225)
-        ".HK":  "^HSI",        # Hong Kong (Hang Seng)
-        ".L":   "^FTSE",       # London (FTSE 100)
-        ".TO":  "^GSPTSE",     # Toronto (TSX Composite)
-        ".AX":  "^AXJO",       # Australia (ASX 200)
-        ".SS":  "000001.SS",   # Shanghai (SSE Composite)
-        ".SZ":  "399001.SZ",   # Shenzhen (SZSE Component)
-        "":     "SPY",         # default for US-listed tickers (no suffix)
+        ".NS":  "^NSEI",    # NSE India (Nifty 50)
+        ".BO":  "^BSESN",   # BSE India (Sensex)
+        ".T":   "^N225",    # Tokyo (Nikkei 225)
+        ".HK":  "^HSI",     # Hong Kong (Hang Seng)
+        ".L":   "^FTSE",    # London (FTSE 100)
+        ".TO":  "^GSPTSE",  # Toronto (TSX Composite)
+        ".AX":  "^AXJO",    # Australia (ASX 200)
+        "":     "SPY",      # default for US-listed tickers (no suffix)
     },
 })

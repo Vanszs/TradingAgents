@@ -1,4 +1,6 @@
+import logging
 import os
+import time
 from typing import Any, Optional
 
 from langchain_core.messages import AIMessage
@@ -8,6 +10,8 @@ from .api_key_env import get_api_key_env
 from .base_client import BaseLLMClient, normalize_content
 from .capabilities import get_capabilities
 from .validators import validate_model
+
+logger = logging.getLogger(__name__)
 
 
 class NormalizedChatOpenAI(ChatOpenAI):
@@ -30,7 +34,19 @@ class NormalizedChatOpenAI(ChatOpenAI):
     """
 
     def invoke(self, input, config=None, **kwargs):
-        return normalize_content(super().invoke(input, config, **kwargs))
+        invoke_start = time.time()
+        model_name = getattr(self, 'model_name', 'unknown')
+        logger.debug(f"[LLM] Invoking {model_name}...")
+        
+        result = super().invoke(input, config, **kwargs)
+        
+        invoke_duration = time.time() - invoke_start
+        # Get content length for logging
+        content = getattr(result, 'content', '')
+        content_length = len(content) if isinstance(content, str) else 0
+        logger.info(f"[LLM] {model_name} completed in {invoke_duration:.3f}s | response length: {content_length}")
+        
+        return normalize_content(result)
 
     def with_structured_output(self, schema, *, method=None, **kwargs):
         caps = get_capabilities(self.model_name)
@@ -83,9 +99,9 @@ class DeepSeekChatOpenAI(NormalizedChatOpenAI):
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
         outgoing = payload.get("messages", [])
-        for message_dict, message in zip(outgoing, _input_to_messages(input_)):
-            if not isinstance(message, AIMessage):
-                continue
+        ai_messages = [m for m in _input_to_messages(input_) if isinstance(m, AIMessage)]
+        assistant_outgoing = [m for m in outgoing if m.get("role") == "assistant"]
+        for message_dict, message in zip(assistant_outgoing, ai_messages):
             reasoning = message.additional_kwargs.get("reasoning_content")
             if reasoning is not None:
                 message_dict["reasoning_content"] = reasoning
@@ -114,15 +130,14 @@ class MinimaxChatOpenAI(NormalizedChatOpenAI):
 
     M2.x reasoning models embed ``<think>...</think>`` blocks directly in
     ``message.content`` by default, which would pollute saved reports.
-    Per platform.minimax.io/docs/api-reference/text-openai-api,
-    ``reasoning_split=True`` redirects the thinking block into
-    ``reasoning_details`` so ``content`` stays clean. It is sent via
-    ``extra_body`` (not a top-level kwarg) because the openai SDK validates
-    top-level params and rejects unknown ones like reasoning_split (#826).
+    Per platform.minimax.io/docs/api-reference/text-openai-api, setting
+    ``reasoning_split=True`` in the request body redirects the thinking
+    block into ``reasoning_details`` so ``content`` stays clean.
 
-    The flag is gated by ``ModelCapabilities.requires_reasoning_split`` so
-    only M2.x reasoning models receive it; non-reasoning MiniMax endpoints
-    (Coding Plan, MiniMax-Text-01) never see it.
+    The flag is gated by ``ModelCapabilities.requires_reasoning_split``
+    because non-reasoning MiniMax endpoints (Coding Plan, MiniMax-Text-01)
+    reject the parameter via the openai SDK's strict kwarg validation
+    (#826).
 
     Tool-choice handling for M2.x — those models accept only the string
     enum ``{"none", "auto"}`` and reject langchain's function-spec dict —
@@ -133,19 +148,15 @@ class MinimaxChatOpenAI(NormalizedChatOpenAI):
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
         if get_capabilities(self.model_name).requires_reasoning_split:
-            # Pass via extra_body, not as a top-level kwarg: the openai SDK
-            # (>=1.56) validates top-level params against Completions.create
-            # and rejects unknown ones like reasoning_split (#826). extra_body
-            # is forwarded into the request body untouched.
-            extra_body = payload.setdefault("extra_body", {})
-            extra_body.setdefault("reasoning_split", True)
+            payload.setdefault("reasoning_split", True)
         return payload
 
 
 # Kwargs forwarded from user config to ChatOpenAI
 _PASSTHROUGH_KWARGS = (
-    "timeout", "max_retries", "reasoning_effort", "temperature",
+    "timeout", "max_retries", "reasoning_effort",
     "api_key", "callbacks", "http_client", "http_async_client",
+    "temperature", "seed", "top_p",
 )
 
 # Provider base URLs. API-key env vars live in api_key_env.PROVIDER_API_KEY_ENV
@@ -165,6 +176,8 @@ _PROVIDER_BASE_URL = {
     "openrouter": "https://openrouter.ai/api/v1",
     "ollama":     "http://localhost:11434/v1",
     "bluesmind":  "https://api.bluesminds.com/v1",
+    "sumopod":   "https://ai.sumopod.com/v1",
+    "tokenrouter": "https://api.tokenrouter.com/v1",
 }
 
 
@@ -215,7 +228,7 @@ class OpenAIClient(BaseLLMClient):
             llm_kwargs["base_url"] = self.base_url or _resolve_provider_base_url(self.provider)
             api_key_env = get_api_key_env(self.provider)
             if api_key_env:
-                api_key = self.kwargs.get("api_key") or os.environ.get(api_key_env)
+                api_key = os.environ.get(api_key_env)
                 if api_key:
                     llm_kwargs["api_key"] = api_key
                 else:
@@ -234,9 +247,19 @@ class OpenAIClient(BaseLLMClient):
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
 
+        # Add default timeout if not specified (prevent indefinite hangs)
+        llm_kwargs.setdefault("timeout", 1080)  # 18 minutes
+
+        llm_kwargs.setdefault("max_retries", 3)
+
+        logger.info(
+            f"[LLM] Creating {self.provider} client for model={self.model} "
+            f"with timeout={llm_kwargs.get('timeout')}s"
+        )
+
         # Native OpenAI: use Responses API for consistent behavior across
         # all model families. Third-party providers use Chat Completions.
-        if self.provider == "openai":
+        if self.provider == "openai" and not self.base_url:
             llm_kwargs["use_responses_api"] = True
 
         # Provider-specific quirks live in their own subclasses so the

@@ -218,8 +218,11 @@ __marimo__/
 # Cache
 **/data_cache/
 
-# Enterprise env file (secrets) and generated run reports
-.env.enterprise
-reports/*
-!reports/**/
-!reports/**/*.md
+# Local archives and evaluation artifacts
+archive/
+result_backtest/
+backtest_results/
+api_cache/
+.understand-anything/
+.hermes/
+.kiro/

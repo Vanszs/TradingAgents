@@ -93,6 +93,52 @@ def test_crypto_ohlcv_returns_valid_data(monkeypatch, _ohlcv_df):
 
 
 @pytest.mark.unit
+def test_intraday_fetch_normalizes_and_validates_timezone(monkeypatch):
+    frame = pd.DataFrame(
+        {
+            "Open": [100.0], "High": [101.0], "Low": [99.0], "Close": [100.5],
+        },
+        index=pd.DatetimeIndex(["2026-05-27T13:35:00+00:00"]),
+    )
+
+    class _FakeTicker:
+        def __init__(self, symbol):
+            self.symbol = symbol
+
+        def history(self, **kwargs):
+            assert kwargs["interval"] == "5m"
+            return frame
+
+    monkeypatch.setattr(yf_mod.yf, "Ticker", _FakeTicker)
+    result = yf_mod.get_intraday_data(
+        "TSM", "2026-05-27T13:30:00+00:00", "2026-05-27T14:30:00+00:00", "5m"
+    )
+    assert str(result.index.tz) == "UTC"
+    assert result.iloc[0]["open"] == 100.0
+
+
+@pytest.mark.unit
+def test_intraday_fetch_rejects_naive_provider_index(monkeypatch):
+    frame = pd.DataFrame(
+        {"Open": [100.0], "High": [101.0], "Low": [99.0], "Close": [100.5]},
+        index=pd.DatetimeIndex(["2026-05-27T13:35:00"]),
+    )
+
+    class _FakeTicker:
+        def __init__(self, symbol):
+            self.symbol = symbol
+
+        def history(self, **kwargs):
+            return frame
+
+    monkeypatch.setattr(yf_mod.yf, "Ticker", _FakeTicker)
+    with pytest.raises(ValueError, match="naive"):
+        yf_mod.get_intraday_data(
+            "TSM", "2026-05-27T13:30:00+00:00", "2026-05-27T14:30:00+00:00", "5m"
+        )
+
+
+@pytest.mark.unit
 def test_crypto_indicator_returns_valid_values(monkeypatch, _indicator_df):
     monkeypatch.setattr(yf_mod, "load_ohlcv", lambda symbol, curr_date: _indicator_df.copy())
 
@@ -105,3 +151,31 @@ def test_crypto_indicator_returns_valid_values(monkeypatch, _indicator_df):
     value = line.split(":", 1)[1].strip()
     assert value not in ("", "N/A")
     assert 0.0 <= float(value) <= 100.0
+
+
+@pytest.mark.unit
+def test_daily_data_preserves_session_date_for_naive_and_aware_indexes(monkeypatch):
+    frame = pd.DataFrame(
+        {"Open": [100.0], "High": [101.0], "Low": [99.0], "Close": [100.5]},
+        index=pd.DatetimeIndex(["2026-05-27T00:00:00+07:00"]),
+    )
+
+    class _FakeTicker:
+        def __init__(self, symbol):
+            self.symbol = symbol
+
+        def history(self, **kwargs):
+            return frame
+
+    monkeypatch.setattr(yf_mod.yf, "Ticker", _FakeTicker)
+    result = yf_mod.get_intraday_data("TSM", "2026-05-27", "2026-05-28", "1d")
+    assert str(result.index.tz) == "UTC"
+    assert result.index[0].strftime("%Y-%m-%d") == "2026-05-27"
+
+    frame.index = pd.DatetimeIndex(["2026-05-27"])
+    naive_result = yf_mod.get_intraday_data("TSM", "2026-05-27", "2026-05-28", "1d")
+    assert naive_result.index[0].strftime("%Y-%m-%d") == "2026-05-27"
+
+    frame.loc[frame.index[0], "Close"] = float("inf")
+    with pytest.raises(ValueError, match="finite"):
+        yf_mod.get_intraday_data("TSM", "2026-05-27", "2026-05-28", "1d")

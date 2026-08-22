@@ -10,14 +10,26 @@ back gracefully to free-text generation.
 
 from __future__ import annotations
 
-from tradingagents.agents.schemas import PortfolioDecision, render_pm_decision
+import logging
+
+import pandas as pd
+
+from tradingagents.agents.schemas import (
+    PortfolioDecision,
+    PortfolioRating,
+    portfolio_decision_to_signal_contract,
+    render_pm_decision,
+)
+
+logger = logging.getLogger(__name__)
 from tradingagents.agents.utils.agent_utils import (
-    get_instrument_context_from_state,
+    build_instrument_context,
     get_language_instruction,
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
+    invoke_structured_with_recovery,
 )
 
 
@@ -25,12 +37,21 @@ def create_portfolio_manager(llm):
     structured_llm = bind_structured(llm, PortfolioDecision, "Portfolio Manager")
 
     def portfolio_manager_node(state) -> dict:
-        instrument_context = get_instrument_context_from_state(state)
+        trade_date = state.get("trade_date", "")
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            state.get("asset_type", "stock"),
+            trade_date=trade_date,
+        )
 
-        history = state["risk_debate_state"]["history"]
-        risk_debate_state = state["risk_debate_state"]
-        research_plan = state["investment_plan"]
-        trader_plan = state["trader_investment_plan"]
+        risk_debate_state = state.get("risk_debate_state", {})
+        history = risk_debate_state.get("history", "")
+        research_plan = state.get("investment_plan", "")
+        trader_plan = state.get("trader_investment_plan", "")
+        trader_proposal = state.get("trader_proposal")
+        planned_entry_price = (
+            trader_proposal.entry_price if trader_proposal is not None and trader_proposal.entry_price is not None else None
+        )
 
         past_context = state.get("past_context", "")
         lessons_line = (
@@ -39,37 +60,67 @@ def create_portfolio_manager(llm):
             else ""
         )
 
-        prompt = f"""As the Portfolio Manager, synthesize the risk analysts' debate and deliver the final trading decision.
+        company_name = state["company_of_interest"]
+        prompt = f"""You are the Chief Investment Officer making the final capital allocation decision for `{company_name}` under a strict **Spot Long-Only (BUY vs WNS)** mandate.
 
 {instrument_context}
 
----
-
-**Rating Scale** (use exactly one):
-- **Buy**: Strong conviction to enter or add to position
-- **Overweight**: Favorable outlook, gradually increase exposure
-- **Hold**: Maintain current position, no action needed
-- **Underweight**: Reduce exposure, take partial profits
-- **Sell**: Exit position or avoid entry
-
-**Context:**
-- Research Manager's investment plan: **{research_plan}**
-- Trader's transaction proposal: **{trader_plan}**
 {lessons_line}
-**Risk Analysts Debate History:**
-{history}
+### Research Plan
+{research_plan}
 
----
+### Trader Proposal
+{trader_plan}
 
-Be decisive and ground every conclusion in specific evidence from the analysts. Write your entire response in Indonesian (Bahasa Indonesia).{get_language_instruction()}"""
+### Risk Committee Debate
+{history if history else 'No risk debate history.'}
 
-        final_trade_decision = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            prompt,
-            render_pm_decision,
-            "Portfolio Manager",
-        )
+**Final Allocation Policy**:
+- **Buy**: Authorize immediate Market Buy or staged Limit Buy. Planned entry, stop loss, and take profit must satisfy R:R >= 2:1.
+- **Overweight**: Constructive accumulation; scaled tranche execution.
+- **Hold**: Neutral prior; wait for confirmed stabilization.
+- **WNS (Wait and See)**: Zero capital allocated today. You MUST explicitly define:
+  1. `wns_recheck_date`: Specific future date X (YYYY-MM-DD) to re-analyze.
+  2. `wns_trigger_price`: Specific structural price level Y that will wake up the strategy upon touch.
+- **Underweight**: Distribution/derisking; trim long inventory.
+- **Sell**: Complete liquidation of long inventory to cash / capital preservation.
+
+Output your decision strictly matching the PortfolioDecision schema.{get_language_instruction()}"""
+
+        typed_decision = None
+        if structured_llm is not None:
+            try:
+                typed_decision = structured_llm.invoke(prompt)
+                final_trade_decision = render_pm_decision(typed_decision)
+            except Exception:
+                typed_decision, final_trade_decision = invoke_structured_with_recovery(
+                    None, llm, prompt, PortfolioDecision, render_pm_decision, "Portfolio Manager"
+                )
+        else:
+            typed_decision, final_trade_decision = invoke_structured_with_recovery(
+                None, llm, prompt, PortfolioDecision, render_pm_decision, "Portfolio Manager"
+            )
+
+        signal_contract = None
+        if typed_decision is not None and trade_date:
+            # Deterministic Python date calculation if missing
+            if not typed_decision.next_review_date:
+                days_delta = 7 if typed_decision.rating in (PortfolioRating.BUY, PortfolioRating.SELL) else 21
+                try:
+                    typed_decision.next_review_date = (pd.to_datetime(trade_date) + pd.Timedelta(days=days_delta)).strftime("%Y-%m-%d")
+                except Exception:
+                    typed_decision.next_review_date = trade_date
+
+            try:
+                signal_contract = portfolio_decision_to_signal_contract(
+                    typed_decision,
+                    state["company_of_interest"],
+                    trade_date,
+                    planned_entry_price=planned_entry_price,
+                )
+            except Exception as exc:
+                logger.error("Failed to build SignalContract for %s on %s: %s", state.get("company_of_interest"), trade_date, exc)
+                signal_contract = None
 
         new_risk_debate_state = {
             "judge_decision": final_trade_decision,
@@ -87,6 +138,7 @@ Be decisive and ground every conclusion in specific evidence from the analysts. 
         return {
             "risk_debate_state": new_risk_debate_state,
             "final_trade_decision": final_trade_decision,
+            "signal_contract": signal_contract,
         }
 
     return portfolio_manager_node

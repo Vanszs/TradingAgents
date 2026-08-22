@@ -1,0 +1,159 @@
+backtest:
+  # =============================================================
+  #  TIME SETTINGS — read carefully, the CLI will prompt for
+  #  ticker / start_date / end_date at runtime and the values
+  #  below are only used as defaults.
+  # =============================================================
+  #
+  #  start_date / end_date — the OUTER window of the backtest.
+  #      The runner loops once per trading day found in the OHLCV
+  #      file inside this range. Trading days come from the OHLCV
+  #      file, not from a calendar.
+  #
+  #  lookback_days — the INNER window the agent sees per decision.
+  #      Each daily snapshot the agent receives contains the last
+  #      N trading days of OHLCV (and a time-bounded slice of news
+  #      / sentiment / broker activity). Independent of the outer
+  #      window: it controls how much *history* the agent looks at,
+  #      not how many days the backtest runs for.
+  #
+  #  Example: 3-month backtest with lookback=60 means the agent
+  #  runs ~60 times (≈ 3 months × 5/7 trading days) and each time
+  #  sees the last 60 trading days of price history.
+  # =============================================================
+  #
+  #  LLM-CALL FOOTPRINT — read before kicking off a long backtest.
+  #
+  #  Each trading day triggers **9 LLM calls** in this order:
+  #
+  #    1.  Market Analyst
+  #    2.  Bull Researcher
+  #    3.  Bear Researcher
+  #    4.  Research Manager
+  #    5.  Trader
+  #    6.  Aggressive Analyst
+  #    7.  Conservative Analyst
+  #    8.  Neutral Analyst
+  #    9.  Portfolio Manager
+  #
+  #  With a slow reasoning model (e.g. sumopod / MiniMax) each call
+  #  takes 5-15s, so one day ≈ 60-150s, and a 96-day backtest can
+  #  take 3-4 hours. The CLI logs the duration of each node so you
+  #  can see which step is taking time. The agent runner retries
+  #  failed calls up to 5× with a 20s back-off — a stuck node can
+  #  therefore hold a day for 200s. Plan accordingly.
+  # =============================================================
+  mode: walk_forward_agent
+  backtest_mode: true
+  asset_class: stock
+
+  ticker: DEWA.JK
+  start_date: 2025-05-25
+  end_date: 2025-09-02
+  initial_cash: 100000000
+  initial_position_qty: 0
+
+  # Per-run lookback window in trading days. Allowed values:
+  # null (full history), 5, 10, 20, 40, 60, 80, 100, 120, 240.
+  # Single-period per run; multi-period tests run as separate invocations
+  # with --lookback N on the CLI.
+  lookback_days: 240
+
+  # Trigger-Based Execution Agent — orders are emitted only when a
+  # trigger condition fires. The agent rating is always recorded.
+  trigger:
+    enabled: true
+    trigger_on_tp_sl_hit: true
+    trigger_on_setup_invalid: true
+    trigger_on_rr_deteriorated: true
+    trigger_on_strong_exit_signal: true
+    trigger_on_better_candidate: true
+    trigger_on_entry_condition_changed: true
+    rr_deterioration_pct: 0.30
+    use_real_rr_when_available: true
+    better_candidate_confidence_ratio: 1.5
+    better_candidate_min_confidence: 0.6
+    setup_invalid_keyword_threshold: 2
+    entry_condition_min_hold_streak: 1
+
+  # Decision mapping: 5-tier literal table (recommended).
+  decision_mapping:
+    mode: strict_5tier
+    allow_reverse_on_buy_sell: false
+    allow_short_on_underweight: true
+    allow_short_on_sell: true
+    allow_explicit_reverse: false
+    overweight_size_multiplier: 0.5
+    underweight_size_multiplier: 0.5
+    default_reduce_pct: 0.5
+    initial_entry_pct: 0.30
+
+  execution:
+    lot_size: 1
+    contract_multiplier: 1
+    buy_fee: 0.0015
+    sell_fee: 0.0025
+    slippage: 0.001
+    spread_bps: 0
+    tick_slippage: 1
+    fee_per_contract: 0.0
+    conservative_intraday_rule: true
+    intraday_margin_check: true
+    liquidation_extra_slippage_ticks: 1
+
+  margin:
+    initial_margin_pct: 0.50
+    maintenance_margin_pct: 0.35
+    auto_liquidate_on_breach: true
+    max_leverage: 2
+    max_entry_pct: 0.15  # max 15% equity per day (scale in, not all-in)
+
+  data:
+    provider: snapshot
+    data_root: data
+    snapshot_root: snapshots
+    disable_live_news: true
+    disable_live_web_search: true
+    disable_live_fundamentals: true
+    require_fundamental_available_date: true
+    # Auto-fetch: when true, OHLCV/news/fundamentals are fetched from
+    # Yahoo Finance on first access and cached to api_cache_dir.
+    # Sentiment cannot be auto-fetched (no historical social-media data).
+    fetch_from_api: true
+    api_cache_dir: api_cache
+
+  agent:
+    report_language: English
+    memory_enabled: false
+    backtest_mode: true
+    web_search_enabled: false
+    news_provider: snapshot
+
+  leakage_guard:
+    validate_cutoff: true
+    require_snapshot_metadata: true
+    require_next_bar_execution: true
+    fail_on_future_data: true
+    # Anti-leakage hardened cutoffs:
+    # news/sentiment/broker_activity: "previous_day" = data from day BEFORE
+    #   trade_date only (prevents same-day information leakage).
+    #   "same_day" = data up to 16:30 on trade_date (legacy behavior).
+    # fundamental_buffer_days: fundamental data must be available at least
+    #   N days before trade_date (ensures public dissemination).
+    news_cutoff_strategy: previous_day
+    sentiment_cutoff_strategy: previous_day
+    broker_activity_cutoff_strategy: previous_day
+    fundamental_buffer_days: 3
+
+  output:
+    output_root: backtest_results
+    reports_root: reports
+    save_reports: true
+    save_decisions: true
+    save_trade_log: true
+    save_equity_curve: true
+    save_leakage_audit: true
+    save_account_state: true
+    save_margin_events: true
+    save_position_log: true
+    save_margin_log: true

@@ -10,6 +10,8 @@ class AnalystNodeSpec:
     clear_node: str
     tool_node: str
     report_key: str
+    message_key: str
+    completion_node: str
 
 
 @dataclass(frozen=True)
@@ -25,6 +27,8 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear Market",
         tool_node="tools_market",
         report_key="market_report",
+        message_key="market_messages",
+        completion_node="Market Analyst Complete",
     ),
     "social": AnalystNodeSpec(
         # Wire key stays "social" for saved-config back-compat; the
@@ -36,6 +40,8 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear Sentiment",
         tool_node="tools_social",
         report_key="sentiment_report",
+        message_key="social_messages",
+        completion_node="Sentiment Analyst Complete",
     ),
     "news": AnalystNodeSpec(
         key="news",
@@ -43,6 +49,8 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear News",
         tool_node="tools_news",
         report_key="news_report",
+        message_key="news_messages",
+        completion_node="News Analyst Complete",
     ),
     "fundamentals": AnalystNodeSpec(
         key="fundamentals",
@@ -50,6 +58,8 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear Fundamentals",
         tool_node="tools_fundamentals",
         report_key="fundamentals_report",
+        message_key="fundamentals_messages",
+        completion_node="Fundamentals Analyst Complete",
     ),
 }
 
@@ -125,8 +135,6 @@ def sync_analyst_tracker_from_chunk(
     now: Optional[float] = None,
 ) -> None:
     current_time = monotonic() if now is None else now
-    active_found = False
-
     for spec in tracker.plan.specs:
         has_report = bool(chunk.get(spec.report_key))
 
@@ -135,6 +143,4 @@ def sync_analyst_tracker_from_chunk(
             tracker.mark_completed(spec.key, completed_at=current_time)
             continue
 
-        if not active_found:
-            tracker.mark_started(spec.key, started_at=current_time)
-            active_found = True
+        tracker.mark_started(spec.key, started_at=current_time)

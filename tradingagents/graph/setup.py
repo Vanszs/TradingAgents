@@ -1,6 +1,9 @@
 # TradingAgents/graph/setup.py
 
+import logging
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
@@ -10,6 +13,8 @@ from tradingagents.agents.utils.agent_states import AgentState
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
+
+CANONICAL_ANALYST_ORDER = ("market", "social", "news", "fundamentals")
 
 
 class GraphSetup:
@@ -84,11 +89,66 @@ class GraphSetup:
         # Create workflow
         workflow = StateGraph(AgentState)
 
-        # Add analyst nodes to the graph
+        def invoke_node(node, state):
+            if hasattr(node, "invoke"):
+                return node.invoke(state)
+            return node(state)
+
+        def analyst_node(spec, node):
+            def run(state):
+                branch_state = dict(state)
+                branch_state["messages"] = state.get(spec.message_key, [])
+                try:
+                    result = invoke_node(node, branch_state)
+                except Exception as exc:
+                    logger.error(f"Error in analyst node {spec.agent_node}: {exc}", exc_info=True)
+                    result = {
+                        spec.message_key: branch_state["messages"],
+                        spec.report_key: f"Analysis failed for {spec.agent_node}: {exc}",
+                    }
+                return {
+                    spec.message_key: result.get("messages", result.get(spec.message_key, [])),
+                    **{
+                        key: value
+                        for key, value in result.items()
+                        if key not in ("messages", spec.message_key)
+                    },
+                }
+
+            return run
+
+        def tool_node(spec, node):
+            def run(state):
+                branch_state = dict(state)
+                branch_state["messages"] = state.get(spec.message_key, [])
+                try:
+                    result = invoke_node(node, branch_state)
+                except Exception as exc:
+                    logger.error(f"Error in tool node {spec.tool_node}: {exc}", exc_info=True)
+                    result = {"messages": branch_state["messages"]}
+                return {
+                    spec.message_key: result.get("messages", result.get(spec.message_key, [])),
+                }
+
+            return run
+
+        def analyst_route(spec, route):
+            def run(state):
+                branch_state = dict(state)
+                branch_state["messages"] = state.get(spec.message_key, [])
+                destination = route(branch_state)
+                return spec.completion_node if destination == spec.clear_node else destination
+
+            return run
+
+        # Add analyst branches. Each branch owns its tool-loop message channel.
         for spec in plan.specs:
-            workflow.add_node(spec.agent_node, analyst_factories[spec.key]())
-            workflow.add_node(spec.clear_node, create_msg_delete())
-            workflow.add_node(spec.tool_node, self.tool_nodes[spec.key])
+            workflow.add_node(
+                spec.agent_node,
+                analyst_node(spec, analyst_factories[spec.key]()),
+            )
+            workflow.add_node(spec.tool_node, tool_node(spec, self.tool_nodes[spec.key]))
+            workflow.add_node(spec.completion_node, lambda _state: {})
 
         # Add other nodes
         workflow.add_node("Bull Researcher", bull_researcher_node)
@@ -100,35 +160,27 @@ class GraphSetup:
         workflow.add_node("Conservative Analyst", conservative_analyst)
         workflow.add_node("Portfolio Manager", portfolio_manager_node)
 
-        # Define edges
-        # Start with the first analyst
-        workflow.add_edge(START, plan.specs[0].agent_node)
-
-        # Connect analysts in sequence
-        for i, spec in enumerate(plan.specs):
-            current_analyst = spec.agent_node
-            current_tools = spec.tool_node
-            current_clear = spec.clear_node
-
-            # Add conditional edges for current analyst
+        # Define edges: fan out all selected analysts, then wait for every branch.
+        for spec in plan.specs:
+            workflow.add_edge(START, spec.agent_node)
             workflow.add_conditional_edges(
-                current_analyst,
-                getattr(self.conditional_logic, f"should_continue_{spec.key}"),
-                [current_tools, current_clear],
+                spec.agent_node,
+                analyst_route(
+                    spec,
+                    getattr(self.conditional_logic, f"should_continue_{spec.key}"),
+                ),
+                [spec.tool_node, spec.completion_node],
             )
-            workflow.add_edge(current_tools, current_analyst)
+            workflow.add_edge(spec.tool_node, spec.agent_node)
 
-            # Connect to next analyst or to Bull Researcher if this is the last analyst
-            if i < len(plan.specs) - 1:
-                workflow.add_edge(current_clear, plan.specs[i + 1].agent_node)
-            else:
-                workflow.add_edge(current_clear, "Bull Researcher")
+        workflow.add_edge([spec.completion_node for spec in plan.specs], "Bull Researcher")
 
         # Add remaining edges
         workflow.add_conditional_edges(
             "Bull Researcher",
             self.conditional_logic.should_continue_debate,
             {
+                "Bull Researcher": "Bull Researcher",
                 "Bear Researcher": "Bear Researcher",
                 "Research Manager": "Research Manager",
             },
@@ -138,6 +190,7 @@ class GraphSetup:
             self.conditional_logic.should_continue_debate,
             {
                 "Bull Researcher": "Bull Researcher",
+                "Bear Researcher": "Bear Researcher",
                 "Research Manager": "Research Manager",
             },
         )
@@ -147,7 +200,9 @@ class GraphSetup:
             "Aggressive Analyst",
             self.conditional_logic.should_continue_risk_analysis,
             {
+                "Aggressive Analyst": "Aggressive Analyst",
                 "Conservative Analyst": "Conservative Analyst",
+                "Neutral Analyst": "Neutral Analyst",
                 "Portfolio Manager": "Portfolio Manager",
             },
         )
@@ -155,6 +210,8 @@ class GraphSetup:
             "Conservative Analyst",
             self.conditional_logic.should_continue_risk_analysis,
             {
+                "Aggressive Analyst": "Aggressive Analyst",
+                "Conservative Analyst": "Conservative Analyst",
                 "Neutral Analyst": "Neutral Analyst",
                 "Portfolio Manager": "Portfolio Manager",
             },
@@ -164,6 +221,8 @@ class GraphSetup:
             self.conditional_logic.should_continue_risk_analysis,
             {
                 "Aggressive Analyst": "Aggressive Analyst",
+                "Conservative Analyst": "Conservative Analyst",
+                "Neutral Analyst": "Neutral Analyst",
                 "Portfolio Manager": "Portfolio Manager",
             },
         )

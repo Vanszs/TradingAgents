@@ -18,7 +18,9 @@ all three agents log the same warnings when fallback fires.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from typing import Any, Callable, Optional, TypeVar
 
 from pydantic import BaseModel
@@ -26,6 +28,49 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+
+def extract_json_from_text(text: str, schema: type[T]) -> Optional[T]:
+    """Attempt secondary recovery of Pydantic model from markdown JSON code fences."""
+    try:
+        match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+        candidate = match.group(1) if match else text.strip()
+        data = json.loads(candidate)
+        return schema.model_validate(data)
+    except Exception:
+        return None
+
+
+def invoke_structured_with_recovery(
+    structured_llm: Optional[Any],
+    plain_llm: Any,
+    prompt: Any,
+    schema: type[T],
+    render: Callable[[T], str],
+    agent_name: str,
+) -> tuple[Optional[T], str]:
+    """Invoke structured LLM with secondary JSON extraction fallback from free-text."""
+    # 1. Primary native structured output
+    if structured_llm is not None:
+        try:
+            result = structured_llm.invoke(prompt)
+            if isinstance(result, schema):
+                return result, render(result)
+        except Exception as exc:
+            logger.warning(
+                "%s: structured-output invocation failed (%s); attempting free-text JSON repair",
+                agent_name,
+                exc,
+            )
+
+    # 2. Secondary free-text invocation with JSON recovery
+    raw_response = plain_llm.invoke(prompt)
+    raw_text = raw_response.content if hasattr(raw_response, "content") else str(raw_response)
+
+    recovered = extract_json_from_text(raw_text, schema)
+    if recovered is not None:
+        return recovered, render(recovered)
+    return None, raw_text
 
 
 def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]:

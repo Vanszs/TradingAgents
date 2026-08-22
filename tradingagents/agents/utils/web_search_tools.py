@@ -1,36 +1,46 @@
-"""LangGraph tool wrapper for SearXNG web search."""
+"""LangGraph tool wrapper for Exa Time-Travel & SearXNG search."""
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 from langchain_core.tools import tool
 
-from tradingagents.dataflows.searxng import search
+from tradingagents.dataflows.config import get_config
+from tradingagents.dataflows.exa_search import ExaTimeTravelSearch
+
+_exa_client = ExaTimeTravelSearch()
 
 
 @tool
 def get_web_search(
-    query: Annotated[str, (
-        "Specific search query. ALWAYS include the ticker/coin name. "
-        "Good examples: 'NVDA earnings Q1 2026 revenue', "
-        "'Bitcoin ETF approval SEC news 2026', "
-        "'CARV token tokenomics supply schedule', "
-        "'Ethereum Pectra upgrade impact'. "
-        "Bad examples: 'latest news', 'market update' (too generic)."
-    )],
+    query: Annotated[
+        str,
+        (
+            "Specific search query. ALWAYS include the ticker/coin name. "
+            "Good examples: 'NVDA earnings Q1 2026 revenue', "
+            "'BBRI dividen interim 2024 jadwal', "
+            "'Bitcoin ETF approval SEC news'. "
+            "Bad examples: 'latest news', 'market update' (too generic)."
+        ),
+    ],
+    trade_date: Annotated[
+        Optional[str],
+        "Trading date context (YYYY-MM-DD). If omitted, inferred from state/runtime config.",
+    ] = None,
     category: Annotated[
         Literal["news", "general"],
-        "Search category: 'news' for recent articles/headlines, 'general' for analysis/docs/whitepapers"
+        "Search category: 'news' for recent articles/headlines, 'general' for analysis/docs/whitepapers",
     ] = "news",
 ) -> str:
-    """Search the web for latest news and analysis using SearXNG.
+    """Search the web for news, company announcements, and financial analysis.
 
-    Use this tool when you need:
-    - Recent news not covered by get_news() or get_global_news()
-    - Real-time price analysis, analyst opinions, or community sentiment
-    - Regulatory news, partnership announcements, or protocol upgrades
-    - Any information that may be more recent than your training data
-
-    Always include the asset name/ticker in the query for relevant results.
+    Uses Exa.ai time-travel search to guarantee zero lookahead leakage when a
+    historical trade_date is provided. Automatically caches responses locally.
     """
-    return search(query, category=category)
+    active_date = trade_date or get_config().get("trade_date")
+    return _exa_client.search(
+        query=query,
+        trade_date=active_date,
+        num_results=5,
+        category=category,
+    )

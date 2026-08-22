@@ -1,0 +1,16 @@
+{
+  "status": "PASSED",
+  "checks": {
+    "memory_isolation": "PASSED",
+    "live_provider_disabled": "PASSED",
+    "lookback_window_respected": "PASSED",
+    "required_decision_fields": "PASSED",
+    "snapshot_metadata_required": "PASSED",
+    "ohlcv_cutoff": "PASSED",
+    "last_data_date_cutoff": "PASSED",
+    "news_cutoff": "PASSED",
+    "fundamental_available_date": "PASSED",
+    "sentiment_cutoff": "PASSED",
+    "next_bar_execution": "PASSED"
+  }
+}
