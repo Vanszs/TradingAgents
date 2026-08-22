@@ -1,6 +1,9 @@
 import datetime
+import logging
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 import questionary
 import typer
