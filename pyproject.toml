@@ -10,11 +10,6 @@ readme = "README.md"
 authors = [{ name = "Vanszs", email = "vanszs@users.noreply.github.com" }]
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
-
-[project.urls]
-Homepage = "https://github.com/Vanszs/TradingAgents"
-Repository = "https://github.com/Vanszs/TradingAgents.git"
-Documentation = "https://github.com/Vanszs/TradingAgents/tree/main/docs"
 dependencies = [
     "langchain-core>=1.4,<2",
     "langchain-anthropic>=1.4,<2",
@@ -31,6 +26,11 @@ dependencies = [
     "stockstats>=0.6.5",
     "yfinance>=0.2.63",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Vanszs/TradingAgents"
+Repository = "https://github.com/Vanszs/TradingAgents.git"
+Documentation = "https://github.com/Vanszs/TradingAgents/tree/main/docs"
 
 [project.scripts]
 tradingagents = "cli.main:app"
