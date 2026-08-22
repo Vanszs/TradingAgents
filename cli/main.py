@@ -970,10 +970,20 @@ def run_analysis(
         update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
 
         # Initialize state and get graph args with callbacks
+        past_context = ""
+        if hasattr(graph, "memory_log") and graph.memory_log:
+            try:
+                past_context = graph.memory_log.get_past_context(
+                    selections["ticker"], as_of=str(selections["analysis_date"])
+                )
+            except Exception as e:
+                logger.debug(f"Failed to retrieve past context: {e}")
+
         init_agent_state = graph.propagator.create_initial_state(
             selections["ticker"],
             selections["analysis_date"],
             asset_type=selections["asset_type"],
+            past_context=past_context,
         )
         # Pass callbacks to graph config for tool execution tracking
         # (LLM tracking is handled separately via LLM constructor)
@@ -1106,6 +1116,21 @@ def run_analysis(
         for section in message_buffer.report_sections.keys():
             if section in final_state:
                 message_buffer.update_report_section(section, final_state[section])
+
+        # Persist decision to memory log for future reflection context
+        if (
+            hasattr(graph, "memory_log")
+            and graph.memory_log
+            and final_state.get("final_trade_decision")
+        ):
+            try:
+                graph.memory_log.store_decision(
+                    ticker=selections["ticker"],
+                    trade_date=str(selections["analysis_date"]),
+                    final_trade_decision=final_state["final_trade_decision"],
+                )
+            except Exception as e:
+                logger.debug(f"Failed to store decision in memory log: {e}")
 
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
