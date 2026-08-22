@@ -1,4 +1,5 @@
 import getpass
+import sys
 
 import requests
 from rich.console import Console
@@ -17,8 +18,11 @@ def fetch_announcements(url: str = None, timeout: float = None) -> dict:
         response = requests.get(endpoint, timeout=timeout)
         response.raise_for_status()
         data = response.json()
+        raw_ann = data.get("announcements", [fallback])
+        if isinstance(raw_ann, str):
+            raw_ann = [raw_ann]
         return {
-            "announcements": data.get("announcements", [fallback]),
+            "announcements": raw_ann,
             "require_attention": data.get("require_attention", False),
         }
     except Exception:
@@ -36,7 +40,10 @@ def display_announcements(console: Console, data: dict) -> None:
     if not announcements:
         return
 
-    content = "\n".join(announcements)
+    if isinstance(announcements, str):
+        announcements = [announcements]
+
+    content = "\n".join(str(a) for a in announcements)
 
     panel = Panel(
         content,
@@ -46,7 +53,10 @@ def display_announcements(console: Console, data: dict) -> None:
     )
     console.print(panel)
 
-    if require_attention:
-        getpass.getpass("Press Enter to continue...")
+    if require_attention and sys.stdin.isatty():
+        try:
+            getpass.getpass("Press Enter to continue...")
+        except Exception:
+            pass
     else:
         console.print()

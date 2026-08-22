@@ -1,7 +1,6 @@
 """Shared progress metadata and message formatting for CLI displays."""
 from __future__ import annotations
 
-import ast
 from typing import Any
 
 FIXED_AGENTS = {

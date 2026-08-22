@@ -612,9 +612,31 @@ def build_headless_selections(
     trade_date = analysis_date or datetime.datetime.now().strftime("%Y-%m-%d")
 
     llm_provider = (provider or DEFAULT_CONFIG.get("llm_provider", "openai")).lower()
+    
+    # Provider-aware model defaults
+    provider_quick_defaults = {
+        "openai": "gpt-5.4-mini",
+        "anthropic": "claude-haiku-4-5",
+        "google": "gemini-2.5-flash",
+        "deepseek": "deepseek-chat",
+        "ollama": "llama3.2",
+    }
+    provider_deep_defaults = {
+        "openai": "gpt-5.4",
+        "anthropic": "claude-sonnet-4-6",
+        "google": "gemini-2.5-pro",
+        "deepseek": "deepseek-reasoner",
+        "ollama": "llama3.3",
+    }
+
+    if provider:
+        shallow_thinker = provider_quick_defaults.get(llm_provider, DEFAULT_CONFIG.get("quick_think_llm", "gpt-5.4-mini"))
+        deep_thinker = provider_deep_defaults.get(llm_provider, DEFAULT_CONFIG.get("deep_think_llm", "gpt-5.4"))
+    else:
+        shallow_thinker = DEFAULT_CONFIG.get("quick_think_llm", "gpt-5.4-mini")
+        deep_thinker = DEFAULT_CONFIG.get("deep_think_llm", "gpt-5.4")
+
     backend_url = DEFAULT_CONFIG.get("backend_url")
-    shallow_thinker = DEFAULT_CONFIG.get("quick_think_llm", "gpt-5.4-mini")
-    deep_thinker = DEFAULT_CONFIG.get("deep_think_llm", "gpt-5.4")
     depth = research_depth or int(DEFAULT_CONFIG.get("max_debate_rounds", 3))
     out_lang = language or DEFAULT_CONFIG.get("output_language", "English")
 
