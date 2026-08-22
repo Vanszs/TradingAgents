@@ -4,10 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tradingagents"
-version = "0.2.7"
-description = "TradingAgents: Multi-Agents LLM Financial Trading Framework"
+version = "1.0.0-alpha"
+description = "TradingAgents (Vanszs Edition): Institutional Multi-Agent LLM Trading & Backtesting Framework"
 readme = "README.md"
+authors = [{ name = "Vanszs", email = "vanszs@users.noreply.github.com" }]
+license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
+
+[project.urls]
+Homepage = "https://github.com/Vanszs/TradingAgents"
+Repository = "https://github.com/Vanszs/TradingAgents.git"
+Documentation = "https://github.com/Vanszs/TradingAgents/tree/main/docs"
 dependencies = [
     "langchain-core>=1.4,<2",
     "langchain-anthropic>=1.4,<2",

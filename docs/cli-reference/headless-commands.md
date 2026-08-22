@@ -22,7 +22,7 @@ tradingagents analyze --ticker BBRI.JK --lang Indonesian --output-dir ./my_repor
 - `-d, --date TEXT`: Historical analysis date (`YYYY-MM-DD`). Defaults to today.
 - `-p, --provider TEXT`: LLM provider (`openai`, `anthropic`, `google`, `deepseek`, `ollama`, `azure`).
 - `-l, --lang TEXT`: Output report language (`English`, `Indonesian`, `Japanese`, `Chinese`, etc.).
-- `--depth INTEGER`: Research debate depth rounds ($1\text{--}3$).
+- `--depth INTEGER`: Research debate depth rounds (`1` for Shallow, `3` for Medium, `5` for Deep).
 - `--output-dir PATH`: Directory path to save generated reports.
 - `--headless`: Run non-interactively without terminal prompts.
 
@@ -32,7 +32,7 @@ tradingagents analyze --ticker BBRI.JK --lang Indonesian --output-dir ./my_repor
 
 ```bash
 # Evaluate a generated signal against subsequent daily candles
-tradingagents evaluate-signal --ticker NVDA --date 2024-01-08 --horizon 20
+tradingagents evaluate-signal --ticker NVDA --date 2024-01-08
 ```
 
 ---
@@ -40,6 +40,6 @@ tradingagents evaluate-signal --ticker NVDA --date 2024-01-08 --horizon 20
 ## 3. Walk-Forward Portfolio Backtest (`backtest`)
 
 ```bash
-# Run multi-month backtesting simulation
-tradingagents backtest --ticker MSFT --start-date 2025-01-01 --end-date 2025-06-01 --cash 100000
+# Run multi-month backtesting simulation using YAML configuration
+tradingagents backtest --config backtest.yaml --lookback 60
 ```

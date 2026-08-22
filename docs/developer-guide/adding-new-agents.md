@@ -15,7 +15,8 @@ This guide explains how to add new domain analysts or custom data tools to the T
        def custom_analyst_node(state):
            current_date = state["trade_date"]
            ticker = state["company_of_interest"]
-           instrument_context = build_instrument_context(ticker, trade_date=current_date)
+           asset_type = state.get("asset_type", "stock")
+           instrument_context = build_instrument_context(ticker, asset_type, trade_date=current_date)
            
            tools = [my_custom_tool]
            system_message = (

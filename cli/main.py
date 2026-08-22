@@ -430,11 +430,11 @@ def get_user_selections():
 
     # Create welcome box content
     welcome_content = f"{welcome_ascii}\n"
-    welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
+    welcome_content += "[bold green]TradingAgents (Vanszs Edition): Institutional Multi-Agent Trading Framework[/bold green]\n\n"
     welcome_content += "[bold]Workflow Steps:[/bold]\n"
     welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
     welcome_content += (
-        "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
+        "[dim]Maintained by Vanszs | Hardened fork of [Tauric Research](https://github.com/TauricResearch) (Apache-2.0)[/dim]"
     )
 
     # Create and center the welcome box
@@ -442,8 +442,8 @@ def get_user_selections():
         welcome_content,
         border_style="green",
         padding=(1, 2),
-        title="Welcome to TradingAgents",
-        subtitle="Multi-Agents LLM Financial Trading Framework",
+        title="Welcome to TradingAgents (Vanszs Edition)",
+        subtitle="Institutional Multi-Agent LLM Trading Framework",
     )
     console.print(Align.center(welcome_box))
     console.print()
