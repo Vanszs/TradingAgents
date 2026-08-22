@@ -33,3 +33,10 @@
 # CLI Reference
 * [Interactive TUI Mode](cli-reference/interactive-mode.md)
 * [Headless & Automation](cli-reference/headless-commands.md)
+
+# Developer & Extension Guide
+* [Contributing Guide](developer-guide/contributing.md)
+* [Adding New Agents & Tools](developer-guide/adding-new-agents.md)
+* [Custom LLM Provider Integration](developer-guide/llm-provider-integration.md)
+* [Troubleshooting & FAQ](developer-guide/troubleshooting.md)
+
