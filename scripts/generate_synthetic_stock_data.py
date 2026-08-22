@@ -2,10 +2,11 @@
 Generate synthetic stock data for smoke tests.
 Creates data/AAPL/ with a deterministic random-walk OHLCV.
 """
-import os
-import sys
-import random
 import math
+import os
+import random
+import sys
+
 
 def generate_aapl_data(data_dir="data", ticker="AAPL", days=30, seed=42):
     random.seed(seed)
@@ -22,22 +23,22 @@ def generate_aapl_data(data_dir="data", ticker="AAPL", days=30, seed=42):
         price = max(price, 10.0)
         o = round(price * random.uniform(0.998, 1.002), 2)
         h = round(max(o, price) * random.uniform(1.001, 1.015), 2)
-        l = round(min(o, price) * random.uniform(0.985, 0.999), 2)
+        low_val = round(min(o, price) * random.uniform(0.985, 0.999), 2)
         c = round(price, 2)
         v = random.randint(50_000_000, 200_000_000)
-        prices.append((o, h, l, c, v))
+        prices.append((o, h, low_val, c, v))
 
     # Write OHLCV
     ohlcv_path = os.path.join(data_dir, ticker, "ohlcv.csv")
     with open(ohlcv_path, "w") as f:
         f.write("date,open,high,low,close,volume\n")
-        for i, (o, h, l, c, v) in enumerate(prices):
+        for i, (o, h, low_val, c, v) in enumerate(prices):
             # Generate trading dates (skip weekends)
             from datetime import date, timedelta
             d = date(2024, 1, 2) + timedelta(days=i + (i // 5) * 2)
             while d.weekday() >= 5:
                 d += timedelta(days=1)
-            f.write(f"{d.isoformat()},{o},{h},{l},{c},{v}\n")
+            f.write(f"{d.isoformat()},{o},{h},{low_val},{c},{v}\n")
 
     # Empty sidecar JSON files
     for name in ("news.json", "fundamentals.json", "sentiment.json", "broker_activity.json"):

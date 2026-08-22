@@ -62,6 +62,7 @@ class _FakeTimedAgent(TradingAgentsRunner):
 
 def main() -> None:
     import yaml
+
     from cli.commands.backtest import _BacktestUI
 
     config_path = Path("backtest.yaml")

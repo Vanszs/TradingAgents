@@ -26,8 +26,9 @@ class _HoldRunner(TradingAgentsRunner):
 
 
 def main() -> None:
-    from cli.commands.backtest import _BacktestUI
     import yaml
+
+    from cli.commands.backtest import _BacktestUI
 
     # Load config
     config_path = Path("backtest.yaml")

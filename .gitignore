@@ -226,3 +226,6 @@ api_cache/
 .understand-anything/
 .hermes/
 .kiro/
+y/
+*.log
+
