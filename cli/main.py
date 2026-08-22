@@ -31,7 +31,6 @@ from cli.progress_contract import (
     ALL_TEAMS,
     ANALYST_AGENT_NAMES,
     ANALYST_MAPPING,
-    ANALYST_ORDER as PROGRESS_ANALYST_ORDER,
     ANALYST_REPORT_MAP,
     CANONICAL_ANALYST_ORDER,
     FIXED_AGENTS,
@@ -40,9 +39,14 @@ from cli.progress_contract import (
     format_tool_args,
     short_agent_label,
 )
+from cli.progress_contract import (
+    ANALYST_ORDER as PROGRESS_ANALYST_ORDER,
+)
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import (
     ANALYST_ORDER as UTILS_ANALYST_ORDER,
+)
+from cli.utils import (
     ask_anthropic_effort,
     ask_gemini_thinking_config,
     ask_glm_region,

@@ -39,26 +39,28 @@ from .decision_schema import (
 )
 from .decision_store import DecisionStore
 from .engine import BacktestEngine
-from .markdown_parser import MarkdownDecisionParser
+from .margin import MarginAccount
 from .margin_engine import (
     excess_margin,
     initial_margin,
-    is_margin_call,
     is_intraday_margin_breach,
+    is_margin_call,
     leverage,
     maintenance_margin,
     margin_utilization,
     max_contracts_by_margin,
     notional_value,
 )
+from .markdown_parser import MarkdownDecisionParser
 from .metrics import MetricsCalculator
 from .order_generator import OrderGenerator
 from .portfolio import Portfolio, PortfolioV2
-from .reports import BacktestReportGenerator
-from .snapshot_provider import DataSnapshot, SnapshotDataProvider
-from .walk_forward_runner import WalkForwardBacktestRunner
-from .margin import MarginAccount
-from .risk import RiskEngine
+
+# New PRD-compliant BacktestConfig and configs from position.py
+# (use these for new code; old BacktestConfig from decision_schema is kept for compat)
+from .position import (
+    BacktestConfig as BacktestConfigV2,
+)
 
 # New PRD-compliant types from position.py
 # (only types that don't conflict with legacy types above)
@@ -72,15 +74,16 @@ from .position import (
     PositionSide,
     RiskConfig,
 )
-
-# New PRD-compliant BacktestConfig and configs from position.py
-# (use these for new code; old BacktestConfig from decision_schema is kept for compat)
 from .position import (
-    BacktestConfig as BacktestConfigV2,
     ExecutionConfig as ExecutionConfigV2,
+)
+from .position import (
     MarginConfig as MarginConfigV2,
 )
-
+from .reports import BacktestReportGenerator
+from .risk import RiskEngine
+from .snapshot_provider import DataSnapshot, SnapshotDataProvider
+from .walk_forward_runner import WalkForwardBacktestRunner
 
 __all__ = [
     # Entry points

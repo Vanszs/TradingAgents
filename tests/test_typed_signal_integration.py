@@ -271,6 +271,7 @@ def test_limit_entry_price_preservation_in_signal_contract():
 
 def test_single_shot_sell_evaluates_to_no_order():
     import pandas as pd
+
     from cli.commands.evaluate import _run_forward_evaluation
     from tradingagents.backtesting.horizon_evaluator import EvaluationOutcome
 

@@ -1,16 +1,17 @@
 import unittest
-import pandas as pd
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
+
+from tradingagents.agents.schemas import PortfolioRating, ResearchPlan
 from tradingagents.dataflows.structural_levels import (
     compute_structural_levels,
     get_market_structural_summary,
 )
 from tradingagents.dataflows.y_finance import (
-    get_stock_stats_indicators_window,
     _get_stock_stats_bulk,
+    get_stock_stats_indicators_window,
 )
-from tradingagents.agents.schemas import ResearchPlan, PortfolioRating
 
 
 class TestForwardProjectionsAndAliases(unittest.TestCase):

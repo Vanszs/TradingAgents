@@ -11,17 +11,17 @@ import pandas as pd
 
 from tradingagents.backtesting.data_window import (
     ALLOWED_LOOKBACKS,
-    compute_window,
-    slice_ohlcv,
-    slice_news,
-    slice_fundamentals,
-    slice_sentiment,
-    slice_broker_activity,
     assert_window_is_valid,
+    compute_window,
+    slice_broker_activity,
+    slice_fundamentals,
+    slice_news,
+    slice_ohlcv,
+    slice_sentiment,
 )
 from tradingagents.backtesting.snapshot_provider import (
-    SnapshotDataProvider,
     DataSnapshot,
+    SnapshotDataProvider,
 )
 
 
@@ -154,11 +154,6 @@ class TestAssertWindowIsValid(unittest.TestCase):
             assert_window_is_valid(
                 w, "2024-04-01", actual_max_ohlcv_date="2026-06-01"  # future!
             )
-
-    def test_no_lookback_skips_check(self):
-        w = compute_window("2026-05-25", None)
-        # Should not raise even with a far-past date.
-        assert_window_is_valid(w, "2020-01-01")
 
     def test_no_lookback_skips_check(self):
         w = compute_window("2026-05-25", None)

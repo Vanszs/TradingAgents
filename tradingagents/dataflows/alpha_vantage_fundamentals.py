@@ -3,7 +3,6 @@ from datetime import datetime
 from .alpha_vantage_common import _make_api_request
 from .config import is_point_in_time_mode
 
-
 _PUBLICATION_FIELDS = (
     "available_date",
     "availableDate",

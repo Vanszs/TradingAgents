@@ -293,6 +293,7 @@ def _get_stock_stats_bulk(
     Returns dict mapping date strings to indicator values.
     """
     from stockstats import wrap
+
     from .stockstats_utils import compute_atr, compute_chandelier_exit
 
     data = load_ohlcv(symbol, curr_date)

@@ -13,7 +13,6 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-
 # yfinance data goes back about 20 years for liquid tickers. We pad the
 # start of the download by `LOOKBACK_BUFFER_DAYS` (in calendar days) so
 # that even a 240-trading-day lookback window has enough history for

@@ -14,15 +14,15 @@ from tradingagents.backtesting.cutoff_validator import DecisionCutoffValidator
 from tradingagents.backtesting.data_window import (
     _normalize_to_utc,
     compute_window,
-    slice_news,
-    slice_sentiment,
     slice_broker_activity,
     slice_fundamentals,
+    slice_news,
+    slice_sentiment,
 )
 from tradingagents.backtesting.decision_schema import (
+    Action,
     ParsedDecision,
     Rating,
-    Action,
     SnapshotMetadata,
 )
 from tradingagents.backtesting.snapshot_provider import SnapshotDataProvider
@@ -204,7 +204,6 @@ class TestCutoffValidatorHardened(unittest.TestCase):
     """Test the hardened cutoff validator."""
 
     def _make_decision(self, trade_date: str) -> ParsedDecision:
-        from datetime import timedelta
         next_day = (
             pd.Timestamp(trade_date) + pd.Timedelta(days=1)
         ).date().isoformat()

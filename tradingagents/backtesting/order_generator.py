@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 from uuid import uuid4
+
 import pandas as pd
 
 from .position import (

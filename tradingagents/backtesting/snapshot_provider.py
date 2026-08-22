@@ -50,7 +50,6 @@ from .decision_schema import (
     ensure_dir,
 )
 
-
 DateLike = Union[str, int, float, date, datetime, pd.Timestamp]
 
 
@@ -326,7 +325,7 @@ class SnapshotDataProvider:
 
         # Current yfinance info has no historical publication timestamp.
         try:
-            ticker.info
+            _ = ticker.info
         except Exception as exc:
             logger.warning(f"[SNAPSHOT] Failed to fetch info for {symbol}: {exc}")
 

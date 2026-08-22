@@ -10,12 +10,12 @@ from tradingagents.backtesting.portfolio import PortfolioV2
 from tradingagents.backtesting.position import (
     ExecutionConfig,
     Fill,
+    InstrumentSpec,
     MarginConfig,
+    MarketPoint,
     Order,
     OrderType,
     Position,
-    InstrumentSpec,
-    MarketPoint,
 )
 
 
@@ -149,7 +149,9 @@ class TestAllocationPctNormalization(unittest.TestCase):
     def test_pct_above_100_normalized(self):
         from tradingagents.backtesting.order_generator import OrderGenerator
         from tradingagents.backtesting.position import (
-            BacktestConfig, DecisionMappingConfig, ExtendedDecision, Position,
+            BacktestConfig,
+            DecisionMappingConfig,
+            ExtendedDecision,
         )
         config = BacktestConfig(
             ticker="TEST", start_date="2025-01-02", end_date="2025-01-10",
@@ -178,7 +180,9 @@ class TestAllocationPctNormalization(unittest.TestCase):
     def test_fraction_below_1_kept(self):
         from tradingagents.backtesting.order_generator import OrderGenerator
         from tradingagents.backtesting.position import (
-            BacktestConfig, DecisionMappingConfig, ExtendedDecision, Position,
+            BacktestConfig,
+            DecisionMappingConfig,
+            ExtendedDecision,
         )
         config = BacktestConfig(
             ticker="TEST", start_date="2025-01-02", end_date="2025-01-10",

@@ -85,6 +85,7 @@ class TestATRNoFutureData(unittest.TestCase):
 
     def test_atr_filtered_by_current_date(self):
         import pandas as pd
+
         from tradingagents.backtesting.walk_forward_runner import WalkForwardBacktestRunner
 
         # Create runner with mock data

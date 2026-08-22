@@ -242,7 +242,8 @@ class SimulatedBroker:
         spec: Optional[InstrumentSpec] = None,
     ) -> list["Trade"]:
         """Execute a single-leg order with percentage-based fees/slippage."""
-        from .decision_schema import Trade as LegacyTrade, InstrumentSpec
+        from .decision_schema import InstrumentSpec
+        from .decision_schema import Trade as LegacyTrade
 
         if spec is None:
             spec = InstrumentSpec(ticker=order.ticker, multiplier=1.0, tick_size=0.01)

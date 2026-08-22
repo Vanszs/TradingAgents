@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from tradingagents.dataflows.utils import safe_ticker_component
 

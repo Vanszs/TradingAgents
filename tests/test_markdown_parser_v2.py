@@ -7,7 +7,6 @@ import pytest
 
 from tradingagents.backtesting.markdown_parser import MarkdownDecisionParser
 
-
 SAMPLE_REPORT = """\
 # Trading Analysis Report: BUMI.JK
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+from tradingagents.backtesting.margin import MarginAccount
 from tradingagents.backtesting.portfolio import PortfolioV2
 from tradingagents.backtesting.position import (
     Fill,
@@ -13,7 +14,6 @@ from tradingagents.backtesting.position import (
     Position,
     PositionSide,
 )
-from tradingagents.backtesting.margin import MarginAccount
 
 
 class TestPositionLog:

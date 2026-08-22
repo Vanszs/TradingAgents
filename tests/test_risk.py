@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
+from tradingagents.backtesting.position import OrderType, Position, PositionSide
 from tradingagents.backtesting.risk import RiskEngine, RiskEvent
-from tradingagents.backtesting.position import Position, PositionSide, OrderType
 
 
 class TestRiskEngine:

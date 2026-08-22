@@ -5,14 +5,14 @@ from __future__ import annotations
 
 import pytest
 
+from tradingagents.backtesting.decision_state_manager import DecisionStateManager
 from tradingagents.backtesting.position import (
+    DecisionMappingConfig,
     ExtendedDecision,
     Position,
-    PositionSide,
-    DecisionMappingConfig,
     PositionIntent,
+    PositionSide,
 )
-from tradingagents.backtesting.decision_state_manager import DecisionStateManager
 
 
 class TestConservativeMode:

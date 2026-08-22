@@ -44,11 +44,11 @@ from typing import Any, Optional, Union
 
 from .position import (
     ExtendedDecision,
+    MarketPoint,
     OrderType,
     Position,
     PositionSide,
 )
-
 
 # Regex set for "setup invalid" detection. Indonesian + English phrases.
 # Conservative — every phrase must be a literal substring.

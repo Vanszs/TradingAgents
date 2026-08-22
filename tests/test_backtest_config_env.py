@@ -4,7 +4,7 @@ Unit tests for config_resolver.py — env-based provider/model resolution.
 import unittest
 
 from tradingagents.backtesting.config_resolver import ConfigError, resolve_agent_config
-from tradingagents.backtesting.position import BacktestConfig, AgentConfig
+from tradingagents.backtesting.position import AgentConfig, BacktestConfig
 
 
 def _env(**kwargs):

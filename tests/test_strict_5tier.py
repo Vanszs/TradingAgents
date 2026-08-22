@@ -23,12 +23,12 @@ Invariants:
 import unittest
 
 from tradingagents.backtesting.decision_state_manager import (
-    DecisionStateManager,
     RATING_BUY,
     RATING_HOLD,
     RATING_OVERWEIGHT,
     RATING_SELL,
     RATING_UNDERWEIGHT,
+    DecisionStateManager,
     _canonical_rating,
 )
 from tradingagents.backtesting.position import (

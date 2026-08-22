@@ -30,9 +30,8 @@ from cli.data_fetch import (
     ensure_ohlcv,
     fetch_ohlcv,
 )
-from tradingagents.backtesting.engine import BacktestEngine
 from tradingagents.backtesting import TradingAgentsRunner
-
+from tradingagents.backtesting.engine import BacktestEngine
 
 # ---------------------------------------------------------------------------
 # compute_download_window
@@ -407,12 +406,12 @@ class TestCliWindowExplainer:
     the two time settings the user keeps mixing up."""
 
     def test_explainer_renders_without_error(self, capsys):
-        from cli.commands.backtest import _print_window_explainer
-
         # The explainer prints via the rich console patched onto the
         # module. Patch it to a no-op renderer to avoid terminal noise.
         from rich.console import Console
+
         import cli.commands.backtest as cli_mod
+        from cli.commands.backtest import _print_window_explainer
 
         saved = cli_mod.console
         cli_mod.console = Console(file=open("/dev/null", "w"), force_terminal=False)
@@ -426,6 +425,7 @@ class TestCliWindowExplainer:
         # Use a capturing console to verify the explainer surfaces the
         # 3-month / 20-day example.
         from rich.console import Console
+
         import cli.commands.backtest as cli_mod
 
         buf = __import__("io").StringIO()
