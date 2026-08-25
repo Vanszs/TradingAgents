@@ -369,6 +369,7 @@ class TradingAgentsGraph:
         self._resolve_pending_entries(company_name, as_of=str(trade_date))
 
         # Recompile with a checkpointer if the user opted in.
+        step = None
         if self.config.get("checkpoint_enabled"):
             self._checkpointer_ctx = get_checkpointer(
                 self.config["data_cache_dir"], company_name
@@ -387,14 +388,21 @@ class TradingAgentsGraph:
                 logger.info("Starting fresh for %s on %s", company_name, trade_date)
 
         try:
-            return self._run_graph(company_name, trade_date, asset_type=asset_type, on_chunk=on_chunk)
+            return self._run_graph(
+                company_name,
+                trade_date,
+                asset_type=asset_type,
+                on_chunk=on_chunk,
+                resume=step is not None,
+            )
         finally:
             if self._checkpointer_ctx is not None:
                 self._checkpointer_ctx.__exit__(None, None, None)
                 self._checkpointer_ctx = None
                 self.graph = self.workflow.compile()
 
-    def _run_graph(self, company_name, trade_date, asset_type: str = "stock", on_chunk=None):
+    def _run_graph(self, company_name, trade_date, asset_type: str = "stock", on_chunk=None,
+                   resume: bool = False):
         """Execute the graph and write the resulting state to disk and memory log."""
         graph_start_time = time.time()
         logger.info(f"[GRAPH] Starting _run_graph for {company_name} on {trade_date}")
@@ -416,12 +424,17 @@ class TradingAgentsGraph:
             tid = thread_id(company_name, str(trade_date))
             args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = tid
 
+        # LangGraph continues an interrupted thread only when invoked with
+        # ``None`` input; passing a fresh state dict would re-run every node
+        # from scratch (see tests/test_checkpoint_resume.py).
+        graph_input = None if resume else init_agent_state
+
         step_start = time.time()
         stream_updates = self.debug or on_chunk is not None
         if stream_updates:
             logger.info("[GRAPH] Running in debug/stream mode...")
             trace = []
-            for chunk in self.graph.stream(init_agent_state, **args):
+            for chunk in self.graph.stream(graph_input, **args):
                 if on_chunk is not None:
                     try:
                         on_chunk(chunk)
@@ -437,7 +450,7 @@ class TradingAgentsGraph:
                 final_state.update(chunk)
         else:
             logger.info("[GRAPH] Invoking LangGraph...")
-            final_state = self.graph.invoke(init_agent_state, **args)
+            final_state = self.graph.invoke(graph_input, **args)
         
         graph_duration = time.time() - step_start
         logger.info(f"[GRAPH] Graph execution completed in {graph_duration:.3f}s")

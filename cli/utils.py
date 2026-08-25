@@ -58,13 +58,6 @@ def detect_asset_type(ticker: str) -> AssetType:
     return AssetType.STOCK
 
 
-def filter_analysts_for_asset_type(
-    analysts: List[AnalystType], asset_type: AssetType
-) -> List[AnalystType]:
-    """Crypto now has its own fundamentals analyst — keep all analysts."""
-    return analysts
-
-
 def get_analysis_date() -> str:
     """Prompt the user to enter a date in YYYY-MM-DD format."""
     from datetime import datetime
@@ -101,10 +94,7 @@ def get_analysis_date() -> str:
 
 def select_analysts(asset_type: AssetType = AssetType.STOCK) -> List[AnalystType]:
     """Select analysts using an interactive checkbox."""
-    available_analysts = filter_analysts_for_asset_type(
-        [value for _, value in ANALYST_ORDER],
-        asset_type,
-    )
+    available_analysts = [value for _, value in ANALYST_ORDER]
     choices = questionary.checkbox(
         "Select Your [Analysts Team]:",
         choices=[

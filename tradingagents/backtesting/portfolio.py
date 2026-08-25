@@ -911,6 +911,20 @@ class PortfolioV2:
     def mark_to_market(self, date: str, close_price: float) -> PortfolioSnapshot:
         """PRD §17 step 3 — mark-to-market at daily close."""
         mark = float(close_price)
+
+        # Daily carrying costs: borrow fee on short notional, financing on
+        # borrowed cash (long notional funded beyond equity). Charged to cash
+        # so equity/drawdown reflect the drag; realized PnL stays trade-only.
+        pos_val = abs(self.position_value(mark))
+        if pos_val > 0:
+            if self.position.is_short():
+                carry_fee = pos_val * float(getattr(self.margin_cfg, "borrow_fee_daily", 0.0002))
+            else:
+                borrowed_cash = max(0.0, pos_val - max(0.0, self.cash + pos_val))
+                carry_fee = borrowed_cash * float(getattr(self.margin_cfg, "financing_rate_daily", 0.0001))
+            if carry_fee > 0:
+                self.cash -= carry_fee
+
         equity = self.account_equity(mark)
         unrealized = self.position.unrealized_pnl_calc(mark)
 

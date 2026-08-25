@@ -100,8 +100,8 @@ class MarkdownDecisionParser:
         confidence = self._extract_pct(
             text,
             patterns=[
-                r"confidence\s*[:=]\s*(\d+(?:\.\d+)?)",
-                r"keyakinan\s*[:=]\s*(\d+(?:\.\d+)?)",
+                r"\*{0,2}confidence\*{0,2}\s*[:=]\s*\*{0,2}(\d+(?:\.\d+)?)",
+                r"\*{0,2}keyakinan\*{0,2}\s*[:=]\s*\*{0,2}(\d+(?:\.\d+)?)",
             ],
             normalize_to_fraction=True,
         )

@@ -1,5 +1,5 @@
 """
-Tests for ``cli.data_fetch``.
+Tests for ``tradingagents.backtesting.ohlcv_fetch``.
 
 Covers:
 * ``compute_download_window`` math: lookback translation, buffer, YF
@@ -23,7 +23,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from cli.data_fetch import (
+from tradingagents.backtesting.ohlcv_fetch import (
     LOOKBACK_BUFFER_DAYS,
     YF_EARLIEST,
     compute_download_window,
@@ -132,7 +132,7 @@ class TestEnsureOhlcv:
                 (target.parent / f).write_text("[]", encoding="utf-8")
             return target
 
-        with patch("cli.data_fetch.fetch_ohlcv", side_effect=fake_fetch):
+        with patch("tradingagents.backtesting.ohlcv_fetch.fetch_ohlcv", side_effect=fake_fetch):
             path, fetched = ensure_ohlcv(
                 "FAKE.JK", "2026-01-01", "2026-06-30",
                 output_root=str(tmp_path), lookback_days=60,
@@ -148,7 +148,7 @@ class TestEnsureOhlcv:
         self._write_existing_csv(csv, "2026-12-31")
 
         # Patch fetch_ohlcv to fail loudly if called.
-        with patch("cli.data_fetch.fetch_ohlcv") as mock_fetch:
+        with patch("tradingagents.backtesting.ohlcv_fetch.fetch_ohlcv") as mock_fetch:
             path, fetched = ensure_ohlcv(
                 "FAKE.JK", "2026-01-01", "2026-06-30",
                 output_root=str(tmp_path), lookback_days=60,
@@ -182,7 +182,7 @@ class TestEnsureOhlcv:
                 (target.parent / f).write_text("[]", encoding="utf-8")
             return target
 
-        with patch("cli.data_fetch.fetch_ohlcv", side_effect=fake_fetch):
+        with patch("tradingagents.backtesting.ohlcv_fetch.fetch_ohlcv", side_effect=fake_fetch):
             path, fetched = ensure_ohlcv(
                 "FAKE.JK", "2026-01-01", "2026-06-30",
                 output_root=str(tmp_path), lookback_days=60,
@@ -204,7 +204,7 @@ class TestEnsureOhlcv:
                 (target.parent / f).write_text("[]", encoding="utf-8")
             return target
 
-        with patch("cli.data_fetch.fetch_ohlcv", side_effect=fake_fetch):
+        with patch("tradingagents.backtesting.ohlcv_fetch.fetch_ohlcv", side_effect=fake_fetch):
             path, fetched = ensure_ohlcv(
                 "FAKE.JK", "2026-01-01", "2026-06-30",
                 output_root=str(tmp_path), lookback_days=60,
@@ -363,14 +363,14 @@ class TestEngineEnsureOhlcv:
     def test_auto_fetch_calls_through(self, tmp_path):
         engine = _build_engine_for_ticker(tmp_path, "DEWA.JK", "2026-05-25", "2026-06-02")
 
-        # Mock the cli.data_fetch path used inside engine.ensure_ohlcv
+        # Mock the tradingagents.backtesting.ohlcv_fetch path used inside engine.ensure_ohlcv
         def fake_ensure(ticker, start_date, end_date, output_root, lookback_days=None):
             target = Path(output_root) / ticker / "ohlcv.csv"
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("date,open,high,low,close,volume\n", encoding="utf-8")
             return target, True
 
-        with patch("cli.data_fetch.ensure_ohlcv", side_effect=fake_ensure):
+        with patch("tradingagents.backtesting.ohlcv_fetch.ensure_ohlcv", side_effect=fake_ensure):
             ok, msg = engine.ensure_ohlcv(auto_fetch=True)
 
         assert ok is True
@@ -382,7 +382,7 @@ class TestEngineEnsureOhlcv:
         def fake_ensure_fail(*a, **k):
             raise RuntimeError("yfinance connection failed")
 
-        with patch("cli.data_fetch.ensure_ohlcv", side_effect=fake_ensure_fail):
+        with patch("tradingagents.backtesting.ohlcv_fetch.ensure_ohlcv", side_effect=fake_ensure_fail):
             ok, msg = engine.ensure_ohlcv(auto_fetch=True)
 
         assert ok is False
@@ -410,33 +410,33 @@ class TestCliWindowExplainer:
         # module. Patch it to a no-op renderer to avoid terminal noise.
         from rich.console import Console
 
-        import cli.commands.backtest as cli_mod
-        from cli.commands.backtest import _print_window_explainer
+        import cli.commands.backtest_report as report_mod
+        from cli.commands.backtest_report import _print_window_explainer
 
-        saved = cli_mod.console
-        cli_mod.console = Console(file=open("/dev/null", "w"), force_terminal=False)
+        saved = report_mod.console
+        report_mod.console = Console(file=open("/dev/null", "w"), force_terminal=False)
         try:
             _print_window_explainer("2026-05-25", "2026-06-02", 60)
             _print_window_explainer("2026-05-25", "2026-06-02", None)
         finally:
-            cli_mod.console = saved
+            report_mod.console = saved
 
     def test_explainer_includes_worked_example(self, capsys):
         # Use a capturing console to verify the explainer surfaces the
         # 3-month / 20-day example.
         from rich.console import Console
 
-        import cli.commands.backtest as cli_mod
+        import cli.commands.backtest_report as report_mod
 
         buf = __import__("io").StringIO()
-        saved = cli_mod.console
-        cli_mod.console = Console(file=buf, force_terminal=False, width=200)
+        saved = report_mod.console
+        report_mod.console = Console(file=buf, force_terminal=False, width=200)
         try:
-            cli_mod._print_window_explainer(
+            report_mod._print_window_explainer(
                 "2026-05-25", "2026-06-02", 60
             )
         finally:
-            cli_mod.console = saved
+            report_mod.console = saved
 
         output = buf.getvalue()
         assert "outer window" in output

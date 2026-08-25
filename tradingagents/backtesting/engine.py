@@ -11,16 +11,16 @@ if TYPE_CHECKING:
 import yaml
 
 from .agent_runner import TradingAgentsRunner
-from .decision_schema import (
+from .position import (
     AgentConfig,
     BacktestConfig,
     DataConfig,
+    DecisionMappingConfig,
     ExecutionConfig,
     LeakageGuardConfig,
     MarginConfig,
     OutputConfig,
 )
-from .position import DecisionMappingConfig
 from .trigger_evaluator import TriggerConfig
 from .walk_forward_runner import WalkForwardBacktestRunner
 
@@ -70,10 +70,10 @@ class BacktestEngine:
         covers the backtest's date range. Returns ``(ok, message)``.
 
         If ``auto_fetch=True`` and the file is missing or stale, attempts
-        to download it from yfinance using the CLI's
-        :func:`cli.data_fetch.ensure_ohlcv` helper. The download is
-        performed lazily so importing the engine does not require
-        yfinance/pandas at import time.
+        to download it from yfinance using the
+        :func:`tradingagents.backtesting.ohlcv_fetch.ensure_ohlcv` helper.
+        The download is performed lazily so importing the engine does not
+        require yfinance/pandas at import time.
 
         The auto-fetch is opt-in: production backtests should
         pre-download data and disable network access during the run.
@@ -117,10 +117,10 @@ class BacktestEngine:
 
         # Auto-fetch path. Imported lazily so this module is usable
         # without yfinance installed.
-        from cli.data_fetch import ensure_ohlcv as _cli_ensure_ohlcv
+        from tradingagents.backtesting.ohlcv_fetch import ensure_ohlcv as _ensure_ohlcv
 
         try:
-            path, fetched = _cli_ensure_ohlcv(
+            path, fetched = _ensure_ohlcv(
                 ticker=ticker,
                 start_date=str(self.config.start_date),
                 end_date=str(self.config.end_date),

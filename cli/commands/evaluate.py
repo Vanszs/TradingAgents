@@ -51,6 +51,7 @@ def signal_from_final_state(final_state, ticker: str, trade_date: str) -> Signal
             f"got {signal.ticker}/{signal.signal_date}"
         )
     return signal
+    return signal
 
 
 def evaluate_signal_cmd(

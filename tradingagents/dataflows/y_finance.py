@@ -100,8 +100,11 @@ def get_YFin_data_online(
     # Create ticker object
     ticker = yf.Ticker(symbol.upper())
 
-    # Fetch historical data for the specified date range
-    data = yf_retry(lambda: ticker.history(start=start_date, end=end_date))
+    # Fetch historical data for the specified date range.
+    # Daily history() treats end as exclusive; advance one day so the end_date
+    # session itself is included (mirrors get_intraday_data).
+    end_inclusive = (pd.to_datetime(end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    data = yf_retry(lambda: ticker.history(start=start_date, end=end_inclusive))
 
     # Check if data is empty
     if data.empty:

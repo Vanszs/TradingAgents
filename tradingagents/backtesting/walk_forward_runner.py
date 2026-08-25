@@ -300,11 +300,13 @@ class WalkForwardBacktestRunner:
                 self._next_reanalysis_date = None
                 self._pending_wns_price_trigger = None
             elif self.prev_decision is not None:
-                # Immediately initialize risk levels for newly opened positions
+                # Immediately initialize risk levels for newly opened positions.
+                # Morning update may only use the previous session's completed
+                # bar — today's H/L/C are still in the future at the open.
                 self._update_risk_levels(
                     self.prev_decision,
                     self._ohlcv_df,
-                    current_date=current_date,
+                    current_date=self.calendar.previous_trading_day(current_date),
                 )
 
             trade_dicts = []
@@ -378,7 +380,7 @@ class WalkForwardBacktestRunner:
                 if next_valid_date is None:
                     next_valid_date = current_date
                 risk_order = self._build_force_close(
-                    next_valid_date, market_point.close, "eod_margin_breach"
+                    next_valid_date, None, "eod_margin_breach"
                 )
                 if risk_order is not None:
                     self.broker.add_pending_orders([risk_order])
@@ -728,13 +730,15 @@ class WalkForwardBacktestRunner:
 
         return order
 
-    def _build_force_close(self, date: str, price: float, reason: str) -> Optional["Order"]:
+    def _build_force_close(self, date: str, price: Optional[float], reason: str) -> Optional["Order"]:
         """Build a force-close Order for the current position.
 
         Used as a fallback when the bar-by-bar risk engine did not produce
         an order but the portfolio is in margin breach (e.g. the close price
-        alone tipped the account below maintenance). Returns None for a
-        flat position.
+        alone tipped the account below maintenance). ``price=None`` builds a
+        market order that fills at the next session's open — a stale limit
+        price could sit unfilled through a gap-down and leave the account
+        below maintenance. Returns None for a flat position.
         """
         from .position import Order as PositionOrder
         from .position import OrderType
@@ -752,7 +756,7 @@ class WalkForwardBacktestRunner:
             order_type=order_type,
             quantity=abs(self.portfolio.position.quantity),
             execution_date=date,
-            price=price,
+            price=float(price) if price else 0.0,
             reason=reason,
         )
 
@@ -836,6 +840,22 @@ class WalkForwardBacktestRunner:
             decision.decision_valid_from = expected_execution_date
         if decision.decision_valid_from < first_date:
             decision.decision_valid_from = first_date
+        if not self.calendar.is_trading_day(decision.decision_valid_from):
+            # Broker matches execution dates exactly; a weekend/holiday
+            # valid_from would strand the pending order forever.
+            decision.decision_valid_from = self.calendar.next_trading_day(
+                decision.decision_valid_from
+            )
+        wait_days = (
+            pd.to_datetime(decision.decision_valid_from)
+            - pd.to_datetime(expected_execution_date)
+        ).days
+        if wait_days > 0:
+            logger.warning(
+                "[BACKTEST] decision_valid_from %s waits %d calendar day(s) beyond "
+                "T+1 (%s); order sits pending — verify this staging is intended.",
+                decision.decision_valid_from, wait_days, expected_execution_date,
+            )
 
         snapshot_data = self.snapshot_provider.create_snapshot(
             symbol=self.config.ticker,

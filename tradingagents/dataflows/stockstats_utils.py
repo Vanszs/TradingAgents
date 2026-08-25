@@ -76,19 +76,37 @@ def load_ohlcv(symbol: str, curr_date: str = None) -> pd.DataFrame:
         f"{safe_symbol}-YFin-data-{start_str}-{end_str}.csv",
     )
 
-    if os.path.exists(data_file):
-        data = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
-    else:
-        data = yf_retry(lambda: yf.download(
+    required_cols = {"Date", "Open", "High", "Low", "Close"}
+
+    def _fetch_and_cache() -> pd.DataFrame:
+        frame = yf_retry(lambda: yf.download(
             symbol,
             start=start_str,
             end=end_str,
             multi_level_index=False,
             progress=False,
             auto_adjust=True,
-        ))
-        data = data.reset_index()
-        data.to_csv(data_file, index=False, encoding="utf-8")
+        )).reset_index()
+        missing = required_cols - set(frame.columns)
+        if frame.empty or missing:
+            # Never cache junk: a throttled/delisted empty response would
+            # otherwise poison every later call for this window.
+            raise ValueError(
+                f"yfinance returned unusable data for {symbol} "
+                f"(empty={frame.empty}, missing={sorted(missing)})"
+            )
+        tmp_file = f"{data_file}.tmp"
+        frame.to_csv(tmp_file, index=False, encoding="utf-8")
+        os.replace(tmp_file, data_file)
+        return frame
+
+    data = None
+    if os.path.exists(data_file):
+        data = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
+        if data.empty or not required_cols.issubset(data.columns):
+            data = None  # legacy poisoned cache: drop and refetch
+    if data is None:
+        data = _fetch_and_cache()
 
     data = _clean_dataframe(data)
 

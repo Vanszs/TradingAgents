@@ -424,7 +424,7 @@ class PortfolioDecision(BaseModel):
 
     @model_validator(mode="after")
     def _validate_portfolio_decision(self):
-        if self.rating in (PortfolioRating.WNS, PortfolioRating.HOLD):
+        if self.rating == PortfolioRating.WNS:
             has_explicit_date = bool(self.wns_recheck_date and self.wns_recheck_date.strip())
             has_explicit_price = self.wns_trigger_price is not None and float(self.wns_trigger_price) > 0
             if not (has_explicit_date or has_explicit_price):
@@ -556,6 +556,14 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
     parts.extend(["", f"**Time Horizon Days**: {decision.time_horizon_days}"])
+    if decision.confidence is not None:
+        parts.extend(["", f"**Confidence**: {decision.confidence:.2f}"])
+    if decision.planned_entry_price is not None:
+        parts.extend(["", f"**Planned Entry Price**: {decision.planned_entry_price}"])
+    if decision.wns_trigger_price is not None:
+        parts.extend(["", f"**WNS Trigger Price**: {decision.wns_trigger_price}"])
+    if decision.wns_recheck_date:
+        parts.extend(["", f"**WNS Recheck Date**: {decision.wns_recheck_date}"])
     parts.extend(["", f"**Next Review Date**: {decision.next_review_date}"])
     return "\n".join(parts)
 
@@ -883,7 +891,7 @@ def portfolio_decision_to_signal_contract(
         thesis_summary=decision.investment_thesis,
         trailing_stop_pct=decision.trailing_stop_pct,
         break_even_trigger_pct=decision.break_even_trigger_pct,
-        max_holding_days=decision.max_holding_days or decision.time_horizon_days,
+        max_holding_days=decision.max_holding_days or min(63, decision.time_horizon_days),
         wns_condition_type=decision.wns_condition_type,
         wns_recheck_date=decision.wns_recheck_date,
         wns_trigger_price=decision.wns_trigger_price,

@@ -229,3 +229,12 @@ api_cache/
 y/
 *.log
 
+
+# Run artifacts (regenerated locally, never versioned)
+snapshots/
+backtest_cache/
+reports/
+data/
+
+# Agent workspace metadata
+.kiro/

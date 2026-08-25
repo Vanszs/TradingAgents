@@ -53,13 +53,26 @@ class PositionIntent(str, Enum):
     REVERSE = "reverse"
 
 
+class FillRule(str, Enum):
+    """Legacy fill-timing rules (decision_schema compat)."""
+    NEXT_SESSION_OPEN = "next_session_open"
+    NEXT_BAR_OPEN = "next_bar_open"
+    STOP_LEVEL = "stop_level"
+
+
 # ---------------------------------------------------------------------------
 # Config dataclasses
 # ---------------------------------------------------------------------------
 
 @dataclass
 class ExecutionConfig:
-    """PRD §13 execution defaults — percentage-based fees/slippage."""
+    """PRD §13 execution defaults — percentage-based fees/slippage.
+
+    Carries the legacy tick-based knobs (tick_slippage, fee_per_contract,
+    fill_at, liquidation_*) so both the yaml schema and PRD §13 config
+    resolve to this single class; the broker prefers the percentage fields
+    and falls back to the tick-based ones.
+    """
     lot_size: int = 1
     contract_multiplier: float = 1.0
     buy_fee: float = 0.0015
@@ -71,6 +84,13 @@ class ExecutionConfig:
     conservative_intraday_rule: bool = True
     intraday_margin_check: bool = True
     initial_position_side: PositionSide = PositionSide.FLAT
+    # Legacy tick-based knobs (kept for backtest.yaml / decision_schema compat).
+    rule: str = "next_session_open"
+    fill_at: str = "next_session_open"
+    tick_slippage: int = 1
+    fee_per_contract: float = 0.0
+    liquidation_fill_at: str = "next_session_open"
+    liquidation_extra_slippage_ticks: int = 1
 
     def __post_init__(self) -> None:
         if self.lot_size < 1:
@@ -83,6 +103,16 @@ class ExecutionConfig:
             raise ValueError(f"sell_fee must be >= 0, got {self.sell_fee}")
         if self.slippage < 0:
             raise ValueError(f"slippage must be >= 0, got {self.slippage}")
+        try:
+            FillRule(self.fill_at)
+        except ValueError as exc:
+            raise ValueError(
+                f"fill_at must be one of {[f.value for f in FillRule]}, got {self.fill_at!r}"
+            ) from exc
+        if self.tick_slippage < 0:
+            raise ValueError(f"tick_slippage must be >= 0, got {self.tick_slippage}")
+        if self.fee_per_contract < 0:
+            raise ValueError(f"fee_per_contract must be >= 0, got {self.fee_per_contract}")
 
 
 @dataclass
@@ -94,6 +124,12 @@ class MarginConfig:
     margin_call_threshold: float = 0.40
     liquidation_equity_pct: float = 0.25
     max_entry_pct: float = 0.10  # max % of equity per single-day entry (avoid all-in)
+    # Daily carrying costs (PRD §13 defaults), charged in mark-to-market.
+    financing_rate_daily: float = 0.0001  # on borrowed cash (leveraged long)
+    borrow_fee_daily: float = 0.0002      # on position notional (short)
+    # Legacy knobs (kept for backtest.yaml / decision_schema compat).
+    margin_call_buffer_pct: float = 0.0
+    auto_liquidate_on_breach: bool = True
 
     def __post_init__(self) -> None:
         if self.initial_margin_pct <= 0:
@@ -111,6 +147,10 @@ class MarginConfig:
         if self.max_entry_pct <= 0 or self.max_entry_pct > 1.0:
             raise ValueError(
                 f"max_entry_pct must be in (0, 1], got {self.max_entry_pct}"
+            )
+        if self.margin_call_buffer_pct < 0:
+            raise ValueError(
+                f"margin_call_buffer_pct must be >= 0, got {self.margin_call_buffer_pct}"
             )
 
 
@@ -184,7 +224,19 @@ class DecisionMappingConfig:
 
 @dataclass
 class DataConfig:
-    """Data source configuration."""
+    """Data source configuration (union of the yaml snapshot schema and
+    the PRD layout fields)."""
+    # Legacy snapshot-provider fields (read by engine / snapshot_provider).
+    provider: str = "snapshot"
+    data_root: str = "data"
+    snapshot_root: str = "snapshots"
+    disable_live_news: bool = True
+    disable_live_web_search: bool = True
+    disable_live_fundamentals: bool = True
+    require_fundamental_available_date: bool = True
+    fetch_from_api: bool = False
+    api_cache_dir: str = "api_cache"
+    # PRD layout fields.
     root: str = "data"
     layout: str = "flat"
     news_provider: str = "snapshot"
@@ -454,6 +506,8 @@ class BacktestConfig:
     leakage_guard: LeakageGuardConfig = field(default_factory=LeakageGuardConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     trigger: Any = None  # TriggerConfig; resolved by the runner to avoid circular import
+    # Legacy risk knob (kept for decision_schema compat; set by tests).
+    max_risk_per_trade_pct: float = 0.01
 
     def validate(self) -> None:
         """PRD §22 — validate configuration at startup."""
@@ -465,8 +519,16 @@ class BacktestConfig:
             raise ValueError("BacktestConfig.ticker is required.")
         if not self.start_date or not self.end_date:
             raise ValueError("BacktestConfig.start_date and end_date are required.")
-        if self.data.news_provider != "snapshot":
+        if self.data.provider != "snapshot":
             raise ValueError("Historical backtest must use snapshot data provider.")
+        if self.data.news_provider != "snapshot":
+            raise ValueError("Historical backtest must use snapshot news provider.")
+        if not self.data.disable_live_news:
+            raise ValueError("Live news must be disabled in backtest mode.")
+        if not self.data.disable_live_web_search:
+            raise ValueError("Live web search must be disabled in backtest mode.")
+        if not self.data.disable_live_fundamentals:
+            raise ValueError("Live fundamentals must be disabled in backtest mode.")
         if self.agent.memory_enabled:
             raise ValueError("Backtest requires memory_enabled=False to avoid leakage.")
         if self.agent.web_search_enabled:
@@ -475,6 +537,10 @@ class BacktestConfig:
             raise ValueError("Agent news_provider must be 'snapshot' in backtest.")
         if self.margin.max_leverage < 1.0:
             raise ValueError(f"max_leverage must be >= 1.0, got {self.margin.max_leverage}")
+        if self.execution.fill_at == FillRule.STOP_LEVEL.value:
+            raise ValueError(
+                "execution.fill_at == 'stop_level' is reserved for stop/target orders."
+            )
 
         valid_modes = ("strict_5tier", "legacy_prd", "conservative", "aggressive")
         if self.decision_mapping.mode not in valid_modes:

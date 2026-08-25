@@ -121,6 +121,7 @@ DEFAULT_CONFIG = _apply_env_overrides({
         ".T":   "^N225",    # Tokyo (Nikkei 225)
         ".HK":  "^HSI",     # Hong Kong (Hang Seng)
         ".L":   "^FTSE",    # London (FTSE 100)
+        ".JK":  "^JKSE",    # Indonesia (Jakarta Composite / IHSG)
         ".TO":  "^GSPTSE",  # Toronto (TSX Composite)
         ".AX":  "^AXJO",    # Australia (ASX 200)
         "":     "SPY",      # default for US-listed tickers (no suffix)

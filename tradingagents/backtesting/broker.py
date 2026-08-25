@@ -253,9 +253,11 @@ class SimulatedBroker:
             OrderType.BUY_TO_REDUCE, OrderType.BUY_TO_CLOSE,
         ) or (getattr(order, "side", None) == OrderSide.BUY or getattr(getattr(order, "side", None), "value", None) == "BUY")
 
-        # Check boundary condition for price-specified / limit orders
-        if order.price and float(order.price) > 0:
-            limit_p = float(order.price)
+        # Limit-order boundary: the bar must have traded at/beyond the limit,
+        # otherwise the order stays unfilled for this session.
+        is_limit = order.price is not None and float(order.price) > 0
+        limit_p = float(order.price) if is_limit else 0.0
+        if is_limit:
             # For buy limit: market low must be <= limit price
             if is_buy and hasattr(market_point, "low") and float(market_point.low) > limit_p:
                 order.status = "UNFILLED"
@@ -264,9 +266,15 @@ class SimulatedBroker:
             if not is_buy and hasattr(market_point, "high") and float(market_point.high) < limit_p:
                 order.status = "UNFILLED"
                 return []
-            base_price = limit_p
+
+        open_price = float(market_point.open)
+        if not is_limit:
+            base_price = open_price
+        elif is_buy:
+            # Price improvement: a gap through the limit fills at the better open.
+            base_price = min(open_price, limit_p)
         else:
-            base_price = float(market_point.open)
+            base_price = max(open_price, limit_p)
 
         # PRD §13 — percentage-based slippage (new config) or tick-based (legacy)
         slippage_pct = getattr(self.config, "slippage", None)
@@ -276,16 +284,16 @@ class SimulatedBroker:
             tick = getattr(spec, "tick_size", 0.01)
             slippage_pct = (tick_slippage * tick) / base_price if base_price > 0 else 0.0
 
-        is_buy = order.order_type in (
-            OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD,
-            OrderType.BUY_TO_REDUCE, OrderType.BUY_TO_CLOSE,
-        )
         half_spread_pct = (getattr(self.config, "spread_bps", 0.0) / 10000.0) / 2.0
         total_friction_pct = slippage_pct + half_spread_pct
         if is_buy:
             fill_price = base_price * (1 + total_friction_pct)
         else:
             fill_price = base_price * (1 - total_friction_pct)
+        if is_limit:
+            # A limit order can never execute beyond its limit price; friction
+            # is absorbed by the filler rather than violating the bound.
+            fill_price = min(fill_price, limit_p) if is_buy else max(fill_price, limit_p)
 
         if fill_price <= 0:
             raise ValueError(
