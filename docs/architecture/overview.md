@@ -10,7 +10,7 @@ TradingAgents decouples analytical fact-finding, thesis debate, micro tactical p
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 1. DATA & INDICATOR LAYER                                                   │
 │    • 1D Macro Trends, 1H Micro Structure, Fib Retracements & Extensions     │
-│    • Causal ATR (14/20), Chandelier Exit (22, 3.0x ATR), Wilder Smoothing    │
+│    • Causal ATR and Wilder Smoothing for analysis; exits remain static      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 2. DOMAIN ANALYST LAYER (Parallel Fan-Out)                                  │
 │    • Market Analyst, Fundamentals Analyst, News Analyst, Sentiment Analyst │

@@ -1,6 +1,4 @@
-"""
-Unit tests for Dynamic Exit Engine (Break-Even, Trailing Stop, Gap-Open Priority, Limit Touch, Time Stop).
-"""
+"""Unit tests for static BUY TP/SL exits, gap handling, and time stops."""
 import pandas as pd
 import pytest
 
@@ -16,32 +14,31 @@ def base_df():
         "date": ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"],
         "open": [100.0, 100.0, 105.0, 101.0, 95.0],
         "high": [102.0, 106.0, 108.0, 103.0, 98.0],
-        "low": [99.0, 99.0, 100.0, 96.0, 92.0],
-        "close": [101.0, 105.0, 102.0, 98.0, 93.0],
+        "low": [99.0, 99.0, 100.0, 96.0, 85.0],
+        "close": [101.0, 105.0, 102.0, 98.0, 87.0],
     })
 
 
-def test_break_even_ratchet_protects_profit(base_df):
-    """Stock rises +8% (trigger at +3%), then drops below entry. Must exit at break-even (~+0.1%)."""
+def test_static_stop_does_not_ratchet_after_runup(base_df):
+    """A profitable excursion never moves the original static stop."""
     res = HorizonEvaluator.evaluate(
         ticker="TEST",
         signal_date="2026-01-01",
         side="LONG",
         take_profit=120.0,
         stop_loss=90.0,
-        time_horizon_days=10,
+        time_horizon_days=4,
         ohlcv_df=base_df,
         planned_entry_price=100.0,
         actual_entry_price=100.0,
-        break_even_trigger_pct=0.03,
     )
-    assert res.outcome == EvaluationOutcome.HIT_BREAK_EVEN
-    assert res.exit_price >= 100.0
-    assert res.realized_return_pct >= 0.0
+    assert res.outcome == EvaluationOutcome.HIT_STOP_LOSS
+    assert res.exit_price == 90.0
+    assert res.realized_return_pct < 0.0
 
 
-def test_trailing_stop_ratchet_avgo_scenario():
-    """Simulate AVGO runup to +9.27% then reversal. 5% trailing stop should lock in profit."""
+def test_static_sl_tp_avgo_scenario():
+    """Static TP/SL survives a runup and later stop hit."""
     df = pd.DataFrame({
         "date": [
             "2025-02-04", "2025-02-05", "2025-02-06", "2025-02-07", "2025-02-08",
@@ -62,11 +59,9 @@ def test_trailing_stop_ratchet_avgo_scenario():
         ohlcv_df=df,
         planned_entry_price=100.0,
         actual_entry_price=100.0,
-        trailing_stop_pct=0.05,
     )
-    assert res.outcome == EvaluationOutcome.HIT_TRAILING_STOP
-    # Peak was 109.27, 5% trail is 109.27 * 0.95 = 103.80 (+3.8%)
-    assert res.realized_return_pct > 3.0
+    assert res.outcome == EvaluationOutcome.HIT_STOP_LOSS
+    assert res.exit_price == 88.0
 
 
 def test_gap_open_priority_take_profit():
@@ -139,9 +134,7 @@ def test_time_stop_exit():
 
 
 def test_pure_static_broker_execution_no_ratchet():
-    """When trailing_stop_pct and break_even_trigger_pct are None, order remains static.
-    Stock gains +10% (from 100 to 110) then falls below initial SL (88). Must hit HIT_STOP_LOSS at 88.0.
-    """
+    """Static TP/SL remains unchanged after a +10% excursion."""
     df = pd.DataFrame({
         "date": [
             "2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"
@@ -161,8 +154,6 @@ def test_pure_static_broker_execution_no_ratchet():
         ohlcv_df=df,
         planned_entry_price=100.0,
         actual_entry_price=100.0,
-        trailing_stop_pct=None,
-        break_even_trigger_pct=None,
     )
     assert res.outcome == EvaluationOutcome.HIT_STOP_LOSS
     assert res.exit_price == 88.0

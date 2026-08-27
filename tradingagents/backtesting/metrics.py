@@ -8,7 +8,7 @@ Standard return/risk metrics plus margin-specific:
 - liquidation count
 - average holding period
 - consecutive wins / losses
-- long / short realized PnL breakdown
+- realized PnL and holding-period statistics for spot long trades
 """
 from __future__ import annotations
 
@@ -144,10 +144,6 @@ class MetricsCalculator:
             "average_gain": trade_stats["average_gain"],
             "average_loss": trade_stats["average_loss"],
             "number_of_trades": len(trades),
-            "long_win_rate": trade_stats["long_win_rate"],
-            "short_win_rate": trade_stats["short_win_rate"],
-            "long_trade_count": trade_stats["long_trade_count"],
-            "short_trade_count": trade_stats["short_trade_count"],
             "exposure_time_pct": exposure_time * 100,
             "benchmark_return_pct": benchmark_return_pct,
             "alpha_pct": alpha_pct,
@@ -157,12 +153,9 @@ class MetricsCalculator:
             "max_margin_utilization_pct": max_margin_util,
             "margin_calls_count": sum(1 for e in margin_events if e.kind in {"call", "liquidation"}),
             "liquidations_count": sum(1 for e in margin_events if e.kind == "liquidation"),
-            "reverse_count": sum(1 for e in margin_events if e.kind == "reverse"),
             "avg_holding_period_days": trade_stats["avg_holding_period_days"],
             "consecutive_wins_max": trade_stats["consecutive_wins_max"],
             "consecutive_losses_max": trade_stats["consecutive_losses_max"],
-            "long_realized_pnl": trade_stats["long_realized_pnl"],
-            "short_realized_pnl": trade_stats["short_realized_pnl"],
             "total_realized_pnl": trade_stats["total_realized_pnl"],
             "total_fees": trade_stats["total_fees"],
             "fee_drag_pct": (trade_stats["total_fees"] / initial_cash * 100) if initial_cash > 0 else 0.0,
@@ -186,147 +179,62 @@ class MetricsCalculator:
         }
 
     def _trade_stats(self, trades: list[Trade]) -> dict[str, float]:
-        long_lots: list[tuple[int, float, float, Optional[str]]] = []
-        short_lots: list[tuple[int, float, float, Optional[str]]] = []
+        """Calculate realized performance for spot long-only fills."""
+        lots: list[tuple[int, float, float, Optional[str]]] = []
         realized_pnls: list[float] = []
-        long_pnl_total = 0.0
-        short_pnl_total = 0.0
         total_fees = 0.0
         total_slippage = 0.0
         turnover = 0.0
         holding_periods: list[int] = []
-        long_holding_periods: list[int] = []
-        short_holding_periods: list[int] = []
-        long_wins = 0
-        long_total = 0
-        short_wins = 0
-        short_total = 0
-        reverse_count = 0
 
         for trade in trades:
             total_fees += trade.fee
             turnover += trade.notional
             total_slippage += trade.slippage_ticks * trade.tick_size * trade.quantity
+            side = trade.side.value if hasattr(trade.side, "value") else str(trade.side)
+            open_close = trade.open_close.value if hasattr(trade.open_close, "value") else str(trade.open_close)
 
-            # Normalize side and open_close to strings for robust comparison
-            side_str = trade.side.value if hasattr(trade.side, 'value') else str(trade.side)
-            oc_str = trade.open_close.value if hasattr(trade.open_close, 'value') else str(trade.open_close)
-
-            # Determine whether this trade opens or closes lots
-            if side_str == "BUY":
-                if oc_str == "CLOSE" or (oc_str == "AUTO" and len(short_lots) > 0):
-                    is_close, is_long = True, False
-                else:
-                    is_close, is_long = False, True
-            elif side_str == "SELL":
-                if oc_str == "CLOSE" or (oc_str == "AUTO" and len(long_lots) > 0):
-                    is_close, is_long = True, True
-                else:
-                    is_close, is_long = False, False
-            else:
+            if side == "BUY":
+                lots.append((trade.quantity, trade.price, trade.multiplier, trade.date))
+                continue
+            if side != "SELL" or open_close not in {"CLOSE", "AUTO"}:
                 continue
 
-            if not is_close:
-                if is_long:
-                    long_lots.append((trade.quantity, trade.price, trade.multiplier, trade.date))
-                else:
-                    short_lots.append((trade.quantity, trade.price, trade.multiplier, trade.date))
-            else:
-                qty_to_close = trade.quantity
-                close_price = trade.price
-                lots = long_lots if is_long else short_lots
-
-                while qty_to_close > 0 and lots:
-                    lot_qty, lot_price, lot_mult, entry_date = lots.pop(0)
-                    matched = min(qty_to_close, lot_qty)
-                    if is_long:
-                        pnl = (close_price - lot_price) * matched * lot_mult
-                    else:
-                        pnl = (lot_price - close_price) * matched * lot_mult
-                    realized_pnls.append(pnl)
-                    if is_long:
-                        long_pnl_total += pnl
-                        long_total += 1
-                        if pnl > 0:
-                            long_wins += 1
-                    else:
-                        short_pnl_total += pnl
-                        short_total += 1
-                        if pnl > 0:
-                            short_wins += 1
-
-                    if trade.date and entry_date:
-                        try:
-                            from datetime import datetime
-                            d_open = datetime.fromisoformat(str(entry_date)[:10])
-                            d_close = datetime.fromisoformat(str(trade.date)[:10])
-                            days = max(0, (d_close - d_open).days)
-                            holding_periods.append(days)
-                            if is_long:
-                                long_holding_periods.append(days)
-                            else:
-                                short_holding_periods.append(days)
-                        except Exception:
-                            pass
-
-                    remaining = lot_qty - matched
-                    if remaining > 0:
-                        lots.insert(0, (remaining, lot_price, lot_mult, entry_date))
-                    qty_to_close -= matched
-
-                # If closing order exceeded existing lots (position reversal), add residual to opposing inventory
-                if qty_to_close > 0:
-                    if is_long:  # Excess SELL becomes a short open lot
-                        short_lots.append((qty_to_close, close_price, trade.multiplier, trade.date))
-                    else:        # Excess BUY becomes a long open lot
-                        long_lots.append((qty_to_close, close_price, trade.multiplier, trade.date))
+            qty_to_close = trade.quantity
+            while qty_to_close > 0 and lots:
+                lot_qty, lot_price, lot_mult, entry_date = lots.pop(0)
+                matched = min(qty_to_close, lot_qty)
+                pnl = (trade.price - lot_price) * matched * lot_mult
+                realized_pnls.append(pnl)
+                if trade.date and entry_date:
+                    try:
+                        from datetime import datetime
+                        opened = datetime.fromisoformat(str(entry_date)[:10])
+                        closed = datetime.fromisoformat(str(trade.date)[:10])
+                        holding_periods.append(max(0, (closed - opened).days))
+                    except ValueError:
+                        pass
+                if lot_qty > matched:
+                    lots.insert(0, (lot_qty - matched, lot_price, lot_mult, entry_date))
+                qty_to_close -= matched
 
         wins = [p for p in realized_pnls if p > 0]
         losses = [p for p in realized_pnls if p < 0]
-        win_rate = (len(wins) / len(realized_pnls) * 100) if realized_pnls else 0.0
         gross_profit = sum(wins)
         gross_loss = abs(sum(losses))
-        if gross_loss > 0:
-            profit_factor = gross_profit / gross_loss
-        elif gross_profit > 0:
-            profit_factor = float("inf")
-        else:
-            profit_factor = 0.0
-        average_gain = (sum(wins) / len(wins)) if wins else 0.0
-        average_loss = (sum(losses) / len(losses)) if losses else 0.0
-
-        consecutive_wins = self._max_consecutive(realized_pnls, positive=True)
-        consecutive_losses = self._max_consecutive(realized_pnls, positive=False)
-        avg_holding = (sum(holding_periods) / len(holding_periods)) if holding_periods else 0.0
-        avg_long_holding = (
-            sum(long_holding_periods) / len(long_holding_periods)
-            if long_holding_periods else 0.0
-        )
-        avg_short_holding = (
-            sum(short_holding_periods) / len(short_holding_periods)
-            if short_holding_periods else 0.0
-        )
-
+        profit_factor = gross_profit / gross_loss if gross_loss else (float("inf") if gross_profit else 0.0)
         return {
-            "win_rate": float(win_rate),
+            "win_rate": float(len(wins) / len(realized_pnls) * 100) if realized_pnls else 0.0,
             "profit_factor": float(profit_factor),
-            "average_gain": float(average_gain),
-            "average_loss": float(average_loss),
-            "avg_holding_period_days": float(avg_holding),
-            "avg_holding_period_long_days": float(avg_long_holding),
-            "avg_holding_period_short_days": float(avg_short_holding),
-            "consecutive_wins_max": int(consecutive_wins),
-            "consecutive_losses_max": int(consecutive_losses),
-            "long_realized_pnl": float(long_pnl_total),
-            "short_realized_pnl": float(short_pnl_total),
-            "total_realized_pnl": float(long_pnl_total + short_pnl_total),
+            "average_gain": float(sum(wins) / len(wins)) if wins else 0.0,
+            "average_loss": float(sum(losses) / len(losses)) if losses else 0.0,
+            "avg_holding_period_days": float(sum(holding_periods) / len(holding_periods)) if holding_periods else 0.0,
+            "consecutive_wins_max": int(self._max_consecutive(realized_pnls, positive=True)),
+            "consecutive_losses_max": int(self._max_consecutive(realized_pnls, positive=False)),
+            "total_realized_pnl": float(sum(realized_pnls)),
             "total_fees": float(total_fees),
             "total_slippage": float(total_slippage),
             "turnover_notional": float(turnover),
-            "long_win_rate": float((long_wins / long_total * 100) if long_total > 0 else 0.0),
-            "short_win_rate": float((short_wins / short_total * 100) if short_total > 0 else 0.0),
-            "long_trade_count": int(long_total),
-            "short_trade_count": int(short_total),
         }
 
     @staticmethod
@@ -357,10 +265,6 @@ class MetricsCalculator:
             "average_gain": 0.0,
             "average_loss": 0.0,
             "number_of_trades": 0,
-            "long_win_rate": 0.0,
-            "short_win_rate": 0.0,
-            "long_trade_count": 0,
-            "short_trade_count": 0,
             "exposure_time_pct": 0.0,
             "benchmark_return_pct": None,
             "alpha_pct": None,
@@ -370,14 +274,9 @@ class MetricsCalculator:
             "max_margin_utilization_pct": 0.0,
             "margin_calls_count": 0,
             "liquidations_count": 0,
-            "reverse_count": 0,
             "avg_holding_period_days": 0.0,
-            "avg_holding_period_long_days": 0.0,
-            "avg_holding_period_short_days": 0.0,
             "consecutive_wins_max": 0,
             "consecutive_losses_max": 0,
-            "long_realized_pnl": 0.0,
-            "short_realized_pnl": 0.0,
             "total_realized_pnl": 0.0,
             "total_fees": 0.0,
             "fee_drag_pct": 0.0,
@@ -407,19 +306,12 @@ class MetricsCalculator:
                 "max_margin_utilization_pct": 0.0,
                 "margin_calls_count": sum(1 for e in margin_events if e.kind in {"call", "liquidation"}),
                 "liquidations_count": sum(1 for e in margin_events if e.kind == "liquidation"),
-                "reverse_count": sum(1 for e in margin_events if e.kind == "reverse"),
                 "avg_holding_period_days": trade_stats["avg_holding_period_days"],
                 "consecutive_wins_max": trade_stats["consecutive_wins_max"],
                 "consecutive_losses_max": trade_stats["consecutive_losses_max"],
-                "long_realized_pnl": trade_stats["long_realized_pnl"],
-                "short_realized_pnl": trade_stats["short_realized_pnl"],
                 "total_realized_pnl": trade_stats["total_realized_pnl"],
                 "total_fees": trade_stats["total_fees"],
                 "total_slippage": trade_stats["total_slippage"],
-                "long_win_rate": trade_stats["long_win_rate"],
-                "short_win_rate": trade_stats["short_win_rate"],
-                "long_trade_count": trade_stats["long_trade_count"],
-                "short_trade_count": trade_stats["short_trade_count"],
                 "turnover_notional": trade_stats["turnover_notional"],
             }
         )

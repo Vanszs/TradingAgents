@@ -235,6 +235,7 @@ snapshots/
 backtest_cache/
 reports/
 data/
+models/
 
 # Agent workspace metadata
 .kiro/

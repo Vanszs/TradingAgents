@@ -108,13 +108,9 @@ class TestRiskConfig(unittest.TestCase):
 
 class TestDecisionMappingConfig(unittest.TestCase):
 
-    def test_conservative_mode(self):
-        dm = DecisionMappingConfig(mode="conservative")
-        self.assertEqual(dm.mode, "conservative")
-
-    def test_aggressive_mode(self):
-        dm = DecisionMappingConfig(mode="aggressive")
-        self.assertEqual(dm.mode, "aggressive")
+    def test_legacy_modes_normalize_to_spot(self):
+        self.assertEqual(DecisionMappingConfig(mode="conservative").mode, "spot_long_only")
+        self.assertEqual(DecisionMappingConfig(mode="aggressive").mode, "spot_long_only")
 
     def test_invalid_mode_raises(self):
         with self.assertRaises(ValueError):

@@ -80,16 +80,12 @@ class TestOrderGenerator(unittest.TestCase):
         self.assertEqual(len(orders), 1)
         self.assertEqual(orders[0].side, OrderSide.BUY)
 
-    def test_sell_opens_short_when_flat(self):
-        config = _make_config()
-        og = OrderGenerator(config)
-        p = Portfolio(initial_cash=100_000.0, ticker="AAPL")
-        p.configure_margin(0.50, 0.30)
-        d = _make_decision(Action.SELL)
-        orders = og.generate(d, p, "2024-01-03", _make_ref(), _make_spec())
-        self.assertEqual(len(orders), 1)
-        self.assertEqual(orders[0].side, OrderSide.SELL)
-
+    def test_sell_from_flat_is_rejected(self):
+        orders = OrderGenerator(_make_config()).generate(
+            _make_decision(Action.SELL), Portfolio(initial_cash=100_000.0, ticker="AAPL"),
+            "2024-01-03", _make_ref(), _make_spec(),
+        )
+        self.assertEqual(orders, [])
     def test_sell_closes_long_when_long(self):
         config = _make_config()
         og = OrderGenerator(config)
@@ -107,30 +103,20 @@ class TestOrderGenerator(unittest.TestCase):
         p.apply_trade(t)
         d = _make_decision(Action.SELL)
         orders = og.generate(d, p, "2024-01-03", _make_ref(), _make_spec())
-        self.assertEqual(len(orders), 1)
-        self.assertEqual(orders[0].side, OrderSide.SELL)
-        self.assertEqual(orders[0].open_close, OpenClose.CLOSE)
+        self.assertEqual(orders, [])
 
-    def test_buy_covers_short_when_short(self):
-        config = _make_config()
-        og = OrderGenerator(config)
+    def test_short_seed_trade_is_rejected(self):
         p = Portfolio(initial_cash=100_000.0, ticker="AAPL")
-        p.configure_margin(0.50, 0.30)
         from tradingagents.backtesting.decision_schema import OpenClose, Trade
-        t = Trade(
-            date="2024-01-02", ticker="AAPL", side=OrderSide.SELL,
-            quantity=100, price=150.0, gross_amount=15000, fee=0.0,
-            net_amount=15000, multiplier=1.0, notional=15000,
-            tick_size=0.01, slippage_ticks=0, realized_pnl_delta=0.0,
-            margin_delta=0.0, open_close=OpenClose.AUTO,
-            reason="test", decision_id="D1", order_id="O1",
-        )
-        p.apply_trade(t)
-        d = _make_decision(Action.BUY)
-        orders = og.generate(d, p, "2024-01-03", _make_ref(), _make_spec())
-        self.assertEqual(len(orders), 1)
-        self.assertEqual(orders[0].side, OrderSide.BUY)
-        self.assertEqual(orders[0].open_close, OpenClose.CLOSE)
+        with self.assertRaises(ValueError):
+            p.apply_trade(Trade(
+                date="2024-01-02", ticker="AAPL", side=OrderSide.SELL,
+                quantity=100, price=150.0, gross_amount=15000, fee=0.0,
+                net_amount=15000, multiplier=1.0, notional=15000,
+                tick_size=0.01, slippage_ticks=0, realized_pnl_delta=0.0,
+                margin_delta=0.0, open_close=OpenClose.AUTO,
+                reason="test", decision_id="D1", order_id="O1",
+            ))
 
     def test_sizing_caps_by_margin(self):
         config = _make_config()

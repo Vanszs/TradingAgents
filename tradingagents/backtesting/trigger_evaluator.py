@@ -1,40 +1,8 @@
 """
-Trigger-Based Execution Agent.
+Spot-long trigger evaluation.
 
-Decides whether the action implied by today's agent rating is actually
-worth executing. The agent rating alone is **not** a trigger — the
-execution layer waits for a real, identifiable reason to act.
-
-Six trigger conditions (per the spec):
-
-1. ``tp_sl_hit``              — Today's risk-engine check produced a stop
-                                or take-profit order (the bar touched our
-                                protective levels).
-2. ``setup_invalid``          — The agent's report explicitly flags the
-                                setup as broken / invalid (regex-driven
-                                keyword scan with a configurable match
-                                threshold).
-3. ``rr_deteriorated``        — Reward:risk ratio of the proposed trade
-                                has dropped materially (default 30%) vs
-                                yesterday's reading.
-4. ``strong_exit_signal``     — Rating has flipped against the held side
-                                (Sell when Long, Buy when Short). This is
-                                the cleanest "exit" signal.
-5. ``better_candidate``       — Today's confidence or thesis score is
-                                materially above yesterday's AND the new
-                                score is above a minimum threshold.
-6. ``entry_condition_changed``— Flat and the rating has changed (or the
-                                rating is now non-Hold after a Hold
-                                streak).
-7. ``rating_confirmed``      — Non-flat and the rating confirms the held
-                                side (Sell/Underweight when Short,
-                                Buy/Overweight when Long).
-
-Each trigger is a boolean contribution to the final ``triggered`` flag.
-The evaluator is pure: it takes the parsed decision, the previous
-decision, the current position, an optional risk-engine order, and the
-configuration. It does **not** look at the broker, the portfolio, or any
-live data.
+BUY entries may be gated by setup and price conditions. SELL_TO_CLOSE orders
+come only from static risk controls; agent ratings never create exits.
 """
 from __future__ import annotations
 
@@ -45,9 +13,7 @@ from typing import Any, Optional, Union
 from .position import (
     ExtendedDecision,
     MarketPoint,
-    OrderType,
     Position,
-    PositionSide,
 )
 
 # Regex set for "setup invalid" detection. Indonesian + English phrases.
@@ -65,17 +31,6 @@ SETUP_INVALID_PATTERNS: tuple[str, ...] = (
     r"\bclose\s+thesis\b",
     r"\binvalidation\b",
 )
-
-
-# Rating strings for state-aware checks.
-_RATINGS = {
-    "Buy": "Buy",
-    "Overweight": "Overweight",
-    "Hold": "Hold",
-    "Underweight": "Underweight",
-    "Sell": "Sell",
-}
-
 
 @dataclass
 class TriggerConfig:
@@ -234,23 +189,9 @@ class TriggerEvaluator:
             return False
 
         planned = float(planned)
-        action = getattr(decision, "futures_action", None) or getattr(decision, "action", None)
-        side = getattr(decision, "target_position_side", None) or getattr(decision, "side", None)
-        rating = getattr(decision, "agent_rating", None) or getattr(decision, "normalized_rating", None)
 
-        is_short = (
-            (action and "SHORT" in str(action).upper())
-            or (side and str(side).upper() == "SHORT")
-            or (rating and str(rating).lower() in ("sell", "underweight") and str(side).upper() == "SHORT")
-        )
-        is_buy = not is_short
-
-        if is_buy:
-            # Buy limit executes if market traded down to or through the limit price
-            return float(low) <= planned
-        else:
-            # Sell limit executes if market traded up to or through the limit price
-            return float(high) >= planned
+        # The only agent-created limit order is a long BUY entry.
+        return float(low) <= planned
     def _tp_sl_hit(self, risk_order: Optional[Any]) -> bool:
         if risk_order is None:
             return False
@@ -353,11 +294,8 @@ class TriggerEvaluator:
         decision: ExtendedDecision,
         position: Position,
     ) -> bool:
-        rating = (decision.agent_rating or "").strip().lower()
-        if position.is_long() and rating == "sell":
-            return True
-        if position.is_short() and rating == "buy":
-            return True
+        # Agent outputs have no exit action. Static TP/SL and risk controls
+        # own liquidation; WNS never creates an agent-driven sell.
         return False
 
     def _better_candidate(
@@ -391,12 +329,7 @@ class TriggerEvaluator:
         if not position.is_flat():
             return False
         rating = (today.agent_rating or "").strip().lower()
-        if rating == "hold":
-            return False
-        # For FLAT positions, always trigger on non-Hold ratings
-        # because there is no position to protect and every non-Hold
-        # signal is actionable.
-        return True
+        return rating in {"buy", "overweight", "strong_buy", "strong buy"}
 
     def _rating_confirmed(
         self,
@@ -405,9 +338,5 @@ class TriggerEvaluator:
     ) -> bool:
         if position.is_flat():
             return False
-        rating = (today.normalized_rating or "").strip()
-        if position.is_short() and rating in ("SELL", "UNDERWEIGHT"):
-            return True
-        if position.is_long() and rating in ("BUY", "OVERWEIGHT"):
-            return True
-        return False
+        rating = (today.normalized_rating or "").strip().upper()
+        return position.is_long() and rating == "BUY"

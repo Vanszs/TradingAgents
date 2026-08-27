@@ -48,6 +48,32 @@ def _runtime_trade_date() -> Optional[str]:
     return get_config().get("trade_date") or get_config().get("curr_date")
 
 
+def _date_only(value: object) -> str:
+    return pd.Timestamp(value).strftime("%Y-%m-%d")
+
+
+def _visible_event(value: object, cutoff_date: str, cutoff_time: str = "16:30:00") -> bool:
+    """Keep events visible through the configured post-market review cutoff."""
+    try:
+        event = pd.Timestamp(value)
+        cutoff = pd.Timestamp(f"{cutoff_date} {cutoff_time}")
+        if event.tzinfo is not None:
+            event = event.tz_convert(None)
+        return event <= cutoff
+    except (TypeError, ValueError):
+        return False
+
+
+def _effective_cutoff(value: object = None) -> Optional[str]:
+    """Never return injected snapshot data after the active trade date."""
+    requested = _date_only(value) if value else None
+    runtime = _runtime_trade_date()
+    active = _date_only(runtime) if runtime else None
+    if requested and active:
+        return min(requested, active)
+    return requested or active
+
+
 def _ohlcv_frame(value) -> pd.DataFrame:
     """Normalize snapshot OHLCV records and frames at the vendor boundary."""
     if isinstance(value, pd.DataFrame):
@@ -93,8 +119,12 @@ def snapshot_get_stock_data(
     df = _ohlcv_frame(ohlcv)
     if df.empty or "date" not in df.columns:
         return f"No OHLCV data available in snapshot for {symbol}."
-    df["date"] = df["date"].astype(str)
-    filtered = df[(df["date"] >= start_date) & (df["date"] <= end_date)]
+    df["date"] = df["date"].map(_date_only)
+    cutoff = _effective_cutoff(end_date)
+    if cutoff is None:
+        return f"No OHLCV data available in snapshot for {symbol}."
+    start = _date_only(start_date) if start_date else "0001-01-01"
+    filtered = df[(df["date"] >= start) & (df["date"] <= cutoff)]
 
     if filtered.empty:
         return f"No OHLCV data for {symbol} between {start_date} and {end_date}."
@@ -160,7 +190,8 @@ def snapshot_get_indicators(
     df["Date"] = pd.to_datetime(df["Date"])
 
     # Filter to curr_date
-    curr_date_dt = pd.to_datetime(curr_date)
+    cutoff = _effective_cutoff(curr_date)
+    curr_date_dt = pd.to_datetime(cutoff)
     df = df[df["Date"] <= curr_date_dt]
     df = df.sort_values("Date").reset_index(drop=True)
 
@@ -209,18 +240,15 @@ def snapshot_get_news(
     """Return formatted news from snapshot."""
     data = _get_snapshot_data()
     news = data.get("news", [])
-    if end_date:
-        cutoff = str(end_date).split(" ")[0]
-        start_cutoff = str(start_date).split(" ")[0] if start_date else ""
-        filtered = []
-        for item in news:
-            raw = str(item.get("published_at") or item.get("date") or "")
-            if not raw:
-                continue
-            item_date = raw.split("T")[0].split(" ")[0]
-            if (not start_cutoff or item_date >= start_cutoff) and item_date <= cutoff:
-                filtered.append(item)
-        news = filtered
+    cutoff = _effective_cutoff(end_date)
+    start_cutoff = _date_only(start_date) if start_date else "0001-01-01"
+    if cutoff:
+        news = [
+            item for item in news
+            if (raw := str(item.get("published_at") or item.get("date") or ""))
+            and start_cutoff <= _date_only(raw) <= cutoff
+            and _visible_event(raw, cutoff)
+        ]
     if not news:
         return f"No news data available for {ticker}."
     return _format_news_items(news)
@@ -234,12 +262,13 @@ def snapshot_get_global_news(
     """Return formatted global/macro news from snapshot."""
     data = _get_snapshot_data()
     news = data.get("news", [])
-    if curr_date:
-        cutoff = str(curr_date).split(" ")[0]
+    cutoff = _effective_cutoff(curr_date)
+    if cutoff:
         news = [
             item for item in news
-            if str(item.get("published_at") or item.get("date") or "").split("T")[0].split(" ")[0] <= cutoff
-            and bool(str(item.get("published_at") or item.get("date") or ""))
+            if (raw := str(item.get("published_at") or item.get("date") or ""))
+            and _date_only(raw) <= cutoff
+            and _visible_event(raw, cutoff)
         ]
     if not news:
         return "No global news data available."
@@ -277,10 +306,10 @@ def snapshot_get_fundamentals(ticker: str, curr_date: str) -> str:
         return f"No fundamental data available for {ticker}."
 
     # Filter by available_date <= curr_date
-    cutoff = str(curr_date).split("T")[0].split(" ")[0]
+    cutoff = _effective_cutoff(curr_date)
     filtered = [
         f for f in fundamentals
-        if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
+        if cutoff and _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
     ]
     if not filtered:
         return f"No fundamental data available for {ticker} up to {curr_date}."
@@ -302,7 +331,7 @@ def snapshot_get_balance_sheet(
     ]
     cutoff = curr_date or _runtime_trade_date()
     if cutoff:
-        cutoff = str(cutoff).split("T")[0].split(" ")[0]
+        cutoff = _effective_cutoff(cutoff)
         items = [
             f for f in items
             if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
@@ -327,7 +356,7 @@ def snapshot_get_cashflow(
     ]
     cutoff = curr_date or _runtime_trade_date()
     if cutoff:
-        cutoff = str(cutoff).split("T")[0].split(" ")[0]
+        cutoff = _effective_cutoff(cutoff)
         items = [
             f for f in items
             if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff
@@ -352,7 +381,7 @@ def snapshot_get_income_statement(
     ]
     cutoff = curr_date or _runtime_trade_date()
     if cutoff:
-        cutoff = str(cutoff).split("T")[0].split(" ")[0]
+        cutoff = _effective_cutoff(cutoff)
         items = [
             f for f in items
             if _fundamental_available_date(f) and _fundamental_available_date(f) <= cutoff

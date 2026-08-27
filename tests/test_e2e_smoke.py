@@ -76,7 +76,7 @@ def patched_graph(tmp_path):
 # Tests
 # ---------------------------------------------------------------------------
 
-VALID_DECISIONS = {"Buy", "Overweight", "Hold", "Underweight", "Sell"}
+VALID_DECISIONS = {"BUY", "WNS"}
 
 
 @pytest.mark.smoke

@@ -3,14 +3,11 @@ Order generation for stock margin backtests — PRD-compliant version.
 
 Translates an ExtendedDecision (or legacy ParsedDecision) into one or more
 pending Orders with explicit OrderType (PRD §7.2):
-- BUY_TO_OPEN, BUY_TO_ADD, SELL_TO_REDUCE, SELL_TO_CLOSE
-- SELL_TO_OPEN, SELL_TO_ADD, BUY_TO_REDUCE, BUY_TO_CLOSE
-- REVERSE_TO_LONG, REVERSE_TO_SHORT, NO_ORDER
+- BUY_TO_OPEN, BUY_TO_ADD, SELL_TO_CLOSE, NO_ORDER
 
 Supports:
 - Lot-size rounding
 - Max-leverage cap enforcement
-- Two-leg reverse execution (close leg + open leg)
 - Percentage-based fees/slippage
 """
 from __future__ import annotations
@@ -67,6 +64,15 @@ class OrderGenerator:
         order_type = OrderType(decision.futures_action)
         if order_type == OrderType.NO_ORDER:
             return []
+        if order_type != OrderType.BUY_TO_OPEN:
+            logger.error(
+                "Rejected non-entry order %s for %s",
+                order_type.value,
+                decision.ticker,
+            )
+            return []
+        if not current_position.is_flat():
+            return []
 
         ticker = decision.ticker
         exec_date = decision.decision_valid_from
@@ -75,20 +81,12 @@ class OrderGenerator:
 
         limit_price = getattr(decision, "planned_entry_price", 0.0) or 0.0
 
-        # For close orders, always close the full open position
-        if order_type in (
-            OrderType.SELL_TO_CLOSE, OrderType.BUY_TO_CLOSE,
-        ) or decision.position_intent == "close":
-            target_qty = current_position.abs_qty()
-        else:
-            # Calculate target quantity from allocation_pct
-            target_qty = self._allocation_to_qty(
-                decision, current_position, current_equity, current_cash, reference_price, limit_price
-            )
-            # Lot-size rounding
-            target_qty = self._round_to_lot(target_qty)
-            # Max-leverage cap
-            target_qty = self._cap_by_leverage(target_qty, current_position, current_equity, reference_price)
+        # The only agent-generated order is a full-size BUY entry.
+        target_qty = self._allocation_to_qty(
+            decision, current_position, current_equity, current_cash, reference_price, limit_price
+        )
+        target_qty = self._round_to_lot(target_qty)
+        target_qty = self._cap_by_leverage(target_qty, current_position, current_equity, reference_price)
 
         if target_qty <= 0:
             return []
@@ -170,36 +168,22 @@ class OrderGenerator:
         from .decision_schema import Action
         from .decision_schema import Rating as OldRating
 
-        if decision.action == Action.INVALID:
-            return []
-        if decision.action == Action.HOLD:
+        if (
+            decision.action != Action.BUY
+            or not decision.allow_new_position
+            or not portfolio.is_flat()
+        ):
             return []
 
         rating_map = {
-            OldRating.BUY: "strong_buy",
-            OldRating.OVERWEIGHT: "buy",
-            OldRating.HOLD: "hold",
-            OldRating.UNDERWEIGHT: "sell",
-            OldRating.SELL: "strong_sell",
+            OldRating.BUY: "BUY",
+            OldRating.OVERWEIGHT: "BUY",
+            OldRating.HOLD: "WNS",
+            OldRating.UNDERWEIGHT: "WNS",
+            OldRating.SELL: "WNS",
+            OldRating.WNS: "WNS",
         }
-        action_map = {
-            Action.BUY: "BUY_TO_OPEN",
-            Action.ADD: "BUY_TO_ADD",
-            Action.SELL: "SELL_TO_CLOSE" if portfolio.is_long() else "SELL_TO_OPEN",
-            Action.OPEN_SHORT: "SELL_TO_OPEN",
-            Action.COVER_SHORT: "BUY_TO_CLOSE",
-            Action.REDUCE: "SELL_TO_REDUCE" if portfolio.is_long() else "BUY_TO_REDUCE",
-            Action.SELL_ALL: "SELL_TO_CLOSE" if portfolio.is_long() else "BUY_TO_CLOSE",
-        }
-
-        from .decision_schema import Action as LegacyAction
-        futures_action = action_map.get(decision.action, "NO_ORDER")
-
-        # Legacy: BUY closes short position, SELL/OPEN_SHORT closes long
-        if portfolio.is_short() and decision.action == LegacyAction.BUY:
-            futures_action = "BUY_TO_CLOSE"
-        elif portfolio.is_long() and decision.action in (LegacyAction.SELL, LegacyAction.OPEN_SHORT):
-            futures_action = "SELL_TO_CLOSE"
+        futures_action = "BUY_TO_OPEN"
 
         alloc_pct = decision.target_position_pct
         if alloc_pct is not None and alloc_pct > 1.0:
@@ -213,15 +197,15 @@ class OrderGenerator:
             last_data_date=decision.last_data_date,
             decision_valid_from=decision.decision_valid_from,
             agent_rating=decision.rating.value,
-            normalized_rating=rating_map.get(decision.rating, "hold"),
+            normalized_rating=rating_map.get(decision.rating, "WNS"),
             allocation_pct=alloc_pct,
             leverage=1.0,
-            short_allowed=True,
-            market_mode="FUTURES_STYLE_SIMULATION",
-            allowed_position_sides="LONG,SHORT",
+            short_allowed=False,
+            market_mode="SPOT_LONG_ONLY",
+            allowed_position_sides="LONG",
             position_intent=decision.action.value.lower(),
             current_position_side=pos.side.value,
-            target_position_side="LONG" if "BUY" in futures_action else ("SHORT" if "SELL_TO_OPEN" in futures_action else pos.side.value),
+            target_position_side="LONG" if "BUY" in futures_action else pos.side.value,
             futures_action=futures_action,
             stop_price=decision.stop_price,
             take_profit=decision.take_profit,
@@ -277,50 +261,9 @@ class OrderGenerator:
         current_position: Position,
         limit_price: float = 0.0,
     ) -> list[Order]:
-        if order_type in (OrderType.REVERSE_TO_LONG, OrderType.REVERSE_TO_SHORT):
-            # Two-leg reverse: close existing, then open new
-            close_qty = current_position.abs_qty()
-            close_type = (
-                OrderType.SELL_TO_CLOSE if current_position.is_long()
-                else OrderType.BUY_TO_CLOSE
-            )
-
-            close_order = Order(
-                order_id=str(uuid4()),
-                decision_id=decision_id,
-                ticker=ticker,
-                order_type=close_type,
-                quantity=close_qty,
-                execution_date=execution_date,
-                reason="reverse_close_leg",
-            )
-
-            open_type = (
-                OrderType.BUY_TO_OPEN if order_type == OrderType.REVERSE_TO_LONG
-                else OrderType.SELL_TO_OPEN
-            )
-            open_order = Order(
-                order_id=str(uuid4()),
-                decision_id=decision_id,
-                ticker=ticker,
-                order_type=open_type,
-                quantity=target_qty,
-                price=limit_price,
-                execution_date=execution_date,
-                reason="reverse_open_leg",
-                is_reverse=False,
-            )
-            return [close_order, open_order]
-
         reason_map = {
             OrderType.BUY_TO_OPEN: "agent_buy_open",
-            OrderType.BUY_TO_ADD: "agent_buy_add",
-            OrderType.SELL_TO_REDUCE: "agent_sell_reduce",
             OrderType.SELL_TO_CLOSE: "agent_sell_close",
-            OrderType.SELL_TO_OPEN: "agent_open_short",
-            OrderType.SELL_TO_ADD: "agent_short_add",
-            OrderType.BUY_TO_REDUCE: "agent_cover_reduce",
-            OrderType.BUY_TO_CLOSE: "agent_cover_close",
         }
 
         reason = "agent_buy_limit" if limit_price > 0 else reason_map.get(order_type, "agent_order")
@@ -352,38 +295,17 @@ class OrderGenerator:
     ) -> int:
         """Convert allocation_pct to a share quantity.
 
-        For REDUCE: reduce_step_pct is applied to current position quantity.
-        For INCREASE: pyramid_pct is applied to current position quantity.
-        For OPEN: initial_entry_pct is applied to equity.
+        For OPEN: initial_entry_pct is applied to equity. Existing long
+        positions never create another entry.
         """
         alloc = decision.allocation_pct
         if alloc is None or alloc <= 0:
             dm = getattr(self.config, "decision_mapping", None)
-            if dm is not None:
-                if decision.position_intent == "increase":
-                    alloc = dm.pyramid_pct
-                elif decision.position_intent == "reduce":
-                    alloc = dm.reduce_step_pct
-                else:
-                    alloc = dm.initial_entry_pct
-            else:
-                alloc = 0.25
+            alloc = dm.initial_entry_pct if dm is not None else 0.25
 
         # Guard against percentage values (e.g., 30 instead of 0.30)
         if alloc > 1.0:
             alloc = alloc / 100.0
-
-        # For REDUCE: apply percentage to current position quantity
-        if decision.position_intent == "reduce" and position.abs_qty() > 0:
-            raw_qty = position.abs_qty() * alloc
-            if raw_qty < 1.0 and position.abs_qty() > 1:
-                return 0  # Do not force full lot trim if fraction is too small
-            return max(1, min(position.abs_qty(), int(round(raw_qty))))
-
-        # For INCREASE: apply percentage to current position quantity
-        if decision.position_intent == "increase" and position.abs_qty() > 0:
-            raw_qty = position.abs_qty() * alloc
-            return max(1, int(round(raw_qty)))
 
         # For OPEN: apply percentage to equity clamped by available cash in spot mode
         target_notional = equity * alloc
@@ -453,12 +375,9 @@ class OrderGenerator:
         execution_date: str,
         reason: str = "stop_loss",
     ) -> list[Order]:
-        if not portfolio.has_position():
+        if not portfolio.has_position() or not portfolio.is_long():
             return []
-        order_type = (
-            OrderType.SELL_TO_CLOSE if portfolio.is_long()
-            else OrderType.BUY_TO_CLOSE
-        )
+        order_type = OrderType.SELL_TO_CLOSE
         return [
             Order(
                 order_id=str(uuid4()),
@@ -468,6 +387,7 @@ class OrderGenerator:
                 quantity=portfolio.abs_qty(),
                 execution_date=execution_date,
                 reason=reason,
+                is_risk_order=True,
             )
         ]
 
@@ -476,12 +396,9 @@ class OrderGenerator:
         portfolio: any,
         execution_date: str,
     ) -> Optional[Order]:
-        if not portfolio.has_position():
+        if not portfolio.has_position() or not portfolio.is_long():
             return None
-        order_type = (
-            OrderType.SELL_TO_CLOSE if portfolio.is_long()
-            else OrderType.BUY_TO_CLOSE
-        )
+        order_type = OrderType.SELL_TO_CLOSE
         return Order(
             order_id=str(uuid4()),
             decision_id="liquidation",
@@ -490,4 +407,5 @@ class OrderGenerator:
             quantity=portfolio.abs_qty(),
             execution_date=execution_date,
             reason="liquidation_margin_breach",
+            is_risk_order=True,
         )

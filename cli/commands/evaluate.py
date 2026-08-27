@@ -7,7 +7,6 @@ signal over horizon H trading days using the Forward Horizon Evaluator.
 from __future__ import annotations
 
 import datetime
-from io import StringIO
 from typing import Optional
 
 import pandas as pd
@@ -28,7 +27,7 @@ from tradingagents.backtesting.horizon_evaluator import (
     EvaluationResult,
     HorizonEvaluator,
 )
-from tradingagents.dataflows.y_finance import get_YFin_data_online
+from tradingagents.backtesting.snapshot_provider import SnapshotDataProvider
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 
@@ -51,7 +50,6 @@ def signal_from_final_state(final_state, ticker: str, trade_date: str) -> Signal
             f"got {signal.ticker}/{signal.signal_date}"
         )
     return signal
-    return signal
 
 
 def evaluate_signal_cmd(
@@ -72,6 +70,11 @@ def evaluate_signal_cmd(
         "--provider",
         "-p",
         help="LLM Provider override (e.g. openai, anthropic, google, bluesmind).",
+    ),
+    kronos_enabled: bool = typer.Option(
+        False,
+        "--kronos/--no-kronos",
+        help="Enable the Kronos forecasting tool in the market analyst graph.",
     ),
 ):
     """
@@ -95,6 +98,7 @@ def evaluate_signal_cmd(
             ticker=ticker,
             trade_date=trade_date,
             llm_provider=llm_provider,
+            kronos_enabled=kronos_enabled,
             tui=tui,
             stats_handler=stats_handler,
         )
@@ -140,7 +144,7 @@ def _run_forward_evaluation(
         return result, {}
 
     actual_entry_price = signal.planned_entry_price
-    actual_entry_timestamp = signal.signal_timestamp
+    actual_entry_timestamp = signal.signal_timestamp if actual_entry_price is not None else None
 
     result = HorizonEvaluator.evaluate(
         ticker=ticker,
@@ -157,8 +161,6 @@ def _run_forward_evaluation(
         signal_timestamp=signal.signal_timestamp,
         entry_timestamp=actual_entry_timestamp,
         reference_price_at_signal=signal.reference_price_at_signal,
-        trailing_stop_pct=getattr(signal, "trailing_stop_pct", None),
-        break_even_trigger_pct=getattr(signal, "break_even_trigger_pct", None),
         max_holding_days=getattr(signal, "max_holding_days", None),
     )
 
@@ -170,28 +172,22 @@ def _evaluate_signal_with_tui(
     ticker: str,
     trade_date: str,
     llm_provider: Optional[str],
+    kronos_enabled: bool = False,
     tui: SingleShotTUI,
     stats_handler: StatsCallbackHandler,
 ):
     # 1. Fetch OHLCV history up to forward horizon
     tui.start_phase("Market Data")
     try:
-        # Load wide range around trade_date
-        start_year = int(trade_date.split("-")[0]) - 1
-        end_year = int(trade_date.split("-")[0]) + 1
-        raw_history = get_YFin_data_online(
-            symbol=ticker,
-            start_date=f"{start_year}-01-01",
-            end_date=f"{end_year}-12-31",
+        provider = SnapshotDataProvider(
+            data_root=DEFAULT_CONFIG.get("data_root", "data"),
+            snapshot_root=DEFAULT_CONFIG.get("snapshot_root", "snapshots"),
+            fetch_from_api=True,  # auto-provision from yfinance when local data missing
+            api_cache_dir=DEFAULT_CONFIG.get("api_cache_dir", "api_cache"),
         )
-        if not isinstance(raw_history, str) or "\n\n" not in raw_history:
-            raise ValueError("market data returned an unexpected format")
-        ohlcv_df = pd.read_csv(StringIO(raw_history.split("\n\n", 1)[1]))
-        ohlcv_df.columns = [column.strip().lower() for column in ohlcv_df.columns]
-        if "date" not in ohlcv_df.columns:
-            index_name = ohlcv_df.columns[0]
-            ohlcv_df = ohlcv_df.rename(columns={index_name: "date"})
+        ohlcv_df = provider.load_full_ohlcv(ticker)
     except Exception as e:
+        console.print(f"[red]Market Data failed for {ticker}: {e}[/red]")
         tui.fail_phase("Market Data", e)
         raise typer.Exit(1)
 
@@ -201,14 +197,22 @@ def _evaluate_signal_with_tui(
 
     tui.complete_phase("Market Data")
 
-    # 2. Run Single-Shot Agentic Graph at T0 (Live Time-Travel Mode)
+    # 2. Run Single-Shot Agentic Graph at T0 (Strict Point-In-Time Sandbox)
     config_override = dict(DEFAULT_CONFIG)
     config_override["trade_date"] = trade_date
     config_override["curr_date"] = trade_date
-    config_override["point_in_time_mode"] = False
-    config_override["backtest_mode"] = False
+    config_override["point_in_time_mode"] = True
+    config_override["backtest_mode"] = True
     config_override["memory_enabled"] = False
+    config_override["kronos_enabled"] = kronos_enabled
     hist_cut = ohlcv_df[ohlcv_df["date"].astype(str) <= trade_date].copy()
+    if hist_cut.empty:
+        console.print(
+            f"[red]No OHLCV bars for {ticker} at or before {trade_date}. "
+            f"Check the ticker or pick a later date.[/red]"
+        )
+        tui.fail_phase("Market Data", f"No bars <= {trade_date} for {ticker}")
+        raise typer.Exit(1)
     config_override["snapshot_data"] = {
         "ohlcv": hist_cut.to_dict(orient="records"),
         "news": [],

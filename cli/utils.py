@@ -304,8 +304,9 @@ def select_llm_provider() -> tuple[str, str | None]:
 def ask_openai_reasoning_effort() -> str:
     """Ask for OpenAI reasoning effort level."""
     choices = [
-        questionary.Choice("Medium (Default)", "medium"),
+        questionary.Choice("Max (Most thorough)", "max"),
         questionary.Choice("High (More thorough)", "high"),
+        questionary.Choice("Medium (Default)", "medium"),
         questionary.Choice("Low (Faster)", "low"),
     ]
     return questionary.select(
@@ -323,12 +324,12 @@ def ask_anthropic_effort() -> str | None:
     """Ask for Anthropic effort level.
 
     Controls token usage and response thoroughness on Claude 4.5 / 4.6 / 4.7
-    models. The API also accepts "max"; we expose low/medium/high as the
-    common selection range.
+    common selection range, including `max` when the provider supports it.
     """
     return questionary.select(
         "Select Effort Level:",
         choices=[
+            questionary.Choice("Max (most thorough)", "max"),
             questionary.Choice("High (recommended)", "high"),
             questionary.Choice("Medium (balanced)", "medium"),
             questionary.Choice("Low (faster, cheaper)", "low"),

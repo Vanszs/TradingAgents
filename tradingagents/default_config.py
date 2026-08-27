@@ -21,6 +21,10 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_GOOGLE_THINKING_LEVEL": "google_thinking_level",
     "TRADINGAGENTS_OPENAI_REASONING_EFFORT": "openai_reasoning_effort",
     "TRADINGAGENTS_ANTHROPIC_EFFORT":     "anthropic_effort",
+    "TRADINGAGENTS_KRONOS_ENABLED":       "kronos_enabled",
+    "TRADINGAGENTS_KRONOS_MODEL_TIER":    "kronos_model_tier",
+    "TRADINGAGENTS_KRONOS_DEVICE":        "kronos_device",
+    "TRADINGAGENTS_KRONOS_ATTN":          "kronos_attn_implementation",
 }
 
 
@@ -66,8 +70,8 @@ DEFAULT_CONFIG = _apply_env_overrides({
     "backend_url": None,
     # Provider-specific thinking configuration
     "google_thinking_level": None,      # "high", "minimal", etc.
-    "openai_reasoning_effort": None,    # "medium", "high", "low"
-    "anthropic_effort": None,           # "high", "medium", "low"
+    "openai_reasoning_effort": None,    # "max", "high", "medium", "low"
+    "anthropic_effort": None,           # "max", "high", "medium", "low"
     # Checkpoint/resume: when True, LangGraph saves state after each node
     # so a crashed run can resume from the last successful step.
     "checkpoint_enabled": False,
@@ -94,8 +98,11 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "ECB Bank of England BOJ central bank policy",
         "oil commodities supply chain energy",
     ],
-    # Historical runs must use dated snapshots, never live vendor data.
+    # Runtime mode flags are explicit so sequential CLI runs cannot inherit state.
     "point_in_time_mode": False,
+    "backtest_mode": False,
+    "memory_enabled": True,
+    "web_search_enabled": True,
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {
@@ -126,4 +133,14 @@ DEFAULT_CONFIG = _apply_env_overrides({
         ".AX":  "^AXJO",    # Australia (ASX 200)
         "":     "SPY",      # default for US-listed tickers (no suffix)
     },
+    # Kronos K-Line Foundation Model (shiyu-coder/Kronos, AAAI 2026)
+    "kronos_enabled": False,
+    "kronos_model_tier": "base",          # "base" (102.3M), "small" (24.7M), "mini" (4.1M)
+    "kronos_model_repo": "NeoQuasar/Kronos-base",
+    "kronos_tokenizer_repo": "NeoQuasar/Kronos-Tokenizer-base",
+    "kronos_device": "auto",              # "auto", "cuda", "mps", "cpu"
+    "kronos_attn_implementation": "sdpa", # "sdpa", "flash_attention_2", "eager"
+    "kronos_torch_compile": False,
+    "kronos_pred_len": 20,                # forecast horizon in bars (5, 10, 20)
+    "kronos_temperature": 0.0,            # 0.0 for deterministic backtesting
 })

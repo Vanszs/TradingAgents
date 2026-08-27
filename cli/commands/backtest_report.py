@@ -39,12 +39,10 @@ def _print_results_table(
         ("Max drawdown", f"{_fmt(summary.get('max_drawdown_pct'), '.2f', '0.00')}%" if summary.get('max_drawdown_pct') is not None else "—"),
         ("Sharpe ratio", _fmt(summary.get("sharpe_ratio"))),
         ("Total trades", str(summary.get("number_of_trades") or 0)),
-        ("Long win rate", f"{_fmt(summary.get('long_win_rate'), '.2f', '0.00')}%"),
-        ("Short win rate", f"{_fmt(summary.get('short_win_rate'), '.2f', '0.00')}%"),
+        ("Win rate", f"{_fmt(summary.get('win_rate'), '.2f', '0.00')}%"),
         ("Trigger hit rate", f"{(summary.get('trigger_hit_rate') or 0.0) * 100:5.1f}%"),
         ("Trigger triggered", f"{summary.get('trigger_triggered') or 0}/{summary.get('trigger_total_decisions') or 0}"),
-        ("Avg hold (long)", f"{_fmt(summary.get('avg_holding_period_long_days'), '.1f', '0.0')} d"),
-        ("Avg hold (short)", f"{_fmt(summary.get('avg_holding_period_short_days'), '.1f', '0.0')} d"),
+        ("Avg hold", f"{_fmt(summary.get('avg_holding_period_days'), '.1f', '0.0')} d"),
         ("Margin calls", str(summary.get("margin_calls_count") or 0)),
         ("Liquidations", str(summary.get("liquidations_count") or 0)),
     ]
@@ -130,7 +128,7 @@ def _print_dry_run_plan(
     plan.add_row("Lookback (effective)", effective_lookback_str)
     plan.add_row(
         "Decision mapping mode",
-        str(decision_mapping.get("mode", "strict_5tier")),
+        str(decision_mapping.get("mode", "spot_long_only")),
     )
     plan.add_row(
         "allow_explicit_reverse",
@@ -142,7 +140,7 @@ def _print_dry_run_plan(
     )
     plan.add_row(
         "allow_short_on_sell",
-        str(decision_mapping.get("allow_short_on_sell", True)),
+        str(decision_mapping.get("allow_short_on_sell", False)),
     )
     plan.add_row(
         "base_allocation_pct",
@@ -232,7 +230,7 @@ def _print_dry_run_plan(
         "initial_cash": config.get("initial_cash"),
         "lookback_days": resolved_lookback,
         "decision_mapping": {
-            "mode": decision_mapping.get("mode", "strict_5tier"),
+            "mode": decision_mapping.get("mode", "spot_long_only"),
             "allow_explicit_reverse": decision_mapping.get(
                 "allow_explicit_reverse", False
             ),
@@ -240,7 +238,7 @@ def _print_dry_run_plan(
                 "allow_short_on_underweight", False
             ),
             "allow_short_on_sell": decision_mapping.get(
-                "allow_short_on_sell", True
+                "allow_short_on_sell", False
             ),
             "base_allocation_pct": decision_mapping.get(
                 "base_allocation_pct", 0.20

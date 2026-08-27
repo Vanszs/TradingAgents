@@ -75,6 +75,8 @@ class Portfolio:
         self.initial_cash = float(initial_cash)
         self.ticker = ticker
         self.enable_daily_settlement = enable_daily_settlement
+        if initial_position_qty < 0:
+            raise ValueError("spot long-only portfolio cannot start with a short position")
 
         self.position = LegacyPosition(
             ticker=ticker,
@@ -187,12 +189,25 @@ class Portfolio:
     # Trade application
     # ------------------------------------------------------------------
     def apply_trade(self, trade: Trade) -> None:
+        if trade.quantity <= 0:
+            raise ValueError("Trade quantity must be positive")
         if trade.open_close == OpenClose.OPEN:
+            if trade.side != OrderSide.BUY:
+                raise ValueError("Spot long-only portfolio rejects short-opening trades")
             self._apply_open(trade)
         elif trade.open_close == OpenClose.CLOSE:
+            if trade.side != OrderSide.SELL:
+                raise ValueError("Spot long-only portfolio closes with SELL only")
             self._apply_close(trade)
-        else:  # AUTO
-            self._apply_auto(trade)
+        elif trade.open_close == OpenClose.AUTO:
+            if self.is_flat() and trade.side == OrderSide.BUY:
+                self._apply_open(trade)
+            elif self.is_long() and trade.side == OrderSide.SELL:
+                self._apply_close(trade)
+            else:
+                raise ValueError("Spot long-only portfolio accepts BUY open or SELL close only")
+        else:
+            raise ValueError(f"Unsupported trade phase: {trade.open_close}")
 
         self.trades.append(trade)
         self.cash -= trade.fee
@@ -202,7 +217,11 @@ class Portfolio:
         self.daily_realized_pnl += trade.realized_pnl_delta
         if self.enable_daily_settlement:
             prev_mark = self.last_mark if self.last_mark is not None else float(trade.price)
-            close_pnl = (float(trade.price) - prev_mark) * trade.quantity * trade.multiplier if trade.side == OrderSide.SELL else (prev_mark - float(trade.price)) * trade.quantity * trade.multiplier
+            close_pnl = (
+                (float(trade.price) - prev_mark) * trade.quantity * trade.multiplier
+                if trade.side == OrderSide.SELL
+                else 0.0
+            )
             self.cash += close_pnl
         else:
             self.cash += trade.realized_pnl_delta
@@ -211,14 +230,12 @@ class Portfolio:
         if self.position.quantity != 0:
             raise ValueError(
                 f"Cannot OPEN: existing position {self.position.quantity}. "
-                "Use REDUCE/CLOSE first."
+                "Spot long-only execution does not pyramid."
             )
-        if trade.side == OrderSide.BUY:
-            signed_qty = int(trade.quantity)
-        else:
-            signed_qty = -int(trade.quantity)
+        if trade.side != OrderSide.BUY:
+            raise ValueError("Spot long-only OPEN requires BUY")
 
-        self.position.quantity = signed_qty
+        self.position.quantity = int(trade.quantity)
         self.position.avg_price = float(trade.price)
         self.position.multiplier = float(trade.multiplier)
         self.position.tick_size = float(trade.tick_size)
@@ -226,84 +243,26 @@ class Portfolio:
         self.last_mark = float(trade.price)
 
     def _apply_close(self, trade: Trade) -> None:
-        if self.position.quantity == 0:
-            raise ValueError("Cannot CLOSE: no open position.")
+        if not self.is_long():
+            raise ValueError("Spot long-only CLOSE requires an open long position")
 
         close_qty = int(trade.quantity)
-        if close_qty > self.abs_qty():
+        if close_qty > self.position.quantity:
             raise ValueError(
-                f"Cannot CLOSE: requested {close_qty} but only {self.abs_qty()} open."
+                f"Cannot CLOSE: requested {close_qty} but only {self.position.quantity} open."
             )
+        if trade.side != OrderSide.SELL:
+            raise ValueError("Spot long-only CLOSE requires SELL")
 
-        closing_direction = OrderSide.SELL if self.position.quantity > 0 else OrderSide.BUY
-        if trade.side != closing_direction:
-            raise ValueError(
-                f"Close direction mismatch: position is "
-                f"{'long' if self.position.quantity > 0 else 'short'} "
-                f"but close order side is {trade.side.value}."
-            )
-
-        if self.position.quantity > 0:
-            realized = (float(trade.price) - self.position.avg_price) * close_qty * self.position.multiplier
-        else:
-            realized = (self.position.avg_price - float(trade.price)) * close_qty * self.position.multiplier
-
-        if self.position.quantity > 0:
-            new_qty = self.position.quantity - close_qty
-        else:
-            new_qty = self.position.quantity + close_qty
-        released = self.margin_posted * (close_qty / self.abs_qty()) if self.abs_qty() > 0 else 0.0
+        realized = (float(trade.price) - self.position.avg_price) * close_qty * self.position.multiplier
+        released = self.margin_posted * (close_qty / self.position.quantity)
         self.margin_posted -= released
         self.cash += released
         trade.realized_pnl_delta = float(realized)
 
-        self.position.quantity = new_qty
-        if new_qty == 0:
-            self.position.avg_price = 0.0
-
-    def _apply_auto(self, trade: Trade) -> None:
+        self.position.quantity -= close_qty
         if self.position.quantity == 0:
-            self._apply_open_with(trade)
-            return
-
-        if (self.position.quantity > 0 and trade.side == OrderSide.BUY) or (
-            self.position.quantity < 0 and trade.side == OrderSide.SELL
-        ):
-            self._apply_add(trade)
-        else:
-            self._apply_close(trade)
-
-    def _apply_open_with(self, trade: Trade) -> None:
-        signed_qty = int(trade.quantity) if trade.side == OrderSide.BUY else -int(trade.quantity)
-        self.position.quantity = signed_qty
-        self.position.avg_price = float(trade.price)
-        self.position.multiplier = float(trade.multiplier)
-        self.position.tick_size = float(trade.tick_size)
-        self._post_margin(trade)
-        self.last_mark = float(trade.price)
-
-    def _apply_add(self, trade: Trade) -> None:
-        old_qty = self.position.quantity
-        old_notional = abs(old_qty) * self.position.avg_price * self.position.multiplier
-        add_qty = int(trade.quantity)
-        add_notional = add_qty * float(trade.price) * self.position.multiplier
-        new_qty = abs(old_qty) + add_qty
-        if new_qty <= 0:
-            raise ValueError("Add resulted in non-positive quantity")
-        if self.position.quantity > 0:
-            self.position.quantity = new_qty
-        else:
-            self.position.quantity = -new_qty
-        self.position.avg_price = (old_notional + add_notional) / (new_qty * self.position.multiplier)
-        additional_margin = add_notional * self._initial_margin_pct
-        if additional_margin > self.cash + 1e-9:
-            raise InsufficientMarginError(
-                f"Insufficient cash for add: need {additional_margin:.2f}, "
-                f"have {self.cash:.2f}."
-            )
-        self.cash -= additional_margin
-        self.margin_posted += additional_margin
-        self.last_mark = float(trade.price)
+            self.position.avg_price = 0.0
 
     def _post_margin(self, trade: Trade) -> None:
         post = float(trade.price) * int(trade.quantity) * float(trade.multiplier) * self._initial_margin_pct
@@ -413,56 +372,31 @@ class Portfolio:
     def is_intraday_breach(self, open_price: float, intraday_low: float, intraday_high: Optional[float] = None) -> bool:
         if self.position.quantity == 0:
             return False
+        if self.position.quantity < 0:
+            raise ValueError("spot long-only portfolio rejects short positions")
 
-        if self.position.quantity > 0:
-            # Long: worst case is price dropping to intraday_low
-            equity_open = self.cash + self.position.unrealized_pnl(open_price)
-            worst_equity = equity_open - (
-                (float(open_price) - float(intraday_low))
-                * self.position.quantity
-                * self.position.multiplier
-            )
-            mm = maintenance_margin(
-                quantity=self.position.quantity,
-                mark_price=intraday_low,
-                multiplier=self.position.multiplier,
-                maintenance_margin_pct=self._maintenance_margin_pct,
-            )
-        else:
-            # Short: worst case is price rising to intraday_high
-            if intraday_high is None:
-                return False
-            equity_open = self.cash + self.position.unrealized_pnl(open_price)
-            worst_equity = equity_open - (
-                (float(intraday_high) - float(open_price))
-                * abs(self.position.quantity)
-                * self.position.multiplier
-            )
-            mm = maintenance_margin(
-                quantity=self.position.quantity,
-                mark_price=intraday_high,
-                multiplier=self.position.multiplier,
-                maintenance_margin_pct=self._maintenance_margin_pct,
-            )
-
+        equity_open = self.cash + self.position.unrealized_pnl(open_price)
+        worst_equity = equity_open - (
+            (float(open_price) - float(intraday_low))
+            * self.position.quantity
+            * self.position.multiplier
+        )
+        mm = maintenance_margin(
+            quantity=self.position.quantity,
+            mark_price=intraday_low,
+            multiplier=self.position.multiplier,
+            maintenance_margin_pct=self._maintenance_margin_pct,
+        )
         return worst_equity < mm
 
     # ------------------------------------------------------------------
     # Force liquidation
     # ------------------------------------------------------------------
     def force_liquidate(self, price: float, reason: str = "margin_liquidation", date: str = "", slippage_pct: float = 0.0) -> Trade:
-        if self.position.quantity == 0:
-            raise ValueError("Cannot liquidate: no open position.")
-        side = OrderSide.SELL if self.position.quantity > 0 else OrderSide.BUY
-        qty = self.abs_qty()
-        # Apply slippage: long liquidation sells at lower price, short covers at higher
-        if slippage_pct > 0:
-            if self.position.quantity > 0:
-                adjusted_price = float(price) * (1 - slippage_pct)
-            else:
-                adjusted_price = float(price) * (1 + slippage_pct)
-        else:
-            adjusted_price = float(price)
+        if not self.is_long():
+            raise ValueError("Spot long-only liquidation requires an open long position.")
+        qty = self.position.quantity
+        adjusted_price = float(price) * (1 - slippage_pct) if slippage_pct > 0 else float(price)
         realized = (
             (adjusted_price - self.position.avg_price)
             * self.position.quantity
@@ -476,7 +410,7 @@ class Portfolio:
         trade = Trade(
             date=date,
             ticker=self.ticker,
-            side=side,
+            side=OrderSide.SELL,
             quantity=qty,
             price=adjusted_price,
             gross_amount=adjusted_price * qty * self.position.multiplier,
@@ -528,6 +462,8 @@ class PortfolioV2:
         self.initial_cash = float(initial_cash)
         self.ticker = ticker
         self.margin_cfg = margin_config or margin_cfg or MarginConfig()
+        if initial_position_qty < 0:
+            raise ValueError("spot long-only portfolio cannot start with a short position")
 
         self.position = V2Position(
             ticker=ticker,
@@ -620,69 +556,55 @@ class PortfolioV2:
         return self.account_equity(mark_price) < mm
 
     def is_intraday_breach(self, open_price: float, intraday_low: float, intraday_high: Optional[float] = None) -> bool:
-        """Check intraday margin breach for both long and short positions.
-
-        Long: worst case is price dropping to intraday_low.
-        Short: worst case is price rising to intraday_high.
-        """
+        """Check long inventory against the intraday low."""
         if self.position.quantity == 0:
             return False
+        if self.position.quantity < 0:
+            raise ValueError("spot long-only portfolio rejects short positions")
 
-        if self.position.quantity > 0:
-            # Long: worst case is price dropping to intraday_low
-            equity_open = self.account_equity(open_price)
-            worst_equity = equity_open - (
-                (float(open_price) - float(intraday_low))
-                * self.position.quantity
-                * self.position.multiplier
-            )
-            mm = MarginAccount.maintenance_margin(
-                abs(self.position.quantity) * float(intraday_low) * self.position.multiplier,
-                self.margin_cfg.maintenance_margin_pct,
-            )
-        else:
-            # Short: worst case is price rising to intraday_high
-            if intraday_high is None:
-                return False
-            equity_open = self.account_equity(open_price)
-            worst_equity = equity_open - (
-                (float(intraday_high) - float(open_price))
-                * abs(self.position.quantity)
-                * self.position.multiplier
-            )
-            mm = MarginAccount.maintenance_margin(
-                abs(self.position.quantity) * float(intraday_high) * self.position.multiplier,
-                self.margin_cfg.maintenance_margin_pct,
-            )
-
+        equity_open = self.account_equity(open_price)
+        worst_equity = equity_open - (
+            (float(open_price) - float(intraday_low))
+            * self.position.quantity
+            * self.position.multiplier
+        )
+        mm = MarginAccount.maintenance_margin(
+            self.position.quantity * float(intraday_low) * self.position.multiplier,
+            self.margin_cfg.maintenance_margin_pct,
+        )
         return worst_equity < mm
 
     # ------------------------------------------------------------------
     # Trade application
     # ------------------------------------------------------------------
     def apply_trade(self, trade) -> None:
-        """Bridge: convert legacy Trade to Fill and apply."""
+        """Bridge a legacy trade into the canonical spot fill contract."""
         from .decision_schema import OpenClose as LegacyOC
         from .decision_schema import OrderSide
         from .position import OrderType as V2OT
 
-        if trade.side == OrderSide.BUY:
-            if trade.open_close == LegacyOC.OPEN:
-                order_type = V2OT.BUY_TO_OPEN
-            elif trade.open_close == LegacyOC.CLOSE:
-                order_type = V2OT.BUY_TO_CLOSE
-            else:
-                order_type = V2OT.BUY_TO_OPEN
+        side = trade.side if isinstance(trade.side, OrderSide) else OrderSide(str(trade.side))
+        open_close = (
+            trade.open_close
+            if isinstance(trade.open_close, LegacyOC)
+            else LegacyOC(str(trade.open_close))
+        )
+
+        if side == OrderSide.BUY and open_close in {LegacyOC.OPEN, LegacyOC.AUTO}:
+            order_type = V2OT.BUY_TO_OPEN
+        elif side == OrderSide.SELL and open_close == LegacyOC.CLOSE:
+            order_type = V2OT.SELL_TO_CLOSE
+        elif side == OrderSide.SELL and open_close == LegacyOC.AUTO and self.position.is_long():
+            order_type = V2OT.SELL_TO_CLOSE
         else:
-            if trade.open_close == LegacyOC.OPEN:
-                order_type = V2OT.SELL_TO_OPEN
-            elif trade.open_close == LegacyOC.CLOSE:
-                order_type = V2OT.SELL_TO_CLOSE
-            else:
-                order_type = V2OT.SELL_TO_OPEN
+            raise ValueError(
+                "Spot long-only portfolio accepts BUY open or SELL close only"
+            )
 
-        side_str = trade.side if isinstance(trade.side, str) else trade.side.value
+        if order_type == V2OT.SELL_TO_CLOSE and not self.position.is_long():
+            raise ValueError("Spot long-only portfolio cannot close a flat position")
 
+        side_str = side.value
         fill = Fill(
             fill_id=f"trade_{trade.order_id}",
             order_id=trade.order_id,
@@ -695,7 +617,7 @@ class PortfolioV2:
             fee=trade.fee,
             slippage_amount=trade.slippage_ticks * trade.tick_size * trade.quantity,
             order_type=order_type,
-            open_close=trade.open_close.value if hasattr(trade.open_close, 'value') else str(trade.open_close),
+            open_close=open_close.value,
             realized_pnl_delta=trade.realized_pnl_delta,
             margin_delta=trade.margin_delta,
         )
@@ -703,26 +625,24 @@ class PortfolioV2:
         self.trades.append(trade)
 
     def apply_fill(self, fill: Fill) -> None:
-        """Apply a Fill to the portfolio."""
-        if fill.order_type in (
-            OrderType.BUY_TO_OPEN,
-            OrderType.SELL_TO_OPEN,
-            OrderType.BUY_TO_ADD,
-            OrderType.SELL_TO_ADD,
-        ):
+        """Apply a fill under the spot long-only execution contract."""
+        if fill.quantity <= 0:
+            raise ValueError("Fill quantity must be positive")
+        if fill.order_type not in {OrderType.BUY_TO_OPEN, OrderType.SELL_TO_CLOSE}:
+            raise ValueError(
+                "Spot long-only portfolio accepts only BUY_TO_OPEN or SELL_TO_CLOSE"
+            )
+        side = str(getattr(fill.side, "value", fill.side)).upper()
+        if fill.order_type == OrderType.BUY_TO_OPEN:
+            if side not in {"BUY", "LONG"}:
+                raise ValueError("BUY_TO_OPEN fill requires BUY side")
+            if not self.position.is_flat():
+                raise ValueError("Spot long-only portfolio cannot add to an existing position")
             self._apply_open(fill)
-        elif fill.order_type in (
-            OrderType.BUY_TO_CLOSE,
-            OrderType.SELL_TO_CLOSE,
-            OrderType.BUY_TO_REDUCE,
-            OrderType.SELL_TO_REDUCE,
-        ):
+        else:
+            if side != "SELL":
+                raise ValueError("SELL_TO_CLOSE fill requires SELL side")
             self._apply_close(fill)
-        elif fill.order_type in (
-            OrderType.REVERSE_TO_LONG,
-            OrderType.REVERSE_TO_SHORT,
-        ):
-            self._apply_reverse(fill)
 
         # Record position log
         self.position_log.append({
@@ -739,16 +659,12 @@ class PortfolioV2:
         })
 
     def _apply_open(self, fill: Fill) -> None:
-        """Apply an open/add fill.
+        """Apply an open long fill.
 
-        Stock-like cash model:
-        - BUY: cash -= (notional + fee)
-        - SELL: cash += (notional - fee)
-        - Margin: tracked only, not a cash flow
+        Stock-like cash model: BUY deducts notional plus fee; margin is tracked
+        for reporting but is not a separate cash flow.
         """
-        signed_qty = fill.quantity if fill.order_type in (
-            OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD
-        ) else -fill.quantity
+        signed_qty = fill.quantity
 
         # 1. Compute margin requirement FIRST (before mutating state)
         add_notional_val = fill.quantity * fill.price * self.position.multiplier
@@ -762,52 +678,31 @@ class PortfolioV2:
                 f"have {equity:.2f}."
             )
 
-        if signed_qty > 0 and self.margin_cfg.initial_margin_pct >= 1.0:
-            total_cost = add_notional_val + fill.fee
-            if total_cost > self.cash + 1e-7:
-                raise InsufficientMarginError(
-                    f"Spot cash insufficient: requires {total_cost:.2f} IDR, available {self.cash:.2f} IDR"
-                )
+        total_cost = add_notional_val + fill.fee
+        if total_cost > self.cash + 1e-7:
+            raise InsufficientMarginError(
+                f"Spot cash insufficient: requires {total_cost:.2f} IDR, available {self.cash:.2f} IDR"
+            )
 
-        # 2. THEN mutate position (safe — margin already validated)
         if self.position.is_flat():
             self.position.quantity = signed_qty
             self.position.avg_entry_price = fill.price
+            self.position.opened_at = fill.date
         else:
-            # Add to existing position
-            old_qty = self.position.quantity
-            old_notional = abs(old_qty) * self.position.avg_entry_price * self.position.multiplier
-            add_notional = fill.quantity * fill.price * self.position.multiplier
-            new_abs_qty = abs(old_qty) + fill.quantity
-
-            if self.position.is_long():
-                self.position.quantity = new_abs_qty
-            else:
-                self.position.quantity = -new_abs_qty
-
-            self.position.avg_entry_price = (old_notional + add_notional) / (new_abs_qty * self.position.multiplier)
+            raise ValueError("Spot long-only portfolio cannot add to an existing position")
 
         # 3. THEN cash flow
         notional = fill.quantity * fill.price * self.position.multiplier
-        if signed_qty > 0:  # Long: BUY_TO_OPEN or BUY_TO_ADD
-            self.cash -= (notional + fill.fee)
-        else:  # Short: SELL_TO_OPEN or SELL_TO_ADD
-            self.cash += (notional - fill.fee)
+        self.cash -= (notional + fill.fee)
 
         # 4. THEN post margin
         self.margin_posted += margin_required
         self.last_mark = fill.price
 
     def _apply_close(self, fill: Fill) -> None:
-        """Apply a close/reduce fill.
-
-        Stock-like cash model:
-        - SELL_TO_CLOSE (close long): cash += (notional - fee)
-        - BUY_TO_CLOSE (close short): cash -= (notional + fee)
-        - Margin: proportional release, tracked only
-        """
+        """Apply a full or partial long close with SELL_TO_CLOSE."""
         if self.position.is_flat():
-            return
+            raise ValueError("Spot long-only portfolio cannot close a flat position")
 
         close_qty = fill.quantity
         if close_qty > self.abs_qty():
@@ -815,24 +710,14 @@ class PortfolioV2:
                 f"Cannot close {close_qty}: only {self.abs_qty()} open."
             )
 
-        # Capture state BEFORE updating position
         pre_close_abs_qty = self.abs_qty()
-        was_long = self.position.is_long()
 
-        # Calculate realized PnL
-        if was_long:
-            realized = (fill.price - self.position.avg_entry_price) * close_qty * self.position.multiplier
-            self.position.quantity -= close_qty
-        else:
-            realized = (self.position.avg_entry_price - fill.price) * close_qty * self.position.multiplier
-            self.position.quantity += close_qty
+        # Calculate realized PnL for the long close.
+        realized = (fill.price - self.position.avg_entry_price) * close_qty * self.position.multiplier
+        self.position.quantity -= close_qty
 
-        # Stock-like cash flow: SELL_TO_CLOSE receives, BUY_TO_CLOSE pays
         notional = close_qty * fill.price * self.position.multiplier
-        if was_long:  # closing long with SELL_TO_CLOSE
-            self.cash += (notional - fill.fee)
-        else:  # closing short with BUY_TO_CLOSE
-            self.cash -= (notional + fill.fee)
+        self.cash += (notional - fill.fee)
 
         # Release margin proportionally (tracked only, not cash flow)
         if pre_close_abs_qty > 0:
@@ -848,6 +733,7 @@ class PortfolioV2:
 
         if self.position.quantity == 0:
             self.position.avg_entry_price = 0.0
+            self.position.opened_at = None
             self.position.stop_price = None
             self.position.take_profit = None
 
@@ -857,54 +743,6 @@ class PortfolioV2:
 
         self.last_mark = fill.price
 
-    def _apply_reverse(self, fill: Fill) -> None:
-        """Apply a reverse fill (close first leg, then open second).
-
-        Stock-like cash model: close leg uses _apply_close, open leg uses _apply_open.
-        Fee is split between close and open legs.
-        """
-        # Close existing position
-        if not self.position.is_flat():
-            if self.position.is_long():
-                close_type = OrderType.SELL_TO_CLOSE
-                close_qty = self.position.quantity
-            else:
-                close_type = OrderType.BUY_TO_CLOSE
-                close_qty = abs(self.position.quantity)
-
-            close_fill = Fill(
-                fill_id=f"{fill.fill_id}_close",
-                order_id=fill.order_id,
-                decision_id=fill.decision_id,
-                date=fill.date,
-                ticker=fill.ticker,
-                side="LONG" if close_type == OrderType.SELL_TO_CLOSE else "SHORT",
-                quantity=close_qty,
-                price=fill.price,
-                fee=fill.fee / 2,
-                slippage_amount=0.0,
-                order_type=close_type,
-                open_close="CLOSE",
-            )
-            self._apply_close(close_fill)
-
-        # Open new position via _apply_open for proper cash/margin handling
-        open_fill = Fill(
-            fill_id=f"{fill.fill_id}_open",
-            order_id=fill.order_id,
-            decision_id=fill.decision_id,
-            date=fill.date,
-            ticker=fill.ticker,
-            side="LONG" if fill.order_type == OrderType.REVERSE_TO_LONG else "SHORT",
-            quantity=fill.quantity,
-            price=fill.price,
-            fee=fill.fee / 2,
-            slippage_amount=0.0,
-            order_type=OrderType.BUY_TO_OPEN if fill.order_type == OrderType.REVERSE_TO_LONG else OrderType.SELL_TO_OPEN,
-            open_close="OPEN",
-        )
-        self._apply_open(open_fill)
-
     # ------------------------------------------------------------------
     # Daily settlement
     # ------------------------------------------------------------------
@@ -912,19 +750,7 @@ class PortfolioV2:
         """PRD §17 step 3 — mark-to-market at daily close."""
         mark = float(close_price)
 
-        # Daily carrying costs: borrow fee on short notional, financing on
-        # borrowed cash (long notional funded beyond equity). Charged to cash
-        # so equity/drawdown reflect the drag; realized PnL stays trade-only.
-        pos_val = abs(self.position_value(mark))
-        if pos_val > 0:
-            if self.position.is_short():
-                carry_fee = pos_val * float(getattr(self.margin_cfg, "borrow_fee_daily", 0.0002))
-            else:
-                borrowed_cash = max(0.0, pos_val - max(0.0, self.cash + pos_val))
-                carry_fee = borrowed_cash * float(getattr(self.margin_cfg, "financing_rate_daily", 0.0001))
-            if carry_fee > 0:
-                self.cash -= carry_fee
-
+        # Daily carrying costs are zero in cash-only spot mode.
         equity = self.account_equity(mark)
         unrealized = self.position.unrealized_pnl_calc(mark)
 

@@ -54,7 +54,7 @@ backtest:
   initial_position_qty: 0
 
   # Per-run lookback window in trading days. Allowed values:
-  # null (full history), 5, 10, 20, 40, 60, 80, 100, 120, 240.
+  # null (full history), 5, 10, 20, 40, 60, 80, 100, 120, 240, 512.
   # Single-period per run; multi-period tests run as separate invocations
   # with --lookback N on the CLI.
   lookback_days: 240
@@ -76,12 +76,13 @@ backtest:
     setup_invalid_keyword_threshold: 2
     entry_condition_min_hold_streak: 1
 
-  # Decision mapping: 5-tier literal table (recommended).
+  # Decision mapping: BUY/WNS spot long-only contract.
   decision_mapping:
-    mode: strict_5tier
+    mode: spot_long_only
     allow_reverse_on_buy_sell: false
-    allow_short_on_underweight: true
-    allow_short_on_sell: true
+    allow_short_on_underweight: false
+    allow_short_on_sell: false
+    short_allowed: false
     allow_explicit_reverse: false
     overweight_size_multiplier: 0.5
     underweight_size_multiplier: 0.5
@@ -99,14 +100,14 @@ backtest:
     fee_per_contract: 0.0
     conservative_intraday_rule: true
     intraday_margin_check: true
-    liquidation_extra_slippage_ticks: 1
 
   margin:
-    initial_margin_pct: 0.50
-    maintenance_margin_pct: 0.35
-    auto_liquidate_on_breach: true
-    max_leverage: 2
-    max_entry_pct: 0.15  # max 15% equity per day (scale in, not all-in)
+    # Spot cash execution: no leverage or margin liquidation.
+    initial_margin_pct: 1.0
+    maintenance_margin_pct: 1.0
+    auto_liquidate_on_breach: false
+    max_leverage: 1.0
+    max_entry_pct: 0.15  # max 15% equity per entry
 
   data:
     provider: snapshot
@@ -116,10 +117,8 @@ backtest:
     disable_live_web_search: true
     disable_live_fundamentals: true
     require_fundamental_available_date: true
-    # Auto-fetch: when true, OHLCV/news/fundamentals are fetched from
-    # Yahoo Finance on first access and cached to api_cache_dir.
-    # Sentiment cannot be auto-fetched (no historical social-media data).
-    fetch_from_api: true
+    # Historical runs require prebuilt local snapshots. No live fetch.
+    fetch_from_api: false
     api_cache_dir: api_cache
 
   agent:
@@ -128,6 +127,14 @@ backtest:
     backtest_mode: true
     web_search_enabled: false
     news_provider: snapshot
+    kronos_enabled: false
+    kronos_model_tier: base
+    kronos_model_repo: NeoQuasar/Kronos-base
+    kronos_tokenizer_repo: NeoQuasar/Kronos-Tokenizer-base
+    kronos_device: auto
+    kronos_attn_implementation: sdpa
+    kronos_torch_compile: false
+    kronos_pred_len: 20
 
   leakage_guard:
     validate_cutoff: true

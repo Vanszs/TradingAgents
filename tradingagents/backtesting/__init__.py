@@ -2,9 +2,9 @@
 Backtesting module for TradingAgents -- Stock margin backtester.
 
 Design goals:
-- Long + short positions with signed quantities.
+- Spot long-only positions with static BUY/WNS decisions.
 - Daily mark-to-market settlement at close.
-- Initial and maintenance margin with auto-liquidation.
+- Cash-bounded entries and static risk exits.
 - Snapshot-only historical data, next-session-open execution.
 - Single-instrument flat data layout (data/TICKER/ohlcv.csv).
 

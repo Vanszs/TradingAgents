@@ -48,32 +48,19 @@ class TestAuditFixes10Subagents(unittest.TestCase):
         self.assertIn("atr_target_2x", levels)
         self.assertIn("atr_target_3x", levels)
 
-    def test_order_generator_reverse_open_order_flag(self):
+    def test_order_generator_rejects_reverse_order(self):
         from tradingagents.backtesting.position import BacktestConfig, ExtendedDecision
         og = OrderGenerator(BacktestConfig())
-        pos = Position(ticker="AAPL", quantity=-100)  # short position
+        pos = Position(ticker="AAPL", quantity=100)
         dec = ExtendedDecision(
-            decision_id="D1",
-            ticker="AAPL",
-            trade_date="2024-01-02",
-            agent_rating="buy",
-            normalized_rating="buy",
-            allocation_pct=0.5,
-            leverage=1.0,
-            market_mode="FUTURES_STYLE_SIMULATION",
-            allowed_position_sides="LONG,SHORT",
-            position_intent="reverse",
-            current_position_side="SHORT",
-            target_position_side="LONG",
-            futures_action="REVERSE_TO_LONG",
-            valid=True,
+            decision_id="D1", ticker="AAPL", trade_date="2024-01-02",
+            agent_rating="BUY", normalized_rating="BUY", allocation_pct=0.5,
+            leverage=1.0, market_mode="SPOT_LONG_ONLY",
+            allowed_position_sides="LONG", position_intent="reverse",
+            current_position_side="LONG", target_position_side="LONG",
+            futures_action="REVERSE_TO_LONG", valid=True,
         )
-        orders = og.decide(dec, pos, current_equity=10000.0, reference_price=150.0)
-        self.assertEqual(len(orders), 2)
-        close_order, open_order = orders
-        self.assertEqual(close_order.order_type, OrderType.BUY_TO_CLOSE)
-        self.assertEqual(open_order.order_type, OrderType.BUY_TO_OPEN)
-        self.assertFalse(open_order.is_reverse)
+        assert og.decide(dec, pos, current_equity=10000.0, reference_price=150.0) == []
 
 
 def test_yfinance_same_day_daily_validation():

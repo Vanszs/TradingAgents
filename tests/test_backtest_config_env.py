@@ -93,13 +93,11 @@ class TestResolveAgentConfig(unittest.TestCase):
                 "model": "gpt-4o",
                 "temperature": 0.5,
                 "max_thesis_chars": 1000,
-                "deterministic_seed": 123,
             },
             env=_env(),
         )
         self.assertAlmostEqual(agent.temperature, 0.5)
         self.assertEqual(agent.max_thesis_chars, 1000)
-        self.assertEqual(agent.deterministic_seed, 123)
 
 
 if __name__ == "__main__":

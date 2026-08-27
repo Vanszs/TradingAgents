@@ -11,7 +11,7 @@ In real spot trading, brokers provide standard static bracket orders:
 - **Static Take Profit** ($TP$)
 - **Static Stop Loss** ($SL$)
 
-By default, `trailing_stop_pct = None` and `break_even_trigger_pct = None`. Backtest evaluation does **not** move or ratchet stop losses in-flight, preventing artificially inflated performance figures.
+Backtest evaluation uses only fixed TP/SL levels. It never trails, ratchets, or moves either level after entry, preventing artificially inflated performance figures.
 
 ---
 

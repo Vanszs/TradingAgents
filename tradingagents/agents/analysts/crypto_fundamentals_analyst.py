@@ -76,7 +76,7 @@ def create_crypto_fundamentals_analyst(llm):
                 " If you are unable to fully answer, that's OK; another assistant with different tools"
                 " will help where you left off. Execute what you can to make progress."
                 " Produce an analyst report only; leave the final transaction proposal to the Trader and Portfolio Manager."
-                " You have access to the following tools: {tool_names}.\n{system_message}"
+                " You have access to the following tools: {tool_names}.\n\n{system_message}\n"
                 "For your reference, the current date is {current_date}. {instrument_context}",
             ),
             MessagesPlaceholder(variable_name="messages"),

@@ -82,11 +82,19 @@ def resolve_agent_config(yaml_agent: dict[str, Any], env: dict[str, str] | None 
         web_search_enabled=bool(yaml_agent.get("web_search_enabled", False)),
         news_provider=yaml_agent.get("news_provider", "snapshot"),
         max_thesis_chars=int(yaml_agent.get("max_thesis_chars", 2000)),
-        deterministic_seed=int(yaml_agent.get("deterministic_seed", 42)),
         backtest_mode=bool(yaml_agent.get("backtest_mode", True)),
         run_frequency=yaml_agent.get("run_frequency", "daily"),
         report_language=yaml_agent.get("report_language", "English"),
-        cache_reports=bool(yaml_agent.get("cache_reports", True)),
+        kronos_enabled=bool(yaml_agent.get("kronos_enabled", False)),
+        kronos_model_tier=yaml_agent.get("kronos_model_tier", "base"),
+        kronos_model_repo=yaml_agent.get("kronos_model_repo", "NeoQuasar/Kronos-base"),
+        kronos_tokenizer_repo=yaml_agent.get(
+            "kronos_tokenizer_repo", "NeoQuasar/Kronos-Tokenizer-base"
+        ),
+        kronos_device=yaml_agent.get("kronos_device", "auto"),
+        kronos_attn_implementation=yaml_agent.get("kronos_attn_implementation", "sdpa"),
+        kronos_torch_compile=bool(yaml_agent.get("kronos_torch_compile", False)),
+        kronos_pred_len=int(yaml_agent.get("kronos_pred_len", 20)),
     )
 
 
@@ -117,11 +125,17 @@ def validate_backtest_config(config: BacktestConfig) -> None:
         "web_search_enabled": config.agent.web_search_enabled,
         "news_provider": config.agent.news_provider,
         "max_thesis_chars": config.agent.max_thesis_chars,
-        "deterministic_seed": config.agent.deterministic_seed,
         "backtest_mode": config.agent.backtest_mode,
         "run_frequency": config.agent.run_frequency,
         "report_language": config.agent.report_language,
-        "cache_reports": config.agent.cache_reports,
+        "kronos_enabled": config.agent.kronos_enabled,
+        "kronos_model_tier": config.agent.kronos_model_tier,
+        "kronos_model_repo": config.agent.kronos_model_repo,
+        "kronos_tokenizer_repo": config.agent.kronos_tokenizer_repo,
+        "kronos_device": config.agent.kronos_device,
+        "kronos_attn_implementation": config.agent.kronos_attn_implementation,
+        "kronos_torch_compile": config.agent.kronos_torch_compile,
+        "kronos_pred_len": config.agent.kronos_pred_len,
     }
     config.agent = resolve_agent_config(yaml_agent)
     config.validate()

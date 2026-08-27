@@ -32,6 +32,7 @@ from tradingagents.agents.utils.agent_utils import (
     get_income_statement,
     get_indicators,
     get_insider_transactions,
+    get_kronos_forecast,
     get_news,
     get_stock_data,
 )
@@ -187,19 +188,17 @@ class TradingAgentsGraph:
         else:
             fundamentals_tools = [get_fundamentals, get_balance_sheet, get_cashflow, get_income_statement]
 
-        # Both stock and crypto fundamentals analysts can fall back to web
-        # search for real-time context not covered by structured tools.
-        fundamentals_tools = [*fundamentals_tools, get_web_search]
+        runtime_config = getattr(self, "config", {})
+        historical = bool(runtime_config.get("point_in_time_mode") or runtime_config.get("backtest_mode"))
+        if not historical:
+            fundamentals_tools = [*fundamentals_tools, get_web_search]
+
+        market_tools = [get_stock_data, get_indicators]
+        if runtime_config.get("kronos_enabled", False):
+            market_tools.append(get_kronos_forecast)
 
         return {
-            "market": ToolNode(
-                [
-                    # Core stock data tools
-                    get_stock_data,
-                    # Technical indicators
-                    get_indicators,
-                ]
-            ),
+            "market": ToolNode(market_tools),
             "social": ToolNode(
                 [
                     # Sentiment analyst pre-fetches data directly (no tool-calling).
@@ -211,7 +210,7 @@ class TradingAgentsGraph:
                 [
                     get_news,
                     get_global_news,
-                    get_web_search,
+                    *([] if historical else [get_web_search]),
                     # get_insider_transactions only for stock — conditionally included
                     *([] if self.asset_type == "crypto" else [get_insider_transactions]),
                 ]

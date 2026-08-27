@@ -6,7 +6,7 @@ The Analyst Team forms the first layer of the TradingAgents framework, executing
 
 ## 1. Technical Market Analyst (`market_analyst.py`)
 - **Domain**: Pure technical price action and market structure analysis.
-- **Data Ingested**: 1D Macro (52W range, 60D/20D swing highs/lows, Fibonacci levels, ATR 14/20, Chandelier Exit) and 1H Micro (24-bar swing, EMA 20/50 momentum).
+- **Data Ingested**: 1D Macro (52W range, 60D/20D swing highs/lows, Fibonacci levels, ATR 14/20) and 1H Micro (24-bar swing, EMA 20/50 momentum).
 - **Tools**: `get_stock_data`, `get_indicators` (RSI, MACD, Bollinger Bands, Moving Averages, VWMA).
 - **Boundaries**: Strictly evaluates chart structure; leaves financial statement analysis and trade sizing to downstream desks.
 

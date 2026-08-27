@@ -38,8 +38,7 @@ def create_trader(llm):
                     "2. **Buy Limit**: Use for **Orderly Pullbacks** with staged limit accumulation at concrete structural demand floor (20D/60D Swing Low, Fib retracement, or dynamic support) with protective stop loss strictly below invalidation support.\n"
                     "3. **Target Selection & Structural Expectancy (Anti-Gaming)**: Anchor Take Profit at realistic structural resistance (Fib 50%/61.8%, 60D High, 200 SMA, or Fib Extensions 1.272x / 1.618x for breakouts). Anchor Stop Loss at key structural support. Do NOT invent unrealistic high targets to artificially force R:R; if natural structural R:R < 1.8:1 or market is choppy / trend ambiguous, you MUST choose **WNS (Wait and See)**.\n"
                     "4. **WNS (Wait and See)**: Zero capital allocated today. Use when market is choppy, trend is ambiguous, or natural structural R:R < 1.8:1. Specify `wns_recheck_date` (catalyst date YYYY-MM-DD) and/or `wns_trigger_price` (pullback demand zone level).\n"
-                    "5. **Dynamic Horizon**: Calibrate `max_holding_days` (1–63 trading days) based on target distance relative to daily ATR.\n"
-                    "6. **Sell**: Liquidate existing long inventory to 100% cash.\n\n"
+                    "5. **Static exits only**: Every BUY must provide a fixed stop loss and take profit. Do not trail, ratchet, or move either level after entry.\n\n"
                     "Deliver your proposal strictly matching the TraderProposal schema."
                     + get_language_instruction()
                 ),

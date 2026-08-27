@@ -24,8 +24,8 @@ The Portfolio Manager (`tradingagents/agents/managers/portfolio_manager.py`) act
 class SignalContract(BaseModel):
     ticker: str
     signal_date: str
-    action: str              # "BUY", "WNS", "SELL", "HOLD"
-    rating: PortfolioRating  # BUY, OVERWEIGHT, WNS, HOLD, UNDERWEIGHT, SELL
+    action: str              # "BUY" or "WNS"
+    rating: PortfolioRating  # BUY or WNS
     planned_entry_price: Optional[float]
     stop_loss: Optional[float]
     take_profit: Optional[float]

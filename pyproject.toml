@@ -27,6 +27,15 @@ dependencies = [
     "yfinance>=0.2.63",
 ]
 
+[project.optional-dependencies]
+quant = [
+    "torch>=2.1.0",
+    "transformers>=4.40.0",
+    "huggingface_hub>=0.20.0",
+    "accelerate>=0.25.0",
+    "einops>=0.7.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/Vanszs/TradingAgents"
 Repository = "https://github.com/Vanszs/TradingAgents.git"

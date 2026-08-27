@@ -29,32 +29,39 @@ logger = logging.getLogger(__name__)
 MAX_RETRIES = 5
 RETRY_DELAY = 20
 
-# Canonical 5-tier rating vocabulary, ordered most-bullish to most-bearish.
-_RATING_WORDS = ("Buy", "Overweight", "Hold", "Underweight", "Sell")
-_RATING_WORDS_LOWER = tuple(w.lower() for w in _RATING_WORDS)
-_RATING_LABEL_RE = re.compile(r"rating.*?[:\-][\s*]*(\w+)", re.IGNORECASE)
+# Legacy input words are accepted at the parser boundary, but reports only emit
+# the two canonical decisions.
+_RATING_NORMALIZATION = {
+    "buy": "BUY",
+    "wns": "WNS",
+    "hold": "WNS",
+    "sell": "WNS",
+    "overweight": "BUY",
+    "underweight": "WNS",
+}
+_RATING_ALIASES = sorted(_RATING_NORMALIZATION, key=len, reverse=True)
+_RATING_LABEL_RE = re.compile(
+    r"rating\s*[:\-]\s*\**(" + "|".join(map(re.escape, _RATING_ALIASES)) + r")\b",
+    re.IGNORECASE,
+)
 
 
 def _derive_rating_from_text(text: str) -> Optional[str]:
-    """Return the most prominent rating word in ``text`` or ``None``.
+    """Return canonical BUY/WNS from an explicit ``Rating:`` label only.
 
-    Uses a two-pass heuristic:
-      1. Look for an explicit "Rating: X" / "Rating - X" label.
-      2. Fall back to the first 5-tier rating word found anywhere.
+    The accepted label words are derived dynamically from
+    ``_RATING_NORMALIZATION``, so new aliases are recognized automatically.
+    Unlabeled prose never yields a rating — an ambiguous report maps to WNS,
+    the conservative side, instead of guessing from bare words like a stray
+    "buy" in "...do not buy yet".
     """
     if not text:
         return None
     for line in text.splitlines():
         m = _RATING_LABEL_RE.search(line)
         if m:
-            word = m.group(1).strip("*:., ").capitalize()
-            if word in _RATING_WORDS:
-                return word
-    for word in text.lower().split():
-        clean = word.strip("*:.,'\"()[]")
-        if clean in _RATING_WORDS_LOWER:
-            return clean.capitalize()
-    return None
+            return _RATING_NORMALIZATION[m.group(1).lower()]
+    return "WNS"
 
 
 class TradingAgentsRunner:
@@ -178,6 +185,14 @@ class TradingAgentsRunner:
                 "sentiment_provider": "snapshot",
                 "broker_activity_provider": "snapshot",
                 "report_language": self.agent_config.report_language,
+                "kronos_enabled": self.agent_config.kronos_enabled,
+                "kronos_model_tier": self.agent_config.kronos_model_tier,
+                "kronos_model_repo": self.agent_config.kronos_model_repo,
+                "kronos_tokenizer_repo": self.agent_config.kronos_tokenizer_repo,
+                "kronos_device": self.agent_config.kronos_device,
+                "kronos_attn_implementation": self.agent_config.kronos_attn_implementation,
+                "kronos_torch_compile": self.agent_config.kronos_torch_compile,
+                "kronos_pred_len": self.agent_config.kronos_pred_len,
                 "data_cache_dir": "backtest_cache/data",
                 "results_dir": "backtest_cache/results",
                 "disable_live_news": True,

@@ -128,25 +128,12 @@ class TestRrDeteriorated(unittest.TestCase):
 
 
 class TestStrongExitSignal(unittest.TestCase):
-    def test_sell_when_long_fires(self):
+    def test_agent_signal_never_creates_exit(self):
         ev = TriggerEvaluator()
-        r = ev.evaluate(_dec("Sell"), _dec("Hold"), _pos(PositionSide.LONG, 100))
-        self.assertIn("strong_exit_signal", r.reasons)
-
-    def test_buy_when_short_fires(self):
-        ev = TriggerEvaluator()
-        r = ev.evaluate(_dec("Buy"), _dec("Hold"), _pos(PositionSide.SHORT, -100))
-        self.assertIn("strong_exit_signal", r.reasons)
-
-    def test_sell_when_short_does_not_fire(self):
-        ev = TriggerEvaluator()
-        r = ev.evaluate(_dec("Sell"), _dec("Hold"), _pos(PositionSide.SHORT, -100))
-        self.assertNotIn("strong_exit_signal", r.reasons)
-
-    def test_buy_when_long_does_not_fire(self):
-        ev = TriggerEvaluator()
-        r = ev.evaluate(_dec("Buy"), _dec("Hold"), _pos(PositionSide.LONG, 100))
-        self.assertNotIn("strong_exit_signal", r.reasons)
+        for rating, side in (("BUY", PositionSide.LONG), ("WNS", PositionSide.LONG), ("BUY", PositionSide.SHORT)):
+            with self.subTest(rating=rating, side=side):
+                result = ev.evaluate(_dec(rating), _dec("WNS"), _pos(side, 100 if side == PositionSide.LONG else -100))
+                self.assertNotIn("strong_exit_signal", result.reasons)
 
 
 class TestBetterCandidate(unittest.TestCase):

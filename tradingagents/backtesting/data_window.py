@@ -28,7 +28,7 @@ import pandas as pd
 
 # Allowable lookback values from the spec. ``None`` means "no window".
 ALLOWED_LOOKBACKS: tuple[Optional[int], ...] = (
-    None, 5, 10, 20, 40, 60, 80, 100, 120, 240,
+    None, 5, 10, 20, 40, 60, 80, 100, 120, 240, 512,
 )
 
 # Calendar buffer: extra business days absorbed to handle weekends/holidays

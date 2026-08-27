@@ -100,37 +100,28 @@ class TestUpdateRiskLevels(unittest.TestCase):
         self.assertEqual(pos.stop_price, 95.0)
         self.assertEqual(pos.take_profit, 110.0)
 
-    def test_llm_stop_tp_applied_short(self):
-        """LLM-provided stop/TP are applied directly for short positions."""
-        runner = _make_runner()
-        runner.portfolio.is_flat.return_value = False
-        pos = Position(ticker="AAPL", quantity=-100, avg_entry_price=100.0)
-        runner.portfolio.position = pos
-        runner._update_risk_levels(_make_decision(stop=105.0, tp=90.0))
-        self.assertEqual(pos.stop_price, 105.0)
-        self.assertEqual(pos.take_profit, 90.0)
-
-    def test_llm_wrong_direction_swapped_long(self):
-        """If LLM puts stop above entry and TP below entry for long, they swap."""
+    def test_invalid_directional_levels_fall_back_to_static_defaults(self):
+        """Invalid long levels are discarded; static risk defaults remain."""
         runner = _make_runner()
         runner.portfolio.is_flat.return_value = False
         pos = Position(ticker="AAPL", quantity=100, avg_entry_price=100.0)
         runner.portfolio.position = pos
-        # stop=110 (> entry), tp=90 (< entry) → swapped to stop=90, tp=110
         runner._update_risk_levels(_make_decision(stop=110.0, tp=90.0))
-        self.assertEqual(pos.stop_price, 90.0)
-        self.assertEqual(pos.take_profit, 110.0)
+        self.assertEqual(pos.stop_price, 92.0)
+        self.assertEqual(pos.take_profit, 120.0)
 
-    def test_llm_wrong_direction_swapped_short(self):
-        """If LLM puts stop below entry and TP above entry for short, they swap."""
-        runner = _make_runner()
+    def test_existing_levels_are_not_replaced(self):
+        """A later report cannot ratchet or widen the entry-time exits."""
+        runner = _make_runner(use_atr_based_stops=False)
         runner.portfolio.is_flat.return_value = False
-        pos = Position(ticker="AAPL", quantity=-100, avg_entry_price=100.0)
+        pos = Position(
+            ticker="AAPL", quantity=100, avg_entry_price=100.0,
+            stop_price=95.0, take_profit=110.0,
+        )
         runner.portfolio.position = pos
-        # stop=90 (< entry), tp=110 (> entry) → swapped to stop=110, tp=90
-        runner._update_risk_levels(_make_decision(stop=90.0, tp=110.0))
-        self.assertEqual(pos.stop_price, 110.0)
-        self.assertEqual(pos.take_profit, 90.0)
+        runner._update_risk_levels(_make_decision(stop=80.0, tp=140.0))
+        self.assertEqual(pos.stop_price, 95.0)
+        self.assertEqual(pos.take_profit, 110.0)
 
     def test_fixed_pct_fallback_stop_long(self):
         """When no LLM stop and ATR disabled, use fixed percentage stop."""
@@ -143,18 +134,6 @@ class TestUpdateRiskLevels(unittest.TestCase):
         self.assertAlmostEqual(pos.stop_price, 92.0)
         # 100 * (1 + 0.20) = 120.0 (default_take_profit_pct=0.20)
         self.assertAlmostEqual(pos.take_profit, 120.0)
-
-    def test_fixed_pct_fallback_stop_short(self):
-        """When no LLM stop and ATR disabled, use fixed percentage stop for short."""
-        runner = _make_runner(use_atr_based_stops=False, default_stop_pct=0.08)
-        runner.portfolio.is_flat.return_value = False
-        pos = Position(ticker="AAPL", quantity=-100, avg_entry_price=100.0)
-        runner.portfolio.position = pos
-        runner._update_risk_levels(_make_decision(stop=None, tp=None))
-        # 100 * (1 + 0.08) = 108.0
-        self.assertAlmostEqual(pos.stop_price, 108.0)
-        # 100 * (1 - 0.20) = 80.0
-        self.assertAlmostEqual(pos.take_profit, 80.0)
 
     def test_atr_based_stop_long(self):
         """ATR-based stop uses entry - ATR * multiplier for long."""

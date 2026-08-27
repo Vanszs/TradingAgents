@@ -30,13 +30,15 @@ from tradingagents.agents.trader.trader import create_trader
 @pytest.mark.unit
 class TestRenderTraderProposal:
     def test_minimal_required_fields(self):
-        p = TraderProposal(action=TraderAction.HOLD, reasoning="Balanced setup; no edge.")
+        p = TraderProposal(
+            action=TraderAction.WNS,
+            reasoning="Balanced setup; no edge.",
+            wns_recheck_date="2026-01-20",
+        )
         md = render_trader_proposal(p)
-        assert "**Action**: Hold" in md
+        assert "**Action**: WNS" in md
         assert "**Reasoning**: Balanced setup; no edge." in md
-        # The trailing FINAL TRANSACTION PROPOSAL line is preserved for the
-        # analyst stop-signal text and any external code that greps for it.
-        assert "FINAL TRANSACTION PROPOSAL: **HOLD**" in md
+        assert "FINAL TRANSACTION PROPOSAL: **WNS**" in md
 
     def test_optional_fields_included_when_present(self):
         p = TraderProposal(
@@ -44,34 +46,40 @@ class TestRenderTraderProposal:
             reasoning="Strong technicals + fundamentals.",
             entry_price=189.5,
             stop_loss=178.0,
+            take_profit=215.0,
             position_sizing="6% of portfolio",
         )
         md = render_trader_proposal(p)
         assert "**Action**: Buy" in md
         assert "**Entry Price**: 189.5" in md
         assert "**Stop Loss**: 178.0" in md
+        assert "**Take Profit**: 215.0" in md
         assert "**Position Sizing**: 6% of portfolio" in md
         assert "FINAL TRANSACTION PROPOSAL: **BUY**" in md
 
     def test_optional_fields_omitted_when_absent(self):
-        p = TraderProposal(action=TraderAction.SELL, reasoning="Guidance cut.")
+        p = TraderProposal(
+            action=TraderAction.WNS,
+            reasoning="Guidance cut; wait for confirmation.",
+            wns_trigger_price=180.0,
+        )
         md = render_trader_proposal(p)
         assert "Entry Price" not in md
         assert "Stop Loss" not in md
         assert "Position Sizing" not in md
-        assert "FINAL TRANSACTION PROPOSAL: **SELL**" in md
+        assert "FINAL TRANSACTION PROPOSAL: **WNS**" in md
 
 
 @pytest.mark.unit
 class TestRenderResearchPlan:
     def test_required_fields(self):
         p = ResearchPlan(
-            recommendation=PortfolioRating.OVERWEIGHT,
+            recommendation=PortfolioRating.BUY,
             rationale="Bull case carried; tailwinds intact.",
             strategic_actions="Build position over two weeks; cap at 5%.",
         )
         md = render_research_plan(p)
-        assert "**Recommendation**: Overweight" in md
+        assert "**Recommendation**: Buy" in md
         assert "**Rationale**: Bull case carried" in md
         assert "**Strategic Actions**: Build position" in md
 
@@ -106,6 +114,8 @@ def _structured_trader_llm(captured: dict, proposal: TraderProposal | None = Non
         proposal = TraderProposal(
             action=TraderAction.BUY,
             reasoning="Strong setup.",
+            stop_loss=90.0,
+            take_profit=120.0,
         )
     structured = MagicMock()
     structured.invoke.side_effect = lambda prompt: (
@@ -125,6 +135,7 @@ class TestTraderAgent:
             reasoning="AI capex cycle intact; institutional flows constructive.",
             entry_price=189.5,
             stop_loss=178.0,
+            take_profit=215.0,
             position_sizing="6% of portfolio",
         )
         llm = _structured_trader_llm(captured, proposal)
@@ -149,8 +160,8 @@ class TestTraderAgent:
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
         plain_response = (
-            "**Action**: Sell\n\nGuidance cut hits margins.\n\n"
-            "FINAL TRANSACTION PROPOSAL: **SELL**"
+            "**Action**: WNS\n\nGuidance cut hits margins.\n\n"
+            "FINAL TRANSACTION PROPOSAL: **WNS**"
         )
         llm = MagicMock()
         llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
@@ -182,9 +193,9 @@ def _make_rm_state():
 def _structured_rm_llm(captured: dict, plan: ResearchPlan | None = None):
     if plan is None:
         plan = ResearchPlan(
-            recommendation=PortfolioRating.HOLD,
+            recommendation=PortfolioRating.WNS,
             rationale="Balanced view across both sides.",
-            strategic_actions="Hold current position; reassess after earnings.",
+            strategic_actions="Wait for confirmation; reassess after earnings.",
         )
     structured = MagicMock()
     structured.invoke.side_effect = lambda prompt: (
@@ -200,7 +211,7 @@ class TestResearchManagerAgent:
     def test_structured_path_produces_rendered_markdown(self):
         captured = {}
         plan = ResearchPlan(
-            recommendation=PortfolioRating.OVERWEIGHT,
+            recommendation=PortfolioRating.BUY,
             rationale="Bull case is stronger; AI tailwind intact.",
             strategic_actions="Build position gradually over two weeks.",
         )
@@ -208,22 +219,22 @@ class TestResearchManagerAgent:
         rm = create_research_manager(llm)
         result = rm(_make_rm_state())
         ip = result["investment_plan"]
-        assert "**Recommendation**: Overweight" in ip
+        assert "**Recommendation**: Buy" in ip
         assert "**Rationale**: Bull case" in ip
         assert "**Strategic Actions**: Build position" in ip
 
-    def test_prompt_uses_5_tier_rating_scale(self):
-        """The RM prompt must list all five tiers so the schema enum matches user expectations."""
+    def test_prompt_uses_buy_wns_rating_scale(self):
+        """The RM prompt must list both canonical decisions."""
         captured = {}
         llm = _structured_rm_llm(captured)
         rm = create_research_manager(llm)
         rm(_make_rm_state())
         prompt = captured["prompt"]
-        for tier in ("Buy", "Overweight", "Hold", "Underweight", "Sell"):
-            assert f"**{tier}**" in prompt, f"missing {tier} in prompt"
+        for decision in ("BUY", "WNS"):
+            assert decision in prompt, f"missing {decision} in prompt"
 
     def test_falls_back_to_freetext_when_structured_unavailable(self):
-        plain_response = "**Recommendation**: Sell\n\n**Rationale**: ...\n\n**Strategic Actions**: ..."
+        plain_response = "**Recommendation**: WNS\n\n**Rationale**: ...\n\n**Strategic Actions**: ..."
         llm = MagicMock()
         llm.with_structured_output.side_effect = NotImplementedError("provider unsupported")
         llm.invoke.return_value = MagicMock(content=plain_response)

@@ -23,6 +23,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from tradingagents.backtesting import TradingAgentsRunner
+from tradingagents.backtesting.engine import BacktestEngine
 from tradingagents.backtesting.ohlcv_fetch import (
     LOOKBACK_BUFFER_DAYS,
     YF_EARLIEST,
@@ -30,8 +32,6 @@ from tradingagents.backtesting.ohlcv_fetch import (
     ensure_ohlcv,
     fetch_ohlcv,
 )
-from tradingagents.backtesting import TradingAgentsRunner
-from tradingagents.backtesting.engine import BacktestEngine
 
 # ---------------------------------------------------------------------------
 # compute_download_window

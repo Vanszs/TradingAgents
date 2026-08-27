@@ -76,14 +76,10 @@ def create_portfolio_manager(llm):
 {history if history else 'No risk debate history.'}
 
 **Final Allocation Policy**:
-- **Buy**: Authorize immediate Market Buy or staged Limit Buy. Planned entry, stop loss, and take profit must satisfy R:R >= 2:1.
-- **Overweight**: Constructive accumulation; scaled tranche execution.
-- **Hold**: Neutral prior; wait for confirmed stabilization.
+- **BUY**: Authorize immediate Market Buy or staged Limit Buy. Planned entry, stop loss, and take profit must satisfy R:R >= 2:1.
 - **WNS (Wait and See)**: Zero capital allocated today. You MUST explicitly define:
   1. `wns_recheck_date`: Specific future date X (YYYY-MM-DD) to re-analyze.
   2. `wns_trigger_price`: Specific structural price level Y that will wake up the strategy upon touch.
-- **Underweight**: Distribution/derisking; trim long inventory.
-- **Sell**: Complete liquidation of long inventory to cash / capital preservation.
 
 Output your decision strictly matching the PortfolioDecision schema.{get_language_instruction()}"""
 
@@ -105,7 +101,7 @@ Output your decision strictly matching the PortfolioDecision schema.{get_languag
         if typed_decision is not None and trade_date:
             # Deterministic Python date calculation if missing
             if not typed_decision.next_review_date:
-                days_delta = 7 if typed_decision.rating in (PortfolioRating.BUY, PortfolioRating.SELL) else 21
+                days_delta = 7 if typed_decision.rating == PortfolioRating.BUY else 21
                 try:
                     typed_decision.next_review_date = (pd.to_datetime(trade_date) + pd.Timedelta(days=days_delta)).strftime("%Y-%m-%d")
                 except Exception:

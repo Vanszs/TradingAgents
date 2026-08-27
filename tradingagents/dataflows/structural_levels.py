@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from .stockstats_utils import compute_atr, compute_chandelier_exit, load_ohlcv
+from .stockstats_utils import compute_atr, load_ohlcv
 
 logger = logging.getLogger(__name__)
 
@@ -142,16 +142,13 @@ def compute_structural_levels(
     else:
         fib_50 = fib_618 = last_close
 
-    # Volatility & Dynamic Exit Indicators (ATR 14/20 and Chandelier Exit 22)
+    # Volatility context only; exit levels remain static after entry.
     atr_14_s = compute_atr(history, period=14) if len(history) >= 14 else None
     atr_20_s = compute_atr(history, period=20) if len(history) >= 20 else None
-    chan_df = compute_chandelier_exit(history, period=22, multiplier=3.0) if len(history) >= 22 else None
 
     atr_14_val = round(float(atr_14_s.iloc[-1]), 2) if atr_14_s is not None and not pd.isna(atr_14_s.iloc[-1]) else None
     atr_20_val = round(float(atr_20_s.iloc[-1]), 2) if atr_20_s is not None and not pd.isna(atr_20_s.iloc[-1]) else None
     atr_14_pct = round((atr_14_val / last_close) * 100, 2) if atr_14_val is not None and last_close > 0 else None
-    chan_long_val = round(float(chan_df["chandelier_long"].iloc[-1]), 2) if chan_df is not None and not pd.isna(chan_df["chandelier_long"].iloc[-1]) else None
-    chan_short_val = round(float(chan_df["chandelier_short"].iloc[-1]), 2) if chan_df is not None and not pd.isna(chan_df["chandelier_short"].iloc[-1]) else None
 
     # Fibonacci Extension Targets (1.272x and 1.618x above 60D High for Breakouts)
     fib_ext_1272 = round(h60 + (0.272 * fib_range), 2) if fib_range > 0 else round(last_close * 1.05, 2)
@@ -182,8 +179,6 @@ def compute_structural_levels(
         "atr_14_pct": atr_14_pct,
         "atr_target_2x": atr_target_2x,
         "atr_target_3x": atr_target_3x,
-        "chandelier_long": chan_long_val,
-        "chandelier_short": chan_short_val,
     }
 
     if df_1h is not None and not df_1h.empty:
@@ -257,7 +252,6 @@ def get_market_structural_summary(
     if levels.get("atr_14") is not None:
         summary += (
             f"   - Volatility (ATR 14): {levels['atr_14']} ({levels.get('atr_14_pct', 'N/A')}% of price) | ATR 20: {levels.get('atr_20', 'N/A')}\n"
-            f"   - Chandelier Exit (22, 3.0x ATR): Long Stop = {levels.get('chandelier_long', 'N/A')} | Short Stop = {levels.get('chandelier_short', 'N/A')}\n"
         )
 
     if "micro_1h" in levels:

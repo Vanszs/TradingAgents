@@ -219,14 +219,6 @@ def get_stock_stats_indicators_window(
             "ATR (20): 20-period Average True Range measuring swing volatility. "
             "Usage: Gauge multi-week volatility bands."
         ),
-        "chandelier_long": (
-            "Chandelier Exit Long: Highest High (22) - 3.0 * ATR (22). "
-            "Usage: Trailing stop loss level for long positions."
-        ),
-        "chandelier_short": (
-            "Chandelier Exit Short: Lowest Low (22) + 3.0 * ATR (22). "
-            "Usage: Trailing stop loss level for short positions."
-        ),
         # Volume-Based Indicators
         "vwma": (
             "VWMA: A moving average weighted by volume. "
@@ -297,16 +289,10 @@ def _get_stock_stats_bulk(
     """
     from stockstats import wrap
 
-    from .stockstats_utils import compute_atr, compute_chandelier_exit
+    from .stockstats_utils import compute_atr
 
     data = load_ohlcv(symbol, curr_date)
     ind_lower = indicator.strip().lower()
-
-    if ind_lower in ("chandelier_long", "chandelier_short"):
-        chan_df = compute_chandelier_exit(data, period=22, multiplier=3.0)
-        data["Date"] = pd.to_datetime(data["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-        data[ind_lower] = chan_df[ind_lower]
-        return dict(zip(data["Date"], data[ind_lower].fillna("N/A").astype(str)))
 
     if ind_lower in ("atr", "atr_14", "atr_20"):
         period = int(ind_lower.split("_")[1]) if "_" in ind_lower else 14

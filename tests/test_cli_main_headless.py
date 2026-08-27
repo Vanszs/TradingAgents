@@ -88,6 +88,7 @@ def test_analyze_cli_headless_execution(tmp_path: Path):
             signal_date="2025-01-15",
             rating=PortfolioRating.HOLD,
             action="HOLD",
+            wns_recheck_date="2025-01-20",
             time_horizon_days=21,
             time_horizon_label="1 month",
         ),

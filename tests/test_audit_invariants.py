@@ -39,15 +39,19 @@ TICKER = "TEST"
 SPEC = InstrumentSpec(ticker=TICKER, multiplier=1.0, tick_size=0.01)
 
 
-def _broker_and_portfolio(initial_cash: float = 100_000.0):
+def _broker_and_portfolio(
+    initial_cash: float = 100_000.0,
+    margin_config: MarginConfig | None = None,
+):
+    margin_config = margin_config or MarginConfig()
     broker = SimulatedBroker(
         execution_config=ExecutionConfig(lot_size=1, buy_fee=0.001, sell_fee=0.001),
-        margin_config=MarginConfig(),
+        margin_config=margin_config,
     )
     portfolio = PortfolioV2(
         initial_cash=initial_cash,
         ticker=TICKER,
-        margin_config=MarginConfig(),
+        margin_config=margin_config,
     )
     return broker, portfolio
 
@@ -191,35 +195,34 @@ class TestMarketLiquidationThroughGapDown(unittest.TestCase):
 class TestCarryCostAccrual(unittest.TestCase):
     """Shorts pay borrow daily; leveraged longs pay financing on borrowed cash (B8)."""
 
-    def test_short_accrues_daily_borrow_fee(self):
+    def test_short_open_is_rejected(self):
         _, portfolio = _broker_and_portfolio()
-        portfolio.apply_fill(Fill(
-            fill_id="s1", order_id="o", decision_id="d",
-            date="2026-01-05", ticker=TICKER, side="SELL",
-            quantity=100, price=100.0, fee=0.0, slippage_amount=0.0,
-            order_type=OrderType.SELL_TO_OPEN, open_close="OPEN",
-        ))
-        s1 = portfolio.mark_to_market("2026-01-06", close_price=100.0)
-        s2 = portfolio.mark_to_market("2026-01-07", close_price=100.0)
-        expected_daily_fee = 100 * 100.0 * MarginConfig().borrow_fee_daily  # 2.0
-        self.assertAlmostEqual(s1.total_equity - s2.total_equity, expected_daily_fee, places=6)
+        with self.assertRaises(ValueError):
+            portfolio.apply_fill(Fill(
+                fill_id="s1", order_id="o", decision_id="d",
+                date="2026-01-05", ticker=TICKER, side="SELL",
+                quantity=100, price=100.0, fee=0.0, slippage_amount=0.0,
+                order_type=OrderType.SELL_TO_OPEN, open_close="OPEN",
+            ))
 
-    def test_leveraged_long_pays_financing_on_debit_balance_only(self):
-        # 50k cash, 60k position -> 10k actually borrowed -> 1.0/day at default rate.
-        _, portfolio = _broker_and_portfolio(initial_cash=50_000.0)
-        portfolio.apply_fill(Fill(
-            fill_id="l1", order_id="o", decision_id="d",
-            date="2026-01-05", ticker=TICKER, side="BUY",
-            quantity=600, price=100.0, fee=0.0, slippage_amount=0.0,
-            order_type=OrderType.BUY_TO_OPEN, open_close="OPEN",
-        ))
-        s1 = portfolio.mark_to_market("2026-01-06", close_price=100.0)
-        s2 = portfolio.mark_to_market("2026-01-07", close_price=100.0)
-        # Day-1 borrows 10k (fee 1.0); the fee lands in cash, so day-2's debit
-        # balance compounds to 10_001 (fee 1.0001).
-        rate = MarginConfig().financing_rate_daily
-        expected_drag = 10_000.0 * rate + 10_001.0 * rate
-        self.assertAlmostEqual(50_000.0 - s2.total_equity, expected_drag, places=6)
+    def test_leveraged_long_is_rejected(self):
+        """Spot backtests reject entries whose notional exceeds cash."""
+        cash_only = MarginConfig(
+            initial_margin_pct=1.0,
+            maintenance_margin_pct=1.0,
+            max_leverage=1.0,
+        )
+        _, portfolio = _broker_and_portfolio(
+            initial_cash=50_000.0,
+            margin_config=cash_only,
+        )
+        with self.assertRaises(Exception):
+            portfolio.apply_fill(Fill(
+                fill_id="l1", order_id="o", decision_id="d",
+                date="2026-01-05", ticker=TICKER, side="BUY",
+                quantity=600, price=100.0, fee=0.0, slippage_amount=0.0,
+                order_type=OrderType.BUY_TO_OPEN, open_close="OPEN",
+            ))
 
     def test_unleveraged_long_pays_no_financing(self):
         broker, portfolio = _broker_and_portfolio()

@@ -2,7 +2,7 @@
 Position model for stock margin backtests.
 
 Defines:
-- PositionSide enum (LONG/SHORT/FLAT)
+- PositionSide enum (LONG/FLAT)
 - Position dataclass (notional, margin, mark-to-market, PnL, stop/tp)
 - Fill dataclass (execution record for a single leg)
 - Order dataclass (intent to trade, PRD §7.2 OrderType)
@@ -20,23 +20,28 @@ from typing import Any, Optional
 
 class PositionSide(str, Enum):
     LONG = "LONG"
-    SHORT = "SHORT"
     FLAT = "FLAT"
+    # Compatibility value for parser/tests that inspect rejected short state.
+    # Portfolio execution never creates a negative position.
+    SHORT = "SHORT"
 
 
 class OrderType(str, Enum):
-    """PRD §7.2 — explicit order types replacing the old Action enum."""
+    """Canonical order types plus rejected legacy compatibility values."""
     BUY_TO_OPEN = "BUY_TO_OPEN"
+    SELL_TO_CLOSE = "SELL_TO_CLOSE"
+    NO_ORDER = "NO_ORDER"
+
+    # Boundary-only legacy values.  They remain parseable for old configs and
+    # tests, but broker/order-generator/portfolio execution must reject them.
     BUY_TO_ADD = "BUY_TO_ADD"
     SELL_TO_REDUCE = "SELL_TO_REDUCE"
-    SELL_TO_CLOSE = "SELL_TO_CLOSE"
     SELL_TO_OPEN = "SELL_TO_OPEN"
     SELL_TO_ADD = "SELL_TO_ADD"
     BUY_TO_REDUCE = "BUY_TO_REDUCE"
     BUY_TO_CLOSE = "BUY_TO_CLOSE"
     REVERSE_TO_LONG = "REVERSE_TO_LONG"
     REVERSE_TO_SHORT = "REVERSE_TO_SHORT"
-    NO_ORDER = "NO_ORDER"
 
 
 class MarketMode(str, Enum):
@@ -90,7 +95,6 @@ class ExecutionConfig:
     tick_slippage: int = 1
     fee_per_contract: float = 0.0
     liquidation_fill_at: str = "next_session_open"
-    liquidation_extra_slippage_ticks: int = 1
 
     def __post_init__(self) -> None:
         if self.lot_size < 1:
@@ -109,6 +113,8 @@ class ExecutionConfig:
             raise ValueError(
                 f"fill_at must be one of {[f.value for f in FillRule]}, got {self.fill_at!r}"
             ) from exc
+        if self.initial_position_side != PositionSide.FLAT:
+            raise ValueError("spot long-only execution starts flat")
         if self.tick_slippage < 0:
             raise ValueError(f"tick_slippage must be >= 0, got {self.tick_slippage}")
         if self.fee_per_contract < 0:
@@ -117,7 +123,7 @@ class ExecutionConfig:
 
 @dataclass
 class MarginConfig:
-    """PRD §15 margin configuration."""
+    """Margin fields retained for legacy callers; stock runs override to cash-only."""
     initial_margin_pct: float = 0.50
     maintenance_margin_pct: float = 0.35
     max_leverage: float = 2.0
@@ -156,11 +162,9 @@ class MarginConfig:
 
 @dataclass
 class RiskConfig:
-    """PRD §11 risk parameters."""
+    """Static TP/SL and time-based risk parameters."""
     default_stop_pct: float = 0.08
     default_take_profit_pct: float = 0.20
-    trailing_stop_pct: float = 0.05
-    break_even_trigger_pct: float = 0.03
     max_holding_days: int = 20
     max_position_pct: float = 0.30
     max_intraday_loss_pct: float = 0.05
@@ -177,20 +181,16 @@ class DecisionMappingConfig:
 
     Two ``mode`` values are supported:
 
-    * ``strict_5tier`` (recommended) — preserves the full 5-tier agent
-      rating and applies the spec table. Conservative: never auto-reverses
-      LONG<->SHORT; respects the spec literal mapping.
-    * ``legacy_prd`` — original 3-bucket behaviour with the old
-      ``conservative`` / ``aggressive`` sub-modes. ``conservative`` is the
-      default for backward compatibility.
+    The mapper accepts legacy mode names for config-file compatibility, but all
+    modes execute the same spot long-only BUY/WNS contract.
     """
-    mode: str = "strict_5tier"
-    legacy_submode: str = "conservative"  # only used when mode == "legacy_prd"
+    mode: str = "spot_long_only"
+    legacy_submode: str = "conservative"
     allow_reverse_on_buy_sell: bool = False
     allow_short_on_underweight: bool = False
-    allow_short_on_sell: bool = False   # STRICT SPOT LONG-ONLY DEFAULT
-    short_allowed: bool = False        # STRICT SPOT LONG-ONLY DEFAULT
-    allow_explicit_reverse: bool = False  # strict_5tier: never reverse unless True
+    allow_short_on_sell: bool = False
+    short_allowed: bool = False
+    allow_explicit_reverse: bool = False
     spot_mode: bool = True
     overweight_size_multiplier: float = 0.5
     underweight_size_multiplier: float = 0.5
@@ -198,28 +198,19 @@ class DecisionMappingConfig:
     base_allocation_pct: float = 0.20  # Deprecated: unused, use initial_entry_pct instead
     # Entry config (FLAT → Buy/Sell)
     initial_entry_pct: float = 0.30
-    # Pyramiding config (position exists + rating aligned)
-    pyramid_pct: float = 0.10
-    # Gradual exit config (position exists + rating opposite)
+    # Legacy sizing fields retained for config compatibility; spot BUY is
+    # one-shot and never uses pyramid_pct.
+    pyramid_pct: float = 0.0
     reduce_step_pct: float = 0.10
 
     def __post_init__(self) -> None:
-        valid_modes = ("strict_5tier", "legacy_prd", "conservative", "aggressive")
+        valid_modes = ("strict_5tier", "spot_long_only", "legacy_prd", "conservative", "aggressive")
         if self.mode not in valid_modes:
-            raise ValueError(
-                f"mode must be one of {valid_modes}, got {self.mode!r}"
-            )
-        if self.legacy_submode not in ("conservative", "aggressive"):
-            raise ValueError(
-                f"legacy_submode must be 'conservative' or 'aggressive', got {self.legacy_submode!r}"
-            )
-        if self.mode in ("conservative", "aggressive", "legacy_prd"):
-            if not self.allow_short_on_sell:
-                self.allow_short_on_sell = True
-            if not self.short_allowed:
-                self.short_allowed = True
-        elif self.allow_short_on_sell or self.allow_short_on_underweight:
-            self.short_allowed = True
+            raise ValueError(f"mode must be one of {valid_modes}, got {self.mode!r}")
+        if self.allow_short_on_underweight or self.allow_short_on_sell or self.short_allowed:
+            raise ValueError("spot_long_only backtests cannot enable short positions")
+        self.mode = "spot_long_only"
+        self.spot_mode = True
 
 
 @dataclass
@@ -254,11 +245,17 @@ class AgentConfig:
     web_search_enabled: bool = False
     news_provider: str = "snapshot"
     max_thesis_chars: int = 2000
-    deterministic_seed: int = 42
     backtest_mode: bool = True
     run_frequency: str = "daily"
     report_language: str = "English"
-    cache_reports: bool = True
+    kronos_enabled: bool = False
+    kronos_model_tier: str = "base"
+    kronos_model_repo: str = "NeoQuasar/Kronos-base"
+    kronos_tokenizer_repo: str = "NeoQuasar/Kronos-Tokenizer-base"
+    kronos_device: str = "auto"
+    kronos_attn_implementation: str = "sdpa"
+    kronos_torch_compile: bool = False
+    kronos_pred_len: int = 20
 
 
 @dataclass
@@ -336,7 +333,9 @@ class Position:
     """
     PRD §7.3 — position state with margin, mark, PnL, stop/tp.
 
-    Convention: quantity > 0 = LONG, quantity < 0 = SHORT, quantity == 0 = FLAT.
+    Positive quantities represent the only executable LONG inventory. Negative
+    quantities and SHORT metadata remain parseable for rejected legacy inputs
+    and inspection tests; portfolio and broker paths never create them.
     """
     ticker: str
     quantity: int = 0
@@ -359,6 +358,7 @@ class Position:
         return self.quantity > 0
 
     def is_short(self) -> bool:
+        # Compatibility inspection only; execution rejects negative inventory.
         return self.quantity < 0
 
     def is_flat(self) -> bool:
@@ -369,6 +369,7 @@ class Position:
 
     @property
     def side(self) -> PositionSide:
+        """Return the derived signed side for compatibility inspection."""
         if self.quantity > 0:
             return PositionSide.LONG
         if self.quantity < 0:
@@ -433,7 +434,7 @@ class Order:
     """
     PRD §7.2 — order with explicit OrderType.
 
-    For reverse orders, the broker executes two fills (close leg + open leg).
+    Spot orders are single-leg fills; legacy reverse values are rejected at the boundary.
     """
     order_id: str
     decision_id: str
@@ -447,25 +448,17 @@ class Order:
     reason: str = ""
     created_at: Optional[str] = None
     is_reverse: bool = False
+    is_risk_order: bool = False
 
     @property
     def side(self) -> str:
-        """Backward-compat: derive side from order_type."""
-        buy_types = {
-            OrderType.BUY_TO_OPEN, OrderType.BUY_TO_ADD,
-            OrderType.BUY_TO_REDUCE, OrderType.BUY_TO_CLOSE,
-            OrderType.REVERSE_TO_LONG,
-        }
-        return "BUY" if self.order_type in buy_types else "SELL"
+        """Derive the spot side from the canonical order type."""
+        return "BUY" if self.order_type == OrderType.BUY_TO_OPEN else "SELL"
 
     @property
     def open_close(self) -> str:
-        """Backward-compat: derive open/close from order_type."""
-        close_types = {
-            OrderType.SELL_TO_CLOSE, OrderType.BUY_TO_CLOSE,
-            OrderType.SELL_TO_REDUCE, OrderType.BUY_TO_REDUCE,
-        }
-        return "CLOSE" if self.order_type in close_types else "OPEN"
+        """Derive the open/close phase from the canonical order type."""
+        return "OPEN" if self.order_type == OrderType.BUY_TO_OPEN else "CLOSE"
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -498,7 +491,13 @@ class BacktestConfig:
     lookback_days: Optional[int] = 240
 
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
-    margin: MarginConfig = field(default_factory=MarginConfig)
+    margin: MarginConfig = field(
+        default_factory=lambda: MarginConfig(
+            initial_margin_pct=1.0,
+            maintenance_margin_pct=1.0,
+            max_leverage=1.0,
+        )
+    )
     risk: RiskConfig = field(default_factory=RiskConfig)
     decision_mapping: DecisionMappingConfig = field(default_factory=DecisionMappingConfig)
     data: DataConfig = field(default_factory=DataConfig)
@@ -515,12 +514,16 @@ class BacktestConfig:
             raise ValueError("BacktestConfig.backtest_mode must be True for historical simulation.")
         if self.asset_class != "stock":
             raise ValueError(f"asset_class must be 'stock', got {self.asset_class!r}")
+        if self.initial_position_qty < 0:
+            raise ValueError("spot long-only backtest cannot start with a short position")
         if not self.ticker:
             raise ValueError("BacktestConfig.ticker is required.")
         if not self.start_date or not self.end_date:
             raise ValueError("BacktestConfig.start_date and end_date are required.")
         if self.data.provider != "snapshot":
             raise ValueError("Historical backtest must use snapshot data provider.")
+        if self.data.fetch_from_api:
+            raise ValueError("Historical backtest cannot fetch live API data.")
         if self.data.news_provider != "snapshot":
             raise ValueError("Historical backtest must use snapshot news provider.")
         if not self.data.disable_live_news:
@@ -542,7 +545,7 @@ class BacktestConfig:
                 "execution.fill_at == 'stop_level' is reserved for stop/target orders."
             )
 
-        valid_modes = ("strict_5tier", "legacy_prd", "conservative", "aggressive")
+        valid_modes = ("spot_long_only", "strict_5tier", "legacy_prd", "conservative", "aggressive")
         if self.decision_mapping.mode not in valid_modes:
             raise ValueError(
                 f"decision_mapping.mode must be one of {valid_modes}, "
@@ -584,8 +587,8 @@ class ParsedDecision:
     confidence: Optional[float] = None
     short_allowed: bool = False
     allow_new_position: bool = True
-    market_mode: str = "FUTURES_STYLE_SIMULATION"
-    allowed_position_sides: str = "LONG,SHORT"
+    market_mode: str = "SPOT_LONG_ONLY"
+    allowed_position_sides: str = "LONG"
     position_intent: str = "hold"
     current_position_side: str = "FLAT"
     target_position_side: str = "FLAT"
@@ -723,7 +726,8 @@ class MarginEvent:
 class Trade:
     """
     PRD §19.2 — trade log entry.
-    Each fill produces one Trade record. Reverse orders produce two.
+    Canonical fills are single-leg BUY entries or SELL closes. Legacy reverse
+    metadata remains serializable but is rejected before execution.
     """
     date: str
     ticker: str

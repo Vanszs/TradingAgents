@@ -212,14 +212,10 @@ class BacktestReportGenerator:
 - Max Margin Utilization: `{summary.get("max_margin_utilization_pct", 0):.2f}%`
 - Margin Calls: `{summary.get("margin_calls_count", 0)}`
 - Liquidations: `{summary.get("liquidations_count", 0)}`
-- Reverse Count: `{summary.get("reverse_count", 0)}`
 - Avg Holding Period (days): `{summary.get("avg_holding_period_days", 0):.2f}`
 - Max Consecutive Wins: `{summary.get("consecutive_wins_max", 0)}`
 - Max Consecutive Losses: `{summary.get("consecutive_losses_max", 0)}`
-- Long Win Rate: `{summary.get("long_win_rate", 0):.2f}%`
-- Short Win Rate: `{summary.get("short_win_rate", 0):.2f}%`
-- Long Realized PnL: `{summary.get("long_realized_pnl", 0):,.2f}`
-- Short Realized PnL: `{summary.get("short_realized_pnl", 0):,.2f}`
+- Realized PnL: `{summary.get("total_realized_pnl", 0):,.2f}`
 - Calmar Ratio: `{summary.get("calmar_ratio", 0):.4f}`
 - Fee Drag: `{summary.get("fee_drag_pct", 0):.4f}%`
 - Slippage Drag: `{summary.get("slippage_drag_pct", 0):.4f}%`
@@ -239,7 +235,7 @@ Status: **{leakage_audit.get("status", "UNKNOWN")}**
 
 ## Notes
 
-- Asset class: **stock**. Margin, long+short, daily mark-to-market settlement, auto-liquidation.
+- Asset class: **stock**, spot long-only. Orders are BUY entries or WNS/no-order; exits use static stop-loss, take-profit, time stop, or end-of-horizon closure.
 - Decision pada tanggal `t` hanya dieksekusi pada trading day berikutnya.
 - Harga eksekusi memakai `next session open` dengan ``tick_slippage`` ticks.
 - Live provider wajib disabled saat backtest historis.
@@ -275,7 +271,7 @@ def build_leakage_audit(leakage_checks: dict[str, str]) -> dict[str, Any]:
         "lookback_window_respected",
     ]
     for check in required:
-        checks.setdefault(check, "PASSED")
+        checks.setdefault(check, "NOT_CHECKED")
     status = "PASSED" if all(v == "PASSED" for v in checks.values()) else "FAILED"
     return {
         "status": status,

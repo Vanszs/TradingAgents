@@ -18,7 +18,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_3pct_loss_below_5pct_threshold_no_trigger(self):
         """3% loss should NOT trigger hard risk (threshold is 5%)."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,
@@ -34,7 +34,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_6pct_loss_above_5pct_threshold_triggers(self):
         """6% loss SHOULD trigger hard risk (threshold is 5%)."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,
@@ -50,7 +50,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_10pct_portfolio_loss_below_20pct_threshold_no_trigger(self):
         """10% portfolio loss should NOT trigger max portfolio loss (threshold is 20%)."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,
@@ -69,7 +69,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_25pct_portfolio_loss_above_20pct_threshold_triggers(self):
         """25% portfolio loss SHOULD trigger max portfolio loss (threshold is 20%)."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.30, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.30, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,
@@ -85,7 +85,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_negative_equity_triggers(self):
         """Negative equity should always trigger hard risk."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,
@@ -100,7 +100,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_error_message_shows_percentage(self):
         """Error message should show percentage (e.g., 6.00%), not fraction."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,
@@ -118,7 +118,7 @@ class TestHardRiskUnitFix(unittest.TestCase):
 
     def test_profitable_position_does_not_trigger_hard_risk(self):
         """A profitable position should NEVER trigger the max-loss rule."""
-        engine = RiskEngine(max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
+        engine = RiskEngine(hard_risk_enabled=True,max_loss_per_trade_pct=0.05, max_portfolio_loss_pct=0.20)
         position = Position(
             ticker="TEST", quantity=1000, avg_entry_price=100.0,
             multiplier=1.0, mark_price=100.0,

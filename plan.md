@@ -1,243 +1,316 @@
-# Production Hardening & Architecture Master Plan (TradingAgents)
+# Master Architecture & Integration Plan: Kronos K-Line Foundation Model (shiyu-coder/Kronos) for TradingAgents
 
-**Version:** 2.0.0 (Post-10-Subagent Thermonuclear & Ponytail Audit)  
-**Roles:** Senior SWE, Senior Quant Trader, Senior AI Systems Engineer  
-**Core Domain Strategy:** **Spot Equity Long-Only: Pure BUY (HAKA) & WNS (Wait and See / Staged Limit Accumulation)**  
-**Safety Invariant:** **DO NOT delete or wipe `.understand-anything` or historical dataset snapshots.**
+## 1. Executive Summary & Problem Formulation
 
----
+This document defines the production-grade implementation specification to integrate the **Kronos Financial K-Line Foundation Model** (`shiyu-coder/Kronos`, AAAI 2026) into the `tradingagents` quantitative multi-agent trading ecosystem.
 
-## 1. Domain Strategy & Execution Invariants
-
-In our institutional spot long-only architecture, passive "blind hold" (holding without execution parameters) is forbidden:
-1. **BUY (HAKA / Immediate Market Entry on $T+1$ Open)**:
-   - Evaluated when price sits directly on confirmed structural demand/support with bullish momentum and $R:R \ge 2:1$.
-2. **WNS (Wait and See / Limit Accumulation / `ASSUMED_AI_ENTRY`)**:
-   - Evaluated when price is extended or pulling back towards support (e.g. current 390, demand floor 350–355).
-   - **Mandatory Parameters**: Must output `planned_entry_price` (e.g. 355), `stop_loss` (e.g. 340), `take_profit` (e.g. 420), and `wns_recheck_date`.
-   - The engine evaluates this as a limit order / price-touch trigger (`ASSUMED_AI_ENTRY`) on subsequent bars.
-3. **SELL (Liquidation / Capital Preservation)**:
-   - Complete exit of long inventory ($0\%$ allocation).
+### 1.1 The Core Problem & Quantitative Thesis
+- **LLM Cognitive Blindspot**: General-purpose Large Language Models (GPT-4o, Claude 3.5 Sonnet, Gemini 2.5 Pro) excel at qualitative reasoning, multi-document synthesis, and macro narrative analysis. However, they struggle with high-dimensional numeric candlestick dynamics, price-volume microstructure, and multi-step non-linear autoregressive trajectory forecasting across hundreds of historical bars.
+- **Kronos Foundation Model Capability**: Kronos is a specialized autoregressive transformer architecture pre-trained on multi-resolution K-line sequences across 45 global financial exchanges using hierarchical discrete tokenization. It ingests historical OHLCV sequences (up to 512 bars) and autoregressively generates forward trajectories of future price-volume dynamics (Open, High, Low, Close, Volume).
+- **The "Code Judo" Architecture**: Instead of altering the core LangGraph multi-agent topology or introducing fragile custom nodes, Kronos is encapsulated strictly as a **Neural Quantitative Forecasting Dataflow Tool** (`get_kronos_forecast`). It is registered in the `Market / Technical Analyst` toolset and fully supported across single-shot signal evaluation (`evaluate-signal`), walk-forward backtesting (`backtest`), and live market analysis (`analyze`).
 
 ---
 
-## 2. 10-Subagent Audit Matrix: Real Blockers vs False Positives
+## 2. System-Wide Invariants & Quant Safety Standards
 
 ```
-+-------------------------------------------------------------------------------------------------------------------------+
-| VERDICT CLASSIFICATION (21 AUDIT FINDINGS)                                                                              |
-+-------------------+-----------------------------------------------------------------------------------------------------+
-| REAL BLOCKER (8)  | B1. Horizon Clamping >63d         B2. Margin Liquidation Limit Bug    B3. Planned Entry Lost in DSM     |
-|                   | B4. .JK Benchmark Fallback to SPY B5. Limit Slippage Inversion        B6. ATR Morning Lookahead Leakage |
-|                   | B7. yfinance Multi-Day Truncation B8. Borrow & Financing Unaccrued                                  |
-+-------------------+-----------------------------------------------------------------------------------------------------+
-| FALSE POSITIVE (5)| FP1. Layer Inversion (Lazy import, non-blocking)    FP2. Crypto Tools Bypass PIT (Fail-closed by design)|
-|                   | FP3. Checkpoint Resume Theater (Fixed: None input)  FP4. UNDERWEIGHT Trim vs Sell (Quant standard)      |
-|                   | FP5. Decision Valid-From Hallucination (Fixed snap)                                                     |
-+-------------------+-----------------------------------------------------------------------------------------------------+
-| VALID IMPROVE (8) | 1. Dual BacktestConfig Schemas Alias   2. HOLD vs WNS Schema Validation  3. Multi-Tenant Config Context |
-|                   | 4. Junk CSV Cache Guard                5. CLI Monoliths Decomposition    6. Duplicate TUI Logic         |
-|                   | 7. importlib.reload Elimination        8. Untracked Artifacts in Git Index                              |
-+-------------------+-----------------------------------------------------------------------------------------------------+
-```
-
-### Detailed Breakdown of 8 Real Blockers
-
-1. **B1: Horizon Clamping >63d (`schemas.py:894`)**  
-   `PortfolioDecision.time_horizon_days` ($le=252$) passed unclamped to `SignalContract.max_holding_days` ($le=63$). Triggers Pydantic `ValidationError` $\to$ `signal_contract = None` $\to$ CLI crash.  
-   *Fix*: `max_holding_days = decision.max_holding_days or min(63, decision.time_horizon_days)`.
-
-2. **B2: Forced Liquidation Limit Order Bug (`walk_forward_runner.py:382`, `broker.py:258`)**  
-   EOD margin breach sent `price=close` (Limit Order). On gap-down open ($High < Limit$), order stayed `UNFILLED`. Bankrupt accounts survived in simulation (*survivorship bias*).  
-   *Fix*: Forced liquidation sent with `price=None` $\to$ executed at Market Open $T+1$.
-
-3. **B3: Planned Entry Price Pipeline Loss (`schemas.py:559`, `decision_state_manager.py:190, 420`)**  
-   `render_pm_decision` omitted `planned_entry_price` and DSM dropped it on `ExtendedDecision`. `TriggerEvaluator` saw `None` and staged limit accumulation never fired.  
-   *Fix*: Render field in markdown and pass through `_map_strict` and `_map_legacy`.
-
-4. **B4: Indonesian Benchmark `.JK` Fallback to `SPY` (`default_config.py:124`)**  
-   `benchmark_map` lacked `.JK`, falling back to `SPY` (USD). Mismatched IDR return vs USD index without FX adjustment corrupted reflection memory loop.  
-   *Fix*: Added `".JK": "^JKSE"`.
-
-5. **B5: Buy Limit Slippage Inversion (`broker.py:258-297`)**  
-   Buy limit filled at $\text{limit} \times (1 + \text{friction}) > \text{limit}$, violating exchange limit rules. Gap-down opens also failed to grant price improvement.  
-   *Fix*: $P_{fill} = \min(P_{open} \times (1 + \text{friction}), P_{limit})$.
-
-6. **B6: ATR Morning Lookahead Bias (`walk_forward_runner.py:309`)**  
-   At open of day $T$, ATR calculated with $df \le T$, including unclosed bar $H_T, L_T, C_T$ (intraday future leak).  
-   *Fix*: Anchored risk calculation to `current_date = self.calendar.previous_trading_day(current_date)`.
-
-7. **B7: `yfinance` Date Boundary Truncation (`y_finance.py:106`)**  
-   Daily `yfinance.history` is end-date exclusive. Multi-day range queries dropped the final day bar ($T_{end}$).  
-   *Fix*: Appended $+1$ day offset: `end_inclusive = (pd.to_datetime(end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")`.
-
-8. **B8: Unaccrued Borrow & Financing Fees (`portfolio.py:918-927`, `position.py:97`)**  
-   Shorts and leverage longs incurred 0 carry cost because fee methods were never called in daily mark-to-market.  
-   *Fix*: Deducted daily fee directly from cash in `PortfolioV2.mark_to_market`.
-
----
-
-## 3. Surgical Implementation Guide (Applied & Verified Diffs)
-
-### Phase 1: Schemas & Decision Pipeline
-```python
-# File: tradingagents/agents/schemas.py
-
-# 1. Horizon Clamping (Line ~894)
-max_holding_days=decision.max_holding_days or min(63, decision.time_horizon_days),
-
-# 2. Render Quantitative Fields (Line ~559-567)
-if decision.planned_entry_price is not None:
-    parts.extend(["", f"**Planned Entry Price**: {decision.planned_entry_price}"])
-if decision.confidence is not None:
-    parts.extend(["", f"**Confidence**: {decision.confidence:.2f}"])
-if decision.wns_trigger_price is not None:
-    parts.extend(["", f"**WNS Trigger Price**: {decision.wns_trigger_price}"])
-if decision.wns_recheck_date:
-    parts.extend(["", f"**WNS Recheck Date**: {decision.wns_recheck_date}"])
-
-# 3. Decision Authority Hierarchy (Line ~836-840)
-raw_planned_entry = (
-    getattr(decision, "planned_entry_price", None)
-    if getattr(decision, "planned_entry_price", None) is not None
-    else planned_entry_price
-)
-```
-
-```python
-# File: tradingagents/backtesting/decision_state_manager.py
-# Inside _map_strict (Line ~190) & _map_legacy (Line ~420):
-stop_price=decision.stop_price,
-take_profit=decision.take_profit,
-planned_entry_price=decision.planned_entry_price,
-wns_trigger_price=decision.wns_trigger_price,
-wns_recheck_date=decision.wns_recheck_date,
-next_review_date=decision.next_review_date,
-time_horizon_label=decision.time_horizon_label,
-time_horizon_days=decision.time_horizon_days,
-```
-
-### Phase 2: Simulation Engine & Broker Execution
-```python
-# File: tradingagents/backtesting/walk_forward_runner.py
-
-# 1. Forced Liquidation at Market Order (Line ~382)
-risk_order = self._build_force_close(
-    next_valid_date, None, "eod_margin_breach"
-)
-
-# 2. Morning ATR Lookahead Elimination (Line ~309)
-self._update_risk_levels(
-    self.prev_decision,
-    self._ohlcv_df,
-    current_date=self.calendar.previous_trading_day(current_date),
-)
-```
-
-```python
-# File: tradingagents/backtesting/broker.py (Line ~258-297)
-is_limit = order.price is not None and float(order.price) > 0
-limit_p = float(order.price) if is_limit else 0.0
-
-if not is_limit:
-    base_price = open_price
-elif is_buy:
-    base_price = min(open_price, limit_p)
-else:
-    base_price = max(open_price, limit_p)
-
-# Apply friction and enforce limit bound
-if is_buy:
-    fill_price = base_price * (1 + total_friction_pct)
-else:
-    fill_price = base_price * (1 - total_friction_pct)
-
-if is_limit:
-    fill_price = min(fill_price, limit_p) if is_buy else max(fill_price, limit_p)
-```
-
-```python
-# File: tradingagents/backtesting/portfolio.py (Line ~918-927)
-pos_val = abs(self.position_value(mark))
-if pos_val > 0:
-    if self.position.is_short():
-        carry_fee = pos_val * float(getattr(self.margin_cfg, "borrow_fee_daily", 0.0002))
-    else:
-        borrowed_cash = max(0.0, pos_val - max(0.0, self.cash + pos_val))
-        carry_fee = borrowed_cash * float(getattr(self.margin_cfg, "financing_rate_daily", 0.0001))
-    if carry_fee > 0:
-        self.cash -= carry_fee
-```
-
-### Phase 3: Configuration & Dataflows
-```python
-# File: tradingagents/default_config.py (Line ~124)
-".JK": "^JKSE",    # Indonesia (Jakarta Composite / IHSG)
-
-# File: tradingagents/dataflows/y_finance.py (Line ~106)
-end_inclusive = (pd.to_datetime(end_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
++─────────────────────────────────────────────────────────────────────────────+
+│                         KRONOS INTEGRATION INVARIANTS                       │
+│                                                                             │
+│  [Invariant 1] Zero Lookahead Bias: Causal input clamped strictly at T0.    │
+│  [Invariant 2] Point-in-Time Causal Normalization: Anchor statistics        │
+│                (Close_T0, rolling mean/std) computed strictly on lookback;  │
+│                never across future horizon bars.                            │
+│  [Invariant 3] Deterministic Backtesting: Temperature T=0.0 in backtests.   │
+│  [Invariant 4] Hardware & Attention Optimization: Native PyTorch 2.x SDPA   │
+│                (FlashAttention-2 fallback chain) + bfloat16 mixed precision.│
+│  [Invariant 5] Singleton VRAM & Memory Isolation: Thread-safe persistent    │
+│                weights in VRAM with zero backtest step re-allocation.       │
+│  [Invariant 6] Dual-Tier Caching: In-memory LRU + Disk JSON cache.         │
+│  [Invariant 7] Graceful Multi-Platform Fallback: CUDA -> MPS -> CPU -> Mock.│
+│  [Invariant 8] Graph & Schema Parity: Non-breaking opt-in via config/CLI.   │
++─────────────────────────────────────────────────────────────────────────────+
 ```
 
 ---
 
-## 4. Next Immediate Actions (Operational Roadmap)
+## 3. Data Contracts & Architecture Specifications
 
-> **Status: ALL EXECUTED (this session).** Actuals below supersede the original asks.
+### 3.1 Input / Output Data Contracts (`tradingagents/dataflows/kronos_types.py` / `kronos.py`)
 
-1. **Lock Invariant Unit Tests** — DONE: `tests/test_audit_invariants.py` (12 tests).
-   Covers the roundtrip `render_pm_decision → MarkdownDecisionParser →
-   DecisionStateManager` asserting `confidence` and `planned_entry_price` survive,
-   plus broker limit-cap (`P_fill ≤ P_limit`, exact-cap on gap-up, price
-   improvement on gap-down, UNFILLED when untouched), market-order liquidation
-   through a gap-down (with the stale-limit stranding case as contrast), daily
-   borrow/financing accrual incl. debit-balance compounding, and zero-cost
-   unleveraged longs.
-2. **Git Index Hygiene** — DONE: `git rm -r --cached` applied to `.kiro/`,
-   `backtest_results/`, plus `snapshots/ backtest_cache/ reports/ data/`
-   (2,308 index deletions staged; physical files untouched). `.gitignore`
-   extended for all six paths. **Not committed — review `git status`, then commit.**
-3. **Execution Validation** — DONE: full suite is now **765 passed, 1 skipped**
-   (not 751: +12 invariant tests, +6 CLI-split tests, −2 vacuous tests removed
-   with a deleted identity function, config-unification re-exports verified).
+```python
+from dataclasses import dataclass
+from typing import Any, Dict, List, Literal, Optional
+import pandas as pd
 
----
+@dataclass(frozen=True)
+class KronosContextContract:
+    symbol: str
+    cutoff_date: str          # Strict causal ceiling (T0: YYYY-MM-DD or ISO timestamp)
+    df_bars: pd.DataFrame     # Required columns: ['open', 'high', 'low', 'close', 'volume', 'date']
+    lookback_bars: int = 512  # Optimal Kronos receptive field (clamped <= 512)
+    pred_len: int = 20        # Forward forecast length in trading bars (5, 10, 20)
+    temperature: float = 0.0  # 0.0 for deterministic greedy argmax
 
-## 4b. Executed Beyond This Document (same session, verified)
+@dataclass(frozen=True)
+class KronosPredictedBar:
+    step: int                 # 1..pred_len (T+1 .. T+N)
+    projected_open: float
+    projected_high: float
+    projected_low: float
+    projected_close: float
+    projected_volume: float
+    return_from_t0_pct: float # ((projected_close - last_close) / last_close) * 100.0
 
-- Junk-CSV cache guard + atomic cache write (`stockstats_utils.load_ohlcv`);
-  legacy poisoned caches are dropped and refetched.
-- Layer inversion removed: `cli/data_fetch.py` → `tradingagents/backtesting/ohlcv_fetch.py`;
-  engine lazy-import now targets the library; zero `cli.data_fetch` references remain.
-- Dual BacktestConfig family unified onto `position.py`; `decision_schema.py`
-  546→246 lines (re-exports + legacy-only shapes); dead knobs deleted
-  (`borrow_fee_apr`, `BacktestConfig.default_reduce_pct`, legacy `Order` extras);
-  `backtest.yaml` resolution guard: 108 flattened keys, zero value diffs.
-- CLI monoliths split mechanically: `main.py` 1405→568
-  (`message_buffer/display/report_io/selections.py`), `commands/backtest.py`
-  1318→504 (`backtest_tui/backtest_report/backtest_prompts.py`).
-- Checkpoint resume wired for real (`invoke(None)` when a checkpoint step exists)
-  and far-future `decision_valid_from` now logs a loud per-day wait warning.
-
-**Remaining open (need spec owner / larger design, deliberately not auto-fixed):**
-UNDERWEIGHT trim-vs-exit unification; TUI renderer merge + graph-progress observer
-into the library; `importlib.reload` env-var config hack → explicit overrides param;
-global mutable run-context race (`dataflows/config.py` singleton).
-
----
-
-## 5. Verification Protocol
-
-```bash
-# 1. Targeted Suite (Checkpoint, Signal, 5-Tier, Margin, Risk, Broker)
-pytest tests/test_checkpoint_resume.py tests/test_signal_processing.py \
-       tests/test_strict_5tier.py tests/test_typed_signal_integration.py \
-       tests/test_stock_order_generator.py tests/test_risk_execution.py \
-       tests/test_margin.py tests/test_markdown_parser_v2.py -q
-
-# 2. Full Regression Suite
-pytest -q
+@dataclass(frozen=True)
+class KronosForecastContract:
+    symbol: str
+    forecast_date: str        # T0 cutoff date
+    horizon_bars: int         # N steps forward
+    last_close: float         # Close price at T0
+    forecast_high: float      # Maximum projected high over horizon
+    forecast_low: float       # Minimum projected low over horizon
+    forecast_end_close: float # Projected close at step N
+    forecast_return_pct: float # Expected return % at horizon end
+    max_upside_pct: float     # ((forecast_high - last_close) / last_close) * 100.0
+    max_downside_pct: float   # ((forecast_low - last_close) / last_close) * 100.0
+    directional_bias: Literal["BULLISH", "BEARISH", "NEUTRAL"]
+    confidence_score: float   # Derived from trajectory consistency & token entropy (0.0 to 1.0)
+    model_name: str           # e.g. "NeoQuasar/Kronos-base"
+    device_used: str          # e.g. "cuda:0", "mps", "cpu"
+    forecast_bars: List[KronosPredictedBar]
+    raw_summary_markdown: str # Structured markdown for LLM consumption
 ```
-**Acceptance Benchmark (actual, this session):** full suite `765 passed, 1 skipped
-(live API gate), 83 subtests passed, 0 failed`; targeted §5 suite `101 passed`;
-`ruff check cli/ tradingagents/backtesting/` clean; `import cli.main,
-cli.commands.backtest` OK.
+
+---
+
+## 4. Hardware Acceleration, Attention & Mathematical Optimization
+
+### 4.1 PyTorch 2.x Attention Fallback Chain
+Kronos transformer self-attention must support high-throughput execution across heterogeneous hardware architectures:
+1. **FlashAttention-2 (`flash_attention_2`)**: Used if CUDA compute capability $\ge 8.0$ (Ampere, Ada Lovelace, Hopper) and `flash-attn` is installed.
+2. **PyTorch SDPA (`sdpa`)**: Default standard via `torch.nn.functional.scaled_dot_product_attention` (C++ kernel with FlashAttention/Memory-Efficient Attention backends).
+3. **Eager PyTorch (`eager`)**: Fallback for CPU / older GPUs.
+
+### 4.2 Precision & Memory Allocation Strategy
+- **Ampere/Ada/Hopper (RTX 30xx/40xx, A100, H100)**: `torch.bfloat16` (full dynamic range of fp32 with fp16 speed).
+- **Turing / Volta (RTX 20xx, GTX 16xx, V100)**: `torch.float16`.
+- **Apple Silicon (MPS) & CPU**: `torch.float32`.
+- **Inference Mode**: All tensor computations strictly wrapped inside `torch.inference_mode()`.
+- **Pinned Memory Async Transfers**: Tensor inputs allocated in page-locked CPU memory before non-blocking device transfer:
+  ```python
+  tensor_input = tensor_input.pin_memory().to(device, non_blocking=True)
+  ```
+- **Optional Linux CUDA Kernel Compilation**:
+  ```python
+  if config.get("kronos_torch_compile", False) and device.type == "cuda":
+      model = torch.compile(model, mode="reduce-overhead")
+  ```
+
+### 4.3 Causal Normalization & Tokenization Math
+Raw price series exhibit non-stationary drift across stocks (e.g. MSFT at \$420 vs penny stock at \$1.50). Feeding un-normalized price data causes codebook saturation:
+1. **Causal Anchor Point**: $P_{0} = Close_{T0}$ (price at cutoff date).
+2. **Causal Relative Scaling**:
+   $$\tilde{O}_t = \frac{O_t - P_0}{P_0}, \quad \tilde{H}_t = \frac{H_t - P_0}{P_0}, \quad \tilde{L}_t = \frac{L_t - P_0}{P_0}, \quad \tilde{C}_t = \frac{C_t - P_0}{P_0}$$
+3. **Rolling Volume Standardization**:
+   $$\tilde{V}_t = \frac{V_t - \mu_{V, [T-lookback:T]}}{\sigma_{V, [T-lookback:T]} + \epsilon}$$
+4. **Inverse Denormalization**:
+   $$P_{\text{projected}, T+k} = P_0 \times (1.0 + \tilde{P}_{\text{predicted}, T+k})$$
+
+---
+
+## 5. Phase-by-Phase Implementation Blueprint
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             EXECUTION PHASES                                │
+│                                                                             │
+│  Phase 1: Dependencies, Inference Engine & Singleton Manager (kronos.py)   │
+│  Phase 2: Dataflow Tool Registration & Structural Levels Integration        │
+│  Phase 3: Backtest Engine & 512-Bar Snapshot Window Slicing                 │
+│  Phase 4: Market Analyst Prompt & Neural Trajectory Confluence              │
+│  Phase 5: Trader & Portfolio Manager Target Anchoring (Anti-Prompt Gaming)  │
+│  Phase 6: CLI Options, Configuration Schema & TUI Visualizer                │
+│  Phase 7: Comprehensive Test Suite & Zero-Leakage Verification              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Phase 1: Dependencies, Inference Engine & Singleton Manager
+
+#### Target Files
+- `pyproject.toml`
+- `tradingagents/dataflows/kronos.py` (New core engine)
+- `tradingagents/default_config.py`
+
+#### Tasks & Implementation Details
+- [x] **1.1 Configure Optional Quant Dependencies in `pyproject.toml`**:
+  ```toml
+  [project.optional-dependencies]
+  quant = [
+      "torch>=2.1.0",
+      "transformers>=4.40.0",
+      "huggingface_hub>=0.20.0",
+      "accelerate>=0.25.0",
+      "einops>=0.7.0",
+  ]
+  ```
+- [x] **1.2 Create `tradingagents/dataflows/kronos.py`**:
+  - Implement `KronosModelManager` (Singleton pattern with thread lock `threading.Lock()`):
+    - Methods: `get_model_and_tokenizer(model_tier, device, attn_impl)`, `unload_model()`, `clear_vram_cache()`.
+    - Handles model caching in `~/.cache/huggingface/hub` or custom local cache directory.
+  - Implement `KronosInferenceEngine`:
+    - Point-in-time input validation: `assert (df["date"] <= cutoff_date).all()`.
+    - Context lookback slice: take last `min(len(df), 512)` bars.
+    - Causal normalization -> Discrete hierarchical tokenization -> Autoregressive greedy generation (`temperature=0.0`) -> Inverse denormalization.
+  - Implement Dual-Level Caching:
+    - Level 1: In-memory `OrderedDict` (LRU cache with capacity 128).
+    - Level 2: Persistent JSON file cache at `api_cache/kronos/{symbol}_{cutoff_date}_{model_tier}_{pred_len}.json`.
+  - Implement Graceful Hardware Fallback:
+    - Auto-detect CUDA -> MPS -> CPU.
+    - If `torch` / `transformers` is missing or model download fails, return a graceful typed error/mock message without crashing the parent process.
+
+---
+
+### Phase 2: Dataflow Tool Registration & Structural Levels Integration
+
+#### Target Files
+- `tradingagents/dataflows/interface.py`
+- `tradingagents/dataflows/structural_levels.py`
+- `tradingagents/agents/utils/core_stock_tools.py`
+
+#### Tasks & Implementation Details
+- [x] **2.1 Implement `get_kronos_forecast` in `tradingagents/dataflows/interface.py`**:
+  - Expose `get_kronos_forecast(symbol: str, curr_date: str, pred_days: int = 20, config: Optional[Dict] = None) -> str`.
+  - Connects to existing dataflow router and retrieves historical OHLCV from cache/provider.
+- [x] **2.2 Register LangGraph Tool `@tool get_kronos_forecast` in `core_stock_tools.py`**:
+  - Complete type annotations, docstrings, and robust exception trapping (returning structured error markdown on failure).
+- [ ] **2.3 Integrate Neural Levels into `structural_levels.py`**:
+  - In `compute_structural_levels()`: when `kronos_enabled=True`, calculate neural resistance (projected peak) and neural support (projected trough) alongside classical Fibonacci 1.272x/1.618x extension levels.
+
+---
+
+### Phase 3: Backtest Engine & 512-Bar Snapshot Window Slicing
+
+#### Target Files
+- `tradingagents/backtesting/data_window.py`
+- `tradingagents/backtesting/snapshot_provider.py`
+- `tradingagents/backtesting/walk_forward_runner.py`
+
+#### Tasks & Implementation Details
+- [x] **3.1 Expand Allowed Lookback Windows**:
+  - Update `tradingagents/backtesting/data_window.py:30`:
+    ```python
+    ALLOWED_LOOKBACKS = (None, 5, 10, 20, 40, 60, 80, 100, 120, 240, 512)
+    ```
+- [x] **3.2 Ensure 512-Bar Causal Slicing in Snapshot Provider**:
+  - In `SnapshotDataProvider.get_ohlcv()`: guarantee that when `lookback=512`, up to 512 daily bars $\le T_0$ are retrieved without lookahead leakage.
+- [ ] **3.3 Zero-Copy Backtest Cache Efficiency**:
+  - In `walk_forward_runner.py`: Ensure pre-sliced historical windows are reused efficiently without redundant disk reads.
+
+---
+
+### Phase 4: Market Analyst Prompt & Neural Trajectory Confluence
+
+#### Target Files
+- `tradingagents/agents/analysts/market_analyst.py`
+- `tradingagents/agents/utils/agent_states.py`
+
+#### Tasks & Implementation Details
+- [x] **4.1 Bind `get_kronos_forecast` to Market Analyst**:
+  - Add `get_kronos_forecast` to Market Analyst's tool binding list when `kronos_enabled` is active.
+- [x] **4.2 Update Market Analyst System Prompt**:
+  - Guide the Market Analyst to synthesize **Classical Technical Structure** (SMA 50/200, EMA 9/21, RSI, MACD, Fibonacci) with the **Autoregressive Neural Trajectory** (Kronos projected path).
+  - Explicitly prompt for **Confluence vs Divergence Analysis**:
+    - High Confluence: Classical breakout confirmed by positive Kronos neural velocity.
+    - Bearish Divergence: Classical momentum showing overbought while Kronos forecasts sharp mean-reversion exhaustion.
+
+---
+
+### Phase 5: Trader & Portfolio Manager Target Anchoring & Trading Regime Mapping
+
+#### Target Files
+- `tradingagents/agents/trader/trader.py`
+- `tradingagents/agents/managers/research_manager.py`
+- `tradingagents/agents/managers/risk_manager.py`
+- `tradingagents/agents/schemas.py`
+
+#### Tasks & Implementation Details
+- [x] **5.1 Spot long-only polarity mapping**:
+  - Kronos `BULLISH` may support `BUY`; `BEARISH` and `NEUTRAL` map to `WNS`.
+  - Legacy labels normalize only at input boundaries. No short, reverse, pyramiding, or agent-driven SELL exit.
+  - Exits are static stop-loss, take-profit, time stop, or horizon/end-of-backtest closure.
+- [x] **5.2 Target Anchoring in Trader & Research Manager**:
+  - In `trader.py`: Instruct the Trader to anchor `take_profit` to `forecast_high` (or neural resistance) and `stop_loss` below `forecast_low` (or neural support).
+  - Prevents arbitrary unrealistic hallucinated price targets (prompt gaming).
+- [x] **5.3 Validation Bounds Consistency**:
+  - In `schemas.py`: Ensure `SignalContract` and `PortfolioDecision` validate realistic long-only targets anchored to Kronos neural boundaries.
+
+---
+
+### Phase 6: CLI Options, Configuration Schema & TUI Visualizer
+
+#### Target Files
+- `tradingagents/default_config.py`
+- `cli/commands/evaluate.py`
+- `cli/commands/backtest.py`
+- `cli/commands/analyze.py`
+- `cli/display.py`
+
+#### Tasks & Implementation Details
+  - [x] **6.1 Add Configuration Keys in `DEFAULT_CONFIG`**:
+  ```python
+  "kronos_enabled": False,              # Default off for lightweight installations
+  "kronos_model_tier": "base",          # "base" (102.3M, Recommended) | "small" (24.7M) | "mini" (4.1M)
+  "kronos_model_repo": "NeoQuasar/Kronos-base",
+  "kronos_tokenizer_repo": "NeoQuasar/Kronos-Tokenizer-base",
+  "kronos_device": "auto",              # "auto", "cuda", "mps", "cpu"
+  "kronos_attn_implementation": "sdpa", # "sdpa", "flash_attention_2", "eager"
+  "kronos_torch_compile": False,        # Enable torch.compile for Linux CUDA
+  "kronos_pred_len": 20,                # Forecast horizon (5, 10, 20 bars)
+  "kronos_temperature": 0.0,            # 0.0 for deterministic greedy argmax
+  ```
+- [ ] **6.2 CLI Command Flags**:
+  - Add `--kronos / --no-kronos` flag across `evaluate-signal`, `backtest`, and `analyze`.
+  - Add `--kronos-model` (`base`, `small`, `mini`).
+- [ ] **6.3 Rich TUI Visualizer Card**:
+  - In `cli/display.py`: Format a dedicated Rich panel displaying:
+    - 5-Day / 20-Day Neural Return Target.
+    - Expected Path Channel (High/Low trajectory).
+    - Model Confidence & Hardware Backend (e.g. `CUDA: bfloat16 + SDPA`).
+
+---
+
+### Phase 7: Comprehensive Test Suite & Zero-Leakage Verification
+
+#### Target Files
+- `tests/test_kronos_forecast.py` (New comprehensive test suite)
+- `tests/test_data_window.py`
+- `tests/test_anti_leakage_hardening.py`
+
+#### Tasks & Implementation Details
+- [x] **7.1 Unit & Contract Tests (`test_kronos_forecast.py`)**:
+  - Causal normalization, future-bar isolation, deterministic output, disk/memory cache, and fallback behavior.
+- [x] **7.2 Full Regression Verification**:
+  - `720 passed, 1 skipped, 8 warnings, 86 subtests passed`.
+
+---
+
+## 6. Comprehensive File Matrix & Change Signatures
+
+| File | Subsystem | Action | Invariant Maintained |
+| :--- | :--- | :--- | :--- |
+| `pyproject.toml` | Dependencies | Add optional `[project.optional-dependencies] quant` | Safe Optionality |
+| `tradingagents/default_config.py` | Config | Add `kronos_*` configuration keys | Non-breaking Defaults |
+| `tradingagents/dataflows/kronos.py` | Quant Core | Create Kronos inference engine, singleton VRAM manager & caching | Zero-Leakage, SDPA/bfloat16 |
+| `tradingagents/dataflows/interface.py` | Data Router | Route `get_kronos_forecast` through vendor engine | Single Source of Truth |
+| `tradingagents/dataflows/structural_levels.py` | Tech Quant | Integrate neural resistance/support channels | Analytical Confluence |
+| `tradingagents/agents/utils/core_stock_tools.py` | LangGraph | Wrap `@tool get_kronos_forecast` | Type Safety & Cleanliness |
+| `tradingagents/backtesting/data_window.py` | Backtest | Add 512-bar window to `ALLOWED_LOOKBACKS` | 512 Receptive Field |
+| `tradingagents/backtesting/snapshot_provider.py` | Backtest | Support 512-bar causal slicing | Causal Isolation |
+| `tradingagents/agents/analysts/market_analyst.py` | Market Analyst | Tool registration & prompt confluence instructions | Separation of Concerns |
+| `tradingagents/agents/trader/trader.py` | Trader Agent | Take Profit / Stop Loss neural anchoring | Anti-Prompt Gaming |
+| `cli/commands/evaluate.py` | CLI Engine | Pass `--kronos` flag to runner config | CLI Parity |
+| `cli/display.py` | CLI UI | Rich UI card for neural trajectory | User Visibility |
+| `tests/test_kronos_forecast.py` | Verification | Full unit and regression test suite | 100% Test Pass Rate |

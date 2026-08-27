@@ -43,20 +43,6 @@ class TestRiskEngine:
         assert len(events) == 1
         assert events[0].event_type == "stop"
 
-    def test_short_stop_triggered(self):
-        position = Position(ticker="TEST", quantity=-100, avg_entry_price=100)
-        position.stop_price = 105.0
-        bar = {"open": 103, "high": 106, "low": 102, "close": 104}
-        order, events = self.engine.check_bar(
-            "2026-01-01", bar, position, equity=100000,
-            margin_rate=0.5, maintenance_rate=0.35, max_leverage=2.0,
-        )
-        assert order is not None
-        assert order.order_type == OrderType.BUY_TO_CLOSE
-        assert order.quantity == 100
-        assert len(events) == 1
-        assert events[0].event_type == "stop"
-
     def test_long_take_profit(self):
         position = Position(ticker="TEST", quantity=100, avg_entry_price=100)
         position.take_profit = 110.0
@@ -67,20 +53,6 @@ class TestRiskEngine:
         )
         assert order is not None
         assert order.order_type == OrderType.SELL_TO_CLOSE
-        assert order.quantity == 100
-        assert len(events) == 1
-        assert events[0].event_type == "take_profit"
-
-    def test_short_take_profit(self):
-        position = Position(ticker="TEST", quantity=-100, avg_entry_price=100)
-        position.take_profit = 90.0
-        bar = {"open": 92, "high": 93, "low": 89, "close": 91}
-        order, events = self.engine.check_bar(
-            "2026-01-01", bar, position, equity=100000,
-            margin_rate=0.5, maintenance_rate=0.35, max_leverage=2.0,
-        )
-        assert order is not None
-        assert order.order_type == OrderType.BUY_TO_CLOSE
         assert order.quantity == 100
         assert len(events) == 1
         assert events[0].event_type == "take_profit"
@@ -104,7 +76,12 @@ class TestRiskEngine:
     def test_liquidation_long(self):
         """PRD §15.3: Liquidation if equity < maintenance margin."""
         # Use high thresholds so hard risk doesn't trigger first
-        engine = RiskEngine(max_loss_per_trade_pct=100.0, max_portfolio_loss_pct=100.0)
+        engine = RiskEngine(
+            max_loss_per_trade_pct=100.0,
+            max_portfolio_loss_pct=100.0,
+            liquidation_enabled=True,
+            auto_liquidate=True,
+        )
         position = Position(ticker="TEST", quantity=1000, avg_entry_price=100)
         # notional = 1000 * 80 * 1 = 80000, maintenance = 80000 * 0.35 = 28000
         # equity = 25000 < 28000 → liquidation
@@ -115,22 +92,6 @@ class TestRiskEngine:
         )
         assert order is not None
         assert order.order_type == OrderType.SELL_TO_CLOSE
-        assert any(e.event_type == "liquidation" for e in events)
-
-    def test_liquidation_short(self):
-        """PRD §15.3: Short liquidation check uses high price."""
-        # Use high thresholds so hard risk doesn't trigger first
-        engine = RiskEngine(max_loss_per_trade_pct=100.0, max_portfolio_loss_pct=100.0)
-        position = Position(ticker="TEST", quantity=-1000, avg_entry_price=100)
-        # notional = 1000 * 120 * 1 = 120000, maintenance = 120000 * 0.35 = 42000
-        # equity = 40000 < 42000 → liquidation
-        bar = {"open": 118, "high": 121, "low": 117, "close": 119}
-        order, events = engine.check_bar(
-            "2026-01-01", bar, position, equity=40000,
-            margin_rate=0.5, maintenance_rate=0.35, max_leverage=2.0,
-        )
-        assert order is not None
-        assert order.order_type == OrderType.BUY_TO_CLOSE
         assert any(e.event_type == "liquidation" for e in events)
 
     def test_no_stop_no_target_no_risk(self):

@@ -45,7 +45,7 @@ def test_portfolio_decision_preserves_typed_trader_entry_as_planned_price():
 
 def test_portfolio_decision_converts_to_buy_signal_without_prose_inference():
     decision = PortfolioDecision(
-        rating=PortfolioRating.OVERWEIGHT,
+        rating=PortfolioRating.BUY,
         executive_summary="The prose says hold, but typed rating is actionable.",
         investment_thesis="Typed fields are authoritative.",
         take_profit=125.0,
@@ -59,24 +59,24 @@ def test_portfolio_decision_converts_to_buy_signal_without_prose_inference():
 
     assert isinstance(signal, SignalContract)
     assert signal.action == "BUY"
-    assert signal.rating is PortfolioRating.OVERWEIGHT
+    assert signal.rating is PortfolioRating.BUY
     assert signal.take_profit == 125.0
     assert signal.stop_loss == 95.0
     assert signal.time_horizon_days == 15
     assert signal.confidence == 0.8
 
 
-def test_portfolio_decision_requires_levels_for_actionable_rating():
+def test_legacy_sell_decision_normalizes_to_wns():
     decision = PortfolioDecision(
         rating=PortfolioRating.SELL,
-        executive_summary="Exit.",
+        executive_summary="Wait for a safer setup.",
         investment_thesis="Risk dominates.",
         time_horizon_days=20,
-        next_review_date="2026-01-20",
+        wns_recheck_date="2026-01-20",
     )
 
-    with pytest.raises(ValueError, match="take_profit and stop_loss"):
-        portfolio_decision_to_signal_contract(decision, "NVDA", "2026-01-10")
+    signal = portfolio_decision_to_signal_contract(decision, "NVDA", "2026-01-10")
+    assert signal.action == "WNS"
 
 
 def test_hold_signal_can_omit_execution_levels():
@@ -90,7 +90,7 @@ def test_hold_signal_can_omit_execution_levels():
 
     signal = portfolio_decision_to_signal_contract(decision, "NVDA", "2026-01-10")
 
-    assert signal.action == "HOLD"
+    assert signal.action == "WNS"
     assert signal.take_profit is None
     assert signal.stop_loss is None
 
@@ -141,10 +141,9 @@ def test_cli_rejects_typed_signal_without_agent_horizon():
     signal_data = {
         "ticker": "NVDA",
         "signal_date": "2026-01-10",
-        "rating": "Sell",
-        "action": "SELL",
-        "take_profit": 90.0,
-        "stop_loss": 110.0,
+        "rating": "WNS",
+        "action": "WNS",
+        "wns_recheck_date": "2026-01-20",
     }
     with pytest.raises(Exception, match="time_horizon_days"):
         signal_from_final_state(
@@ -158,10 +157,9 @@ def test_cli_uses_typed_signal_before_markdown_fallback():
     signal = SignalContract(
         ticker="NVDA",
         signal_date="2026-01-10",
-        rating=PortfolioRating.SELL,
-        action="SELL",
-        take_profit=90.0,
-        stop_loss=110.0,
+        rating=PortfolioRating.WNS,
+        action="WNS",
+        wns_recheck_date="2026-01-20",
         time_horizon_days=20,
     )
 
@@ -178,10 +176,9 @@ def test_cli_rejects_typed_signal_identity_mismatch():
     signal = SignalContract(
         ticker="NVDA",
         signal_date="2026-01-10",
-        rating=PortfolioRating.SELL,
-        action="SELL",
-        take_profit=90.0,
-        stop_loss=110.0,
+        rating=PortfolioRating.WNS,
+        action="WNS",
+        wns_recheck_date="2026-01-20",
         time_horizon_days=20,
     )
 
@@ -225,16 +222,14 @@ def test_signal_contract_accepts_legacy_price_target_field():
 
 
 def test_signal_contract_rejects_actionable_missing_levels_without_reading_thesis():
-    decision = PortfolioDecision(
-        rating=PortfolioRating.BUY,
-        executive_summary="No target here.",
-        investment_thesis="take profit 999 and stop loss 1 are only prose.",
-        time_horizon_days=20,
-        next_review_date="2026-01-20",
-    )
-
-    with pytest.raises(ValueError, match="take_profit and stop_loss"):
-        portfolio_decision_to_signal_contract(decision, "NVDA", "2026-01-10")
+    with pytest.raises(ValueError, match="BUY decision requires stop_loss and take_profit"):
+        PortfolioDecision(
+            rating=PortfolioRating.BUY,
+            executive_summary="No target here.",
+            investment_thesis="take profit 999 and stop loss 1 are only prose.",
+            time_horizon_days=20,
+            next_review_date="2026-01-20",
+        )
 
 
 def test_strict_wns_without_date_or_price_raises_validation_error():
@@ -282,6 +277,7 @@ def test_single_shot_sell_evaluates_to_no_order():
         action="SELL",
         stop_loss=210.0,
         take_profit=190.0,
+        wns_recheck_date="2026-01-20",
         time_horizon_days=10,
     )
 

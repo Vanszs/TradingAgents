@@ -118,35 +118,19 @@ def is_intraday_margin_breach(
     intraday_high: Optional[float] = None,
 ) -> bool:
     """
-    Conservative intraday check: assumes price moved from open to worst-case
-    intraday extreme.
-
-    For longs: worst case is price dropping to intraday_low.
-    For shorts: worst case is price rising to intraday_high.
-
-    When intraday_high is not provided for short positions, falls back to
-    open_price (no intraday breach from the low side; EOD check is authoritative).
+    Conservative intraday check for executable long inventory. Negative
+    quantities are rejected because stock backtests are spot long-only.
     """
 
+    if quantity < 0:
+        raise ValueError("spot long-only margin check rejects short positions")
     if quantity == 0:
         return False
 
-    if quantity > 0:
-        worst_price = float(intraday_low)
-        worst_equity = float(account_equity_open) - (
-            (float(open_price) - worst_price) * quantity * multiplier
-        )
-    else:
-        # Short: worst case is price rising to intraday_high
-        if intraday_high is not None:
-            worst_price = float(intraday_high)
-            worst_equity = float(account_equity_open) - (
-                (worst_price - float(open_price)) * abs(quantity) * multiplier
-            )
-        else:
-            # No high available — conservatively check at open price only
-            worst_price = float(open_price)
-            worst_equity = float(account_equity_open)
+    worst_price = float(intraday_low)
+    worst_equity = float(account_equity_open) - (
+        (float(open_price) - worst_price) * quantity * multiplier
+    )
 
     return is_margin_call(
         account_equity=worst_equity,

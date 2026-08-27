@@ -40,4 +40,4 @@ In backtesting, the runner holds **100% Cash** until the trigger price is touche
 
 - Inverted short-selling order geometry (`TP < Entry < SL`) is strictly banned across all schemas and evaluators.
 - A `SELL` signal generated while flat is mapped to `NO_ORDER` (0% return, zero capital at risk).
-- A `SELL` signal generated while holding inventory triggers an orderly **Liquidation to 100% Cash**.
+- Legacy `SELL`/`HOLD`/`Underweight` inputs normalize to `WNS`; a WNS decision never creates an agent-driven exit. Static stop-loss, take-profit, time stop, or horizon expiry closes an existing long.

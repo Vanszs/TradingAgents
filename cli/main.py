@@ -1,5 +1,6 @@
 import datetime
 import logging
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional
 
@@ -39,6 +40,7 @@ from cli.utils import (
     get_analysis_date,
     get_ticker,
 )
+from tradingagents.backtesting.snapshot_provider import SnapshotDataProvider
 from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
@@ -61,15 +63,25 @@ def run_analysis(
     selections: Optional[dict] = None,
     output_dir: Optional[Path] = None,
     headless: bool = False,
+    kronos: bool = False,
 ):
     # First get user selections (interactive or headless)
     if selections is None:
         selections = get_user_selections()
 
-    # Create config with selected research depth and date context for Exa/tools
+    # Historical dates run in a fail-closed point-in-time sandbox.
+    analysis_date = str(selections["analysis_date"])
+    try:
+        parsed_analysis_date = datetime.datetime.strptime(analysis_date, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise typer.BadParameter("analysis_date must use YYYY-MM-DD") from exc
+    if parsed_analysis_date > datetime.date.today():
+        raise typer.BadParameter("analysis_date cannot be in the future")
+
     config = DEFAULT_CONFIG.copy()
-    config["trade_date"] = selections["analysis_date"]
-    config["curr_date"] = selections["analysis_date"]
+    config["trade_date"] = analysis_date
+    config["curr_date"] = analysis_date
+    config["kronos_enabled"] = bool(kronos or selections.get("kronos_enabled", False))
     config["max_debate_rounds"] = selections["research_depth"]
     config["max_risk_discuss_rounds"] = selections["research_depth"]
     config["quick_think_llm"] = selections["shallow_thinker"]
@@ -82,6 +94,47 @@ def run_analysis(
     config["anthropic_effort"] = selections.get("anthropic_effort")
     config["output_language"] = selections.get("output_language", "English")
     config["checkpoint_enabled"] = checkpoint
+
+    is_historical = parsed_analysis_date < datetime.date.today()
+    config.update({
+        "point_in_time_mode": is_historical,
+        "backtest_mode": is_historical,
+        "memory_enabled": not is_historical,
+        "web_search_enabled": not is_historical,
+        "snapshot_data": None,
+    })
+    if is_historical:
+        config["data_vendors"] = {
+            "core_stock_apis": "snapshot",
+            "technical_indicators": "snapshot",
+            "fundamental_data": "snapshot",
+            "news_data": "snapshot",
+        }
+        config["tool_vendors"] = {"get_kronos_forecast": "snapshot"}
+        provider = SnapshotDataProvider(
+            data_root=config.get("data_root", "data"),
+            snapshot_root=config.get("snapshot_root", "snapshots"),
+            fetch_from_api=False,
+            api_cache_dir=config.get("api_cache_dir", "api_cache"),
+        )
+        try:
+            snapshot = provider.create_snapshot(selections["ticker"], analysis_date)
+        except FileNotFoundError as exc:
+            console.print(
+                f"[red]No local snapshot data for {selections['ticker']}: {exc}[/red]\n"
+                f"[yellow]Historical analysis is PIT-fail-closed (no live fetch). "
+                f"Provision data first:[/yellow] "
+                f"[cyan]python scripts/download_ohlcv_data.py {selections['ticker']}[/cyan]"
+            )
+            raise typer.Exit(1) from exc
+        config["snapshot_data"] = {
+            "ohlcv": snapshot.ohlcv,
+            "news": snapshot.news,
+            "fundamentals": snapshot.fundamentals,
+            "sentiment": snapshot.sentiment,
+            "broker_activity": snapshot.broker_activity,
+            "spec": snapshot.spec,
+        }
 
     # Create stats callback handler for tracking LLM/tool calls
     stats_handler = StatsCallbackHandler()
@@ -422,6 +475,11 @@ def analyze(
         "--clear-checkpoints",
         help="Delete all saved checkpoints before running (force fresh start).",
     ),
+    kronos: bool = typer.Option(
+        False,
+        "--kronos/--no-kronos",
+        help="Enable Kronos neural forecast dataflow for Technical Analyst.",
+    ),
 ):
     """
     Run full multi-agent financial analysis.
@@ -452,6 +510,7 @@ def analyze(
         selections=selections,
         output_dir=output_dir,
         headless=is_headless,
+        kronos=kronos,
     )
 
 
@@ -481,9 +540,9 @@ def backtest_cmd(
     """
     Run walk-forward backtest.
 
-    5-tier decision mapping (Buy/Overweight/Hold/Underweight/Sell) with
-    trigger-based execution. Uses snapshot data with strict cutoffs to
-    avoid leakage. Single period per invocation.
+    Spot Long-Only BUY/WNS decision mapping with trigger-based execution.
+    Uses snapshot data with strict cutoffs to avoid leakage. Single period
+    per invocation.
     """
     from cli.commands.backtest import backtest
 
@@ -510,6 +569,11 @@ def evaluate_signal_cli(
         "-p",
         help="LLM Provider override.",
     ),
+    kronos: bool = typer.Option(
+        False,
+        "--kronos/--no-kronos",
+        help="Enable Kronos neural forecast dataflow.",
+    ),
 ):
     """
     Run Single-Shot Agentic Prediction at T0 and Evaluate over Horizon H days.
@@ -525,6 +589,7 @@ def evaluate_signal_cli(
         ticker=ticker,
         trade_date=trade_date,
         llm_provider=provider,
+        kronos_enabled=kronos,
     )
 
 

@@ -33,14 +33,10 @@ def create_research_manager(llm):
 {instrument_context}
 
 **Decision Scale & Mandate (Spot Long-Only)**:
-- **Buy**: Strong conviction in asymmetric long upside. Formulate high-level strategic directional consensus and catalyst timeline.
-- **Overweight**: Constructive view; accumulation warranted.
-- **Hold**: Neutral prior; wait for confirmed stabilization.
-- **WNS (Wait and See)**: The default prior whenever entry placement or timing cannot be committed immediately. You MUST provide at least one explicit re-evaluation term:
+- **BUY**: Strong conviction in asymmetric long upside. Formulate high-level strategic directional consensus and catalyst timeline.
+- **WNS (Wait and See)**: Zero capital allocated today whenever entry placement or timing cannot be committed immediately. You MUST provide at least one explicit re-evaluation term:
   1. Temporal Gate: "check after date X" (e.g., post-earnings release, macro catalyst, CPI).
   2. Structural Price Gate: "check again after touch price level Y" (e.g., pullback to 200 SMA demand zone $YYY).
-- **Underweight**: Cautious view; trim exposure/distribution.
-- **Sell**: Complete liquidation / capital preservation exit of existing long inventory to cash.
 
 ### Debate History
 {history if history else 'No debate history available.'}

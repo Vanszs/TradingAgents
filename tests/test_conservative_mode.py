@@ -1,203 +1,52 @@
-"""
-Tests for conservative mode decision mapping — PRD §10.2.
-"""
-from __future__ import annotations
-
-import pytest
-
+"""Legacy mode names now share the spot BUY/WNS mapper."""
 from tradingagents.backtesting.decision_state_manager import DecisionStateManager
-from tradingagents.backtesting.position import (
-    DecisionMappingConfig,
-    ExtendedDecision,
-    Position,
-    PositionIntent,
-    PositionSide,
-)
+from tradingagents.backtesting.position import DecisionMappingConfig, ExtendedDecision, Position
 
 
-class TestConservativeMode:
-    def setup_method(self):
-        self.config = DecisionMappingConfig(mode="conservative")
-        self.dsm = DecisionStateManager(config=self.config)
+def _decision(rating: str, allow_new_position: bool = True) -> ExtendedDecision:
+    return ExtendedDecision(
+        decision_id="T-1", ticker="TEST", trade_date="2026-01-01",
+        agent_rating=rating, normalized_rating=rating.upper(),
+        allow_new_position=allow_new_position,
+    )
 
-    def test_flat_buy_opens_long(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Buy",
-            normalized_rating="BUY",
-            allocation_pct=20.0,
-        )
-        position = Position(ticker="TEST", quantity=0)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.OPEN.value
-        assert result.target_position_side == PositionSide.LONG.value
 
-    def test_flat_sell_opens_short(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Sell",
-            normalized_rating="SELL",
-            allocation_pct=20.0,
-        )
-        position = Position(ticker="TEST", quantity=0)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.OPEN.value
-        assert result.target_position_side == PositionSide.SHORT.value
+def test_conservative_buy_flat_opens_long():
+    result = DecisionStateManager(DecisionMappingConfig(mode="conservative")).map(
+        _decision("Buy"), Position(ticker="TEST")
+    )
+    assert result.position_intent == "open"
+    assert result.target_position_side == "LONG"
+    assert result.market_mode == "SPOT_LONG_ONLY"
 
-    def test_flat_hold_no_order(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Hold",
-            normalized_rating="HOLD",
-        )
-        position = Position(ticker="TEST", quantity=0)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.HOLD.value
-        assert result.target_position_side == PositionSide.FLAT.value
 
-    def test_long_buy_holds(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Buy",
-            normalized_rating="BUY",
-        )
-        position = Position(ticker="TEST", quantity=100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.HOLD.value
-        assert result.target_position_side == PositionSide.LONG.value
+def test_conservative_wns_flat_has_no_order():
+    result = DecisionStateManager(DecisionMappingConfig(mode="conservative")).map(
+        _decision("Hold"), Position(ticker="TEST")
+    )
+    assert result.position_intent == "hold"
+    assert result.futures_action == "NO_ORDER"
 
-    def test_long_sell_reduces(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Sell",
-            normalized_rating="SELL",
-            reduce_pct=50.0,
-        )
-        position = Position(ticker="TEST", quantity=100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.REDUCE.value
 
-    def test_long_strong_sell_closes(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Strong_sell",
-            normalized_rating="STRONG_SELL",
-        )
-        position = Position(ticker="TEST", quantity=100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.CLOSE.value
-        assert result.target_position_side == PositionSide.FLAT.value
+def test_conservative_buy_respects_no_new_position():
+    result = DecisionStateManager(DecisionMappingConfig(mode="conservative")).map(
+        _decision("Buy", allow_new_position=False), Position(ticker="TEST")
+    )
+    assert result.futures_action == "NO_ORDER"
 
-    def test_short_buy_reduces(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Buy",
-            normalized_rating="BUY",
-            reduce_pct=50.0,
-        )
-        position = Position(ticker="TEST", quantity=-100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.REDUCE.value
 
-    def test_short_sell_holds(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Sell",
-            normalized_rating="SELL",
-        )
-        position = Position(ticker="TEST", quantity=-100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.HOLD.value
-        assert result.target_position_side == PositionSide.SHORT.value
+def test_conservative_long_buy_does_not_pyramid():
+    result = DecisionStateManager(DecisionMappingConfig(mode="conservative")).map(
+        _decision("Buy"), Position(ticker="TEST", quantity=100)
+    )
+    assert result.futures_action == "NO_ORDER"
+    assert result.position_intent == "hold"
 
-    def test_short_strong_buy_closes(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Strong_buy",
-            normalized_rating="STRONG_BUY",
-        )
-        position = Position(ticker="TEST", quantity=-100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.CLOSE.value
-        assert result.target_position_side == PositionSide.FLAT.value
 
-    def test_conservative_no_reverse_on_buy(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Buy",
-            normalized_rating="BUY",
-        )
-        position = Position(ticker="TEST", quantity=-100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent != PositionIntent.REVERSE.value
-
-    def test_invalid_decision_returns_invalid(self):
-        decision = ExtendedDecision.invalid(
-            ticker="TEST",
-            trade_date="2026-01-01",
-            reason="test",
-        )
-        position = Position(ticker="TEST", quantity=0)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.HOLD.value
-
-    def test_allocation_on_buy(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Buy",
-            normalized_rating="BUY",
-            allocation_pct=30.0,
-        )
-        position = Position(ticker="TEST", quantity=0)
-        result = self.dsm.map(decision, position)
-        # DSM may override allocation with default
-        assert result.allocation_pct is not None
-
-    def test_allocation_on_reduce(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Underweight",
-            normalized_rating="UNDERWEIGHT",
-            reduce_pct=40.0,
-        )
-        position = Position(ticker="TEST", quantity=100)
-        result = self.dsm.map(decision, position)
-        # DSM uses its own reduce allocation, not the input's reduce_pct
-        assert result.position_intent == PositionIntent.REDUCE.value
-
-    def test_short_hold_no_order(self):
-        decision = ExtendedDecision(
-            decision_id="T-1",
-            ticker="TEST",
-            trade_date="2026-01-01",
-            agent_rating="Hold",
-            normalized_rating="HOLD",
-        )
-        position = Position(ticker="TEST", quantity=-100)
-        result = self.dsm.map(decision, position)
-        assert result.position_intent == PositionIntent.HOLD.value
-        assert result.target_position_side == PositionSide.SHORT.value
+def test_conservative_modes_cannot_enable_shorts():
+    try:
+        DecisionMappingConfig(mode="conservative", short_allowed=True)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("short mode must be rejected")

@@ -1,7 +1,7 @@
 """
 CLI command: tradingagents backtest
 
-Runs the walk-forward backtest with 5-tier decision mapping, trigger-based
+Runs the walk-forward backtest with Spot Long-Only BUY/WNS decision mapping, trigger-based
 execution, and lookback window. Single period per invocation.
 
 Usage:
@@ -157,7 +157,7 @@ def backtest(
         console.print("[yellow]Cancelled.[/yellow]")
         raise typer.Exit(0)
 
-    agent_config = _build_llm_agent_config()
+    agent_config = _build_llm_agent_config(raw.get("agent", {}))
     agent_runner = TradingAgentsRunner(
         reports_root=raw.get("output", {}).get("reports_root", "reports"),
         agent_config=agent_config,
@@ -304,14 +304,8 @@ def backtest(
         if phase == "execute":
             trades = extra.get("trades", [])
             action_map = {
-                "SELL_TO_OPEN":   "Short(sell) entry",
-                "BUY_TO_OPEN":    "Long(buy) entry",
-                "BUY_TO_CLOSE":   "Cover(buy) close",
-                "SELL_TO_CLOSE":  "Close(sell) close",
-                "BUY_TO_ADD":     "Add Long(buy)",
-                "SELL_TO_ADD":    "Add Short(sell)",
-                "BUY_TO_REDUCE":  "Reduce Long(buy)",
-                "SELL_TO_REDUCE": "Reduce Short(sell)",
+                "BUY_TO_OPEN":   "Buy entry",
+                "SELL_TO_CLOSE": "Static exit",
             }
             for t in trades:
                 ot = t.get("order_type", "")

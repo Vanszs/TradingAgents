@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from .alpha_vantage import (
     get_balance_sheet as get_alpha_vantage_balance_sheet,
 )
@@ -28,9 +26,8 @@ from .alpha_vantage import (
     get_stock as get_alpha_vantage_stock,
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError
-
-# Configuration and routing logic
 from .config import get_config, is_point_in_time_mode
+from .kronos import generate_kronos_forecast
 from .snapshot import (
     snapshot_get_balance_sheet,
     snapshot_get_cashflow,
@@ -58,8 +55,6 @@ from .y_finance import (
 from .y_finance import (
     get_insider_transactions as get_yfinance_insider_transactions,
 )
-
-# Import from vendor-specific modules
 from .y_finance import (
     get_stock_stats_indicators_window,
     get_YFin_data_online,
@@ -95,6 +90,12 @@ TOOLS_CATEGORIES = {
             "get_news",
             "get_global_news",
             "get_insider_transactions",
+        ]
+    },
+    "neural_forecasting": {
+        "description": "Neural foundation model forecasts (Kronos)",
+        "tools": [
+            "get_kronos_forecast",
         ]
     }
 }
@@ -149,6 +150,12 @@ VENDOR_METHODS = {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
         "snapshot": snapshot_get_insider_transactions,
+    },
+    # neural_forecasting
+    "get_kronos_forecast": {
+        "kronos": generate_kronos_forecast,
+        "snapshot": generate_kronos_forecast,
+        "default": generate_kronos_forecast,
     },
 }
 

@@ -27,7 +27,7 @@
 │     └── Research Manager (Consensus Synthesis & Strategic Plan)             │
 │                                                                             │
 │  III. Execution Trader (Micro Tactical Pricing)                             │
-│     └── Orders: Buy Market, Buy Limit, WNS, or Sell (SL < Entry < TP)       │
+│     └── Orders: Buy Market, Buy Limit, WNS, or static risk close          │
 │                                                                             │
 │  IV. Risk Management Committee (Stress Testing)                             │
 │     └── Aggressive vs Conservative vs Neutral Risk Analysts                 │

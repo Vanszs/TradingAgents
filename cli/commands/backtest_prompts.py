@@ -154,7 +154,7 @@ def _select_lookback(default: Optional[int]) -> Optional[int]:
     ).ask()
 
 
-def _build_llm_agent_config() -> AgentConfig:
+def _build_llm_agent_config(agent_overrides: Optional[dict[str, Any]] = None) -> AgentConfig:
     """
     Reuse the LLM provider / model selectors from cli/utils.py to build an
     AgentConfig for the daily TradingAgentsRunner. Also exports the
@@ -219,6 +219,5 @@ def _build_llm_agent_config() -> AgentConfig:
     importlib.reload(agent_runner)
 
     # Minimal AgentConfig for TradingAgentsRunner — the LLM fields are
-    # resolved through env vars above; AgentConfig only carries the
-    # safety-guard flags (memory_enabled, backtest_mode, ...).
-    return AgentConfig()
+    # resolved through env vars above; explicit strategy overrides stay typed.
+    return AgentConfig(**(agent_overrides or {}))

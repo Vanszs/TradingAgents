@@ -133,7 +133,8 @@ class WalkForwardBacktestRunner:
         self.risk_engine = RiskEngine(
             max_loss_per_trade_pct=risk_cfg.max_intraday_loss_pct,
             max_portfolio_loss_pct=0.20,
-            liquidation_enabled=True,
+            hard_risk_enabled=False,
+            liquidation_enabled=False,
             stop_loss_enabled=True,
             take_profit_enabled=True,
             margin_call_threshold=getattr(self.config.margin, "margin_call_threshold", 0.40),
@@ -345,46 +346,6 @@ class WalkForwardBacktestRunner:
         risk_order = self._check_risk_events(current_date, market_point)
         logger.info(f"[BACKTEST] Step 2 (risk check): {time.time() - step_start:.3f}s")
 
-        # Explicit EOD margin breach check (PortfolioV2). The bar-by-bar
-        # risk engine emits a force-close on breach; this secondary check
-        # records a margin event and ensures the breach is always logged
-        # even if the bar-by-bar check did not produce an order (e.g. flat
-        # position state). The force-close itself is delegated to the
-        # risk engine's output (risk_order).
-        equity = self.portfolio.account_equity(market_point.close)
-        if (
-            not self.portfolio.is_flat()
-            and self.portfolio.is_margin_breach(market_point.close)
-        ):
-            maintenance = self.portfolio.maintenance_required(
-                market_point.close
-            )
-            self.margin_events.append(MarginEvent(
-                date=current_date,
-                kind="call",
-                mark_price=market_point.close,
-                deficit=maintenance - equity,
-                maintenance_required=maintenance,
-                account_equity=equity,
-                action="liquidation",
-            ))
-            # If the bar-by-bar check missed a liquidation (e.g. the
-            # equity just dropped at close), synthesize one.
-            if risk_order is None or risk_order.order_type.value == "NO_ORDER":
-                from .position import OrderType
-                if self.portfolio.is_long():
-                    liq_type = OrderType.SELL_TO_CLOSE
-                else:
-                    liq_type = OrderType.BUY_TO_CLOSE
-                next_valid_date = self._safe_next_trading_day(current_date)
-                if next_valid_date is None:
-                    next_valid_date = current_date
-                risk_order = self._build_force_close(
-                    next_valid_date, None, "eod_margin_breach"
-                )
-                if risk_order is not None:
-                    self.broker.add_pending_orders([risk_order])
-
         # PRD §17 step 3: Mark-to-market at daily close
         step_start = time.time()
         if not self.portfolio.is_flat():
@@ -500,25 +461,24 @@ class WalkForwardBacktestRunner:
             )
             logger.info(f"[BACKTEST] Step 6 (parse decision): {time.time() - step_start:.3f}s")
 
-            # Handle invalid decision gracefully — if parser couldn't extract
-            # a valid rating (e.g. MiniMax emitted a tool call instead of
-            # analysis), use a HOLD fallback so the backtest doesn't crash.
+            # Invalid model output is a no-trade decision, not a legacy rating.
             if not decision.valid:
                 logger.warning(
                     f"[BACKTEST] Parser returned invalid decision for {current_date}: "
-                    f"{decision.invalid_reason}. Using HOLD fallback."
+                    f"{decision.invalid_reason}. Using WNS fallback."
                 )
                 decision = ParsedDecision(
                     decision_id=f"{self.config.ticker}-{current_date}-FALLBACK",
                     ticker=self.config.ticker,
                     trade_date=current_date,
-                    agent_rating="Hold",
+                    agent_rating="WNS",
                     report_generated_at=f"{current_date} 16:30:00",
                     last_data_date=current_date,
                     decision_valid_from=next_valid_date,
-                    normalized_rating="HOLD",
+                    normalized_rating="WNS",
+                    wns_recheck_date=next_valid_date,
                     source_report_path=None,
-                    raw_text_excerpt=f"Fallback HOLD — parser invalid: {decision.invalid_reason}",
+                    raw_text_excerpt=f"Fallback WNS — parser invalid: {decision.invalid_reason}",
                     valid=True,
                 )
 
@@ -537,11 +497,10 @@ class WalkForwardBacktestRunner:
                 prev_rating is not None and prev_rating != decision.agent_rating
             )
 
-            # Update _next_reanalysis_date and _pending_wns_price_trigger from decision
-            # ONLY set sleep catalyst date if rating is WNS / HOLD and position is FLAT
+            # Update WNS reanalysis state only while flat.
             is_wns = (
-                getattr(decision, "agent_rating", "").upper() in ("WNS", "HOLD")
-                or getattr(decision, "normalized_rating", "").upper() in ("WNS", "HOLD")
+                getattr(decision, "agent_rating", "").upper() == "WNS"
+                or getattr(decision, "normalized_rating", "").upper() == "WNS"
             )
             if is_wns and self.portfolio.is_flat():
                 if getattr(decision, "wns_recheck_date", None):
@@ -674,6 +633,9 @@ class WalkForwardBacktestRunner:
             multiplier=self.spec.multiplier,
         )
 
+        if order is None and self._time_stop_due(date):
+            order = self._build_force_close(date, market_point.open, "time_stop")
+
         # Record events
         maintenance_required = (
             abs(self.portfolio.position.quantity)
@@ -730,6 +692,19 @@ class WalkForwardBacktestRunner:
 
         return order
 
+    def _time_stop_due(self, current_date: str) -> bool:
+        """Return true when the static maximum holding period has elapsed."""
+        opened_at = getattr(self.portfolio.position, "opened_at", None)
+        max_days = getattr(self.config.risk, "max_holding_days", None)
+        if not opened_at or not max_days or not self._trading_days:
+            return False
+        try:
+            opened_index = self._trading_days.index(str(opened_at)[:10])
+            current_index = self._trading_days.index(str(current_date)[:10])
+        except ValueError:
+            return False
+        return current_index - opened_index + 1 >= int(max_days)
+
     def _build_force_close(self, date: str, price: Optional[float], reason: str) -> Optional["Order"]:
         """Build a force-close Order for the current position.
 
@@ -743,12 +718,9 @@ class WalkForwardBacktestRunner:
         from .position import Order as PositionOrder
         from .position import OrderType
 
-        if self.portfolio.is_flat():
+        if self.portfolio.is_flat() or not self.portfolio.is_long():
             return None
-        if self.portfolio.is_long():
-            order_type = OrderType.SELL_TO_CLOSE
-        else:
-            order_type = OrderType.BUY_TO_CLOSE
+        order_type = OrderType.SELL_TO_CLOSE
         return PositionOrder(
             order_id=f"risk_close_{date}",
             decision_id="",
@@ -758,6 +730,7 @@ class WalkForwardBacktestRunner:
             execution_date=date,
             price=float(price) if price else 0.0,
             reason=reason,
+            is_risk_order=True,
         )
 
     def _audit_window(self, snapshot) -> None:
@@ -943,7 +916,7 @@ class WalkForwardBacktestRunner:
         summary = {
             "ticker": self.config.ticker,
             "asset_class": self.config.asset_class,
-            "market_mode": "FUTURES_STYLE_SIMULATION",
+            "market_mode": "SPOT_LONG_ONLY",
             "start_date": self.config.start_date,
             "end_date": self.config.end_date,
             "initial_cash": self.config.initial_cash,

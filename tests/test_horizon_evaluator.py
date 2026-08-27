@@ -140,23 +140,13 @@ def test_expired_without_barrier(sample_ohlcv):
     assert res.actual_holding_days == 5
 
 
-def test_short_hit_take_profit(sample_ohlcv):
-    # Short Entry: 100.0. TP: 95.0, SL: 110.0
-    # Day 4 (2025-01-07) Low is 94 <= 95.0 (TP Hit)
-    res = HorizonEvaluator.evaluate(
-        ticker="TEST.JK",
-        signal_date="2025-01-01",
-        side="SHORT",
-        take_profit=95.0,
-        stop_loss=110.0,
-        time_horizon_days=5,
-        ohlcv_df=sample_ohlcv,
-    )
-    # Day 3 high was 115 >= 110.0 (SL Hit first on Day 3!)
-    assert res.outcome == EvaluationOutcome.HIT_STOP_LOSS
-    assert res.exit_date == "2025-01-06"
-    assert res.realized_return_pct == -10.0
-
+def test_short_input_is_rejected(sample_ohlcv):
+    with pytest.raises(ValueError, match="only LONG/BUY"):
+        HorizonEvaluator.evaluate(
+            ticker="TEST.JK", signal_date="2025-01-01", side="SHORT",
+            take_profit=95.0, stop_loss=110.0, time_horizon_days=5,
+            ohlcv_df=sample_ohlcv,
+        )
 
 def test_rejects_naive_fill_timestamp(sample_ohlcv):
     with pytest.raises(ValueError, match="entry_timestamp.*timezone"):
@@ -179,7 +169,7 @@ def test_rejects_inconsistent_fill_dates(sample_ohlcv):
 
 
 def test_no_order_and_insufficient_data_have_no_actual_entry_price(sample_ohlcv):
-    no_order = HorizonEvaluator.evaluate("TEST", "2025-01-01", "HOLD", None, None, 1, sample_ohlcv)
+    no_order = HorizonEvaluator.evaluate("TEST", "2025-01-01", "WNS", None, None, 1, sample_ohlcv)
     insufficient = HorizonEvaluator.evaluate(
         "TEST", "2025-01-01", "LONG", 130, 80, 10, sample_ohlcv,
         actual_entry_price=100.0,
@@ -209,7 +199,7 @@ def test_rejects_duplicate_dates(sample_ohlcv):
 
 
 def test_rejects_invalid_barriers(sample_ohlcv):
-    with pytest.raises(ValueError, match="do not match entry direction"):
+    with pytest.raises(ValueError, match="stop_loss < entry_price < take_profit"):
         HorizonEvaluator.evaluate("TEST", "2025-01-01", "LONG", 90, 110, 5, sample_ohlcv)
 
 

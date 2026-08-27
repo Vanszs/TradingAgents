@@ -4,7 +4,7 @@
   <h3>Institutional-Grade Multi-Agent LLM Financial Trading & Backtesting Framework</h3>
   <p><em>Maintained and hardened by <strong>Vanszs</strong> | Hardened fork of <a href="https://github.com/TauricResearch/TradingAgents">Tauric Research's TradingAgents</a> (Apache-2.0 License)</em></p>
   <a href="https://github.com/Vanszs/TradingAgents/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-Apache_2.0-blue.svg"/></a>
-  <a href="https://github.com/Vanszs/TradingAgents"><img alt="Tests" src="https://img.shields.io/badge/Tests-751_passed-brightgreen.svg"/></a>
+  <a href="https://github.com/Vanszs/TradingAgents"><img alt="Tests" src="https://img.shields.io/badge/Tests-720_passed-brightgreen.svg"/></a>
   <a href="https://github.com/Vanszs/TradingAgents/tree/main/docs"><img alt="GitBook Docs" src="https://img.shields.io/badge/Docs-GitBook_Ready-14C290?logo=gitbook"/></a>
 </div>
 
@@ -30,7 +30,7 @@
 │     └── Research Manager (Consensus Synthesis & Strategic Plan)             │
 │                                                                             │
 │  III. Execution Trader (Micro Tactical Pricing)                             │
-│     └── Orders: Buy Market, Buy Limit, WNS, or Sell (SL < Entry < TP)       │
+│     └── Orders: Buy Market, Buy Limit, WNS, or static risk close          │
 │                                                                             │
 │  IV. Risk Management Committee (Stress Testing)                             │
 │     └── Aggressive vs Conservative vs Neutral Risk Analysts                 │

@@ -212,6 +212,12 @@ class BacktestEngine:
         leakage_guard = LeakageGuardConfig(**raw.get("leakage_guard", {}))
         output = OutputConfig(**raw.get("output", {}))
         margin = MarginConfig(**raw.get("margin", {}))
+        if "margin" not in raw:
+            margin = MarginConfig(
+                initial_margin_pct=1.0,
+                maintenance_margin_pct=1.0,
+                max_leverage=1.0,
+            )
 
         decision_mapping = DecisionMappingConfig(
             **raw.get("decision_mapping", {})

@@ -25,7 +25,7 @@ The Research & Debate Team engages in adversarial dialectical reasoning to stres
 ## 3. Research Manager (`research_manager.py`)
 - **Role**: Acts as the senior debate judge. Synthesizes the Bull vs Bear arguments into a structured `ResearchPlan`.
 - **Output Schema**:
-  - `recommendation`: `PortfolioRating` (`Buy`, `Overweight`, `Hold`, `WNS`, `Underweight`, `Sell`).
+  - `recommendation`: `PortfolioRating` (**Buy** or **WNS**).
   - `rationale`: Balanced summary of the debate winner.
   - `strategic_actions`: High-level strategic directional roadmap.
 - **Boundary**: Focuses strictly on strategic directional consensus; leaves exact numerical price geometry (Entry, SL, TP) to the downstream Execution Trader.

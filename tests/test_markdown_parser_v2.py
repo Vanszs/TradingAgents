@@ -94,18 +94,18 @@ class TestMarkdownParserPhase4:
         # The parser sets futures_action to default "NO_ORDER", never from text
         assert d.futures_action == "NO_ORDER"
 
-    def test_short_allowed_true(self):
+    def test_short_allowed_is_always_false(self):
         d = self.parser.parse_text(SAMPLE_REPORT)
-        assert d.short_allowed is True
+        assert d.short_allowed is False
 
     def test_short_allowed_false(self):
         d = self.parser.parse_text(SAMPLE_REPORT_SHORT_BLOCKED)
         assert d.short_allowed is False
 
-    def test_sell_rating(self):
+    def test_sell_rating_normalizes_to_wns(self):
         d = self.parser.parse_text(SAMPLE_REPORT_SELL)
-        assert d.agent_rating == "Sell"
-        assert d.normalized_rating == "SELL"
+        assert d.agent_rating == "WNS"
+        assert d.normalized_rating == "WNS"
         assert d.reduce_pct == 50.0
         assert d.take_profit == 80.0
 

@@ -39,7 +39,7 @@ def make_log(tmp_path, filename="trading_memory.md"):
 def _seed_completed(tmp_path, ticker, date, decision_text, reflection_text, filename="trading_memory.md"):
     """Write a completed entry directly to file, bypassing the API."""
     entry = (
-        f"[{date} | {ticker} | Buy | +1.0% | +0.5% | 5d]\n\n"
+        f"[{date} | {ticker} | BUY | +1.0% | +0.5% | 5d]\n\n"
         f"DECISION:\n{decision_text}\n\n"
         f"REFLECTION:\n{reflection_text}"
         + _SEP
@@ -159,24 +159,24 @@ class TestTradingMemoryLogCore:
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         text = (tmp_path / "trading_memory.md").read_text(encoding="utf-8")
-        assert "[2026-01-10 | NVDA | Buy | pending]" in text
+        assert "[2026-01-10 | NVDA | BUY | pending]" in text
 
     # Rating parsing
 
     def test_rating_parsed_buy(self, tmp_path):
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
-        assert log.load_entries()[0]["rating"] == "Buy"
+        assert log.load_entries()[0]["rating"] == "BUY"
 
     def test_rating_parsed_overweight(self, tmp_path):
         log = make_log(tmp_path)
         log.store_decision("AAPL", "2026-01-11", DECISION_OVERWEIGHT)
-        assert log.load_entries()[0]["rating"] == "Overweight"
+        assert log.load_entries()[0]["rating"] == "BUY"
 
-    def test_rating_fallback_hold(self, tmp_path):
+    def test_rating_fallback_wns(self, tmp_path):
         log = make_log(tmp_path)
         log.store_decision("MSFT", "2026-01-12", DECISION_NO_RATING)
-        assert log.load_entries()[0]["rating"] == "Hold"
+        assert log.load_entries()[0]["rating"] == "WNS"
 
     def test_rating_priority_over_prose(self, tmp_path):
         """'Rating: X' label wins even when an opposing rating word appears earlier in prose."""
@@ -187,7 +187,7 @@ class TestTradingMemoryLogCore:
         )
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", decision)
-        assert log.load_entries()[0]["rating"] == "Buy"
+        assert log.load_entries()[0]["rating"] == "BUY"
 
     # Delimiter robustness
 
@@ -214,7 +214,7 @@ class TestTradingMemoryLogCore:
         e = entries[0]
         assert e["date"] == "2026-01-10"
         assert e["ticker"] == "NVDA"
-        assert e["rating"] == "Buy"
+        assert e["rating"] == "BUY"
         assert e["pending"] is True
         assert e["raw"] is None
 
@@ -354,32 +354,32 @@ class TestTradingMemoryLogCore:
         decision = "**Rating**: Buy\nEnter at $190."
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", decision)
-        assert log.load_entries()[0]["rating"] == "Buy"
+        assert log.load_entries()[0]["rating"] == "BUY"
 
     def test_rating_parsed_from_bold_value(self, tmp_path):
-        """Rating: **Sell** — markdown bold around the value must not prevent parsing."""
-        decision = "Rating: **Sell**\nExit immediately."
+        """Legacy Sell input normalizes to canonical WNS."""
+        decision = "Rating: **Sell**\nWait for a safer setup."
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", decision)
-        assert log.load_entries()[0]["rating"] == "Sell"
+        assert log.load_entries()[0]["rating"] == "WNS"
 
     def test_rating_label_wins_over_prose_with_markdown(self, tmp_path):
-        """Rating: **Sell** must win even when prose contains a conflicting rating word."""
+        """Explicit legacy Sell label normalizes to WNS over conflicting prose."""
         decision = (
             "The buy thesis is weakened by guidance.\n"
             "Rating: **Sell**\n"
-            "Exit before earnings."
+            "Wait for confirmation."
         )
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", decision)
-        assert log.load_entries()[0]["rating"] == "Sell"
+        assert log.load_entries()[0]["rating"] == "WNS"
 
     def test_rating_parsed_from_numbered_list(self, tmp_path):
         """1. Rating: Buy — numbered list prefix must not prevent parsing."""
         decision = "1. Rating: Buy\nEnter at $190."
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", decision)
-        assert log.load_entries()[0]["rating"] == "Buy"
+        assert log.load_entries()[0]["rating"] == "BUY"
 
 
 # ---------------------------------------------------------------------------
@@ -395,7 +395,7 @@ class TestDeferredReflection:
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         log.update_with_outcome("NVDA", "2026-01-10", 0.042, 0.021, 5, "Momentum confirmed.")
         text = (tmp_path / "trading_memory.md").read_text(encoding="utf-8")
-        assert "[2026-01-10 | NVDA | Buy | pending]" not in text
+        assert "[2026-01-10 | NVDA | BUY | pending]" not in text
         assert "+4.2%" in text
         assert "+2.1%" in text
         assert "5d" in text
@@ -458,7 +458,7 @@ class TestDeferredReflection:
         assert e["alpha"] == "+2.1%"
         assert e["holding"] == "5d"
         raw_text = (tmp_path / "trading_memory.md").read_text(encoding="utf-8")
-        assert "[2026-01-10 | NVDA | Buy | +4.2% | +2.1% | 5d]\n\nDECISION:" in raw_text
+        assert "[2026-01-10 | NVDA | BUY | +4.2% | +2.1% | 5d]\n\nDECISION:" in raw_text
 
     # Reflector.reflect_on_final_decision
 
@@ -708,7 +708,7 @@ class TestPortfolioManagerInjection:
         captured = {}
         llm = _structured_pm_llm(captured)
         pm_node = create_portfolio_manager(llm)
-        state = _make_pm_state(past_context="[2026-01-05 | NVDA | Buy | +5.0% | +2.0% | 5d]\nGreat call.")
+        state = _make_pm_state(past_context="[2026-01-05 | NVDA | BUY | +5.0% | +2.0% | 5d]\nGreat call.")
         pm_node(state)
         assert "Lessons from prior decisions and outcomes" in captured["prompt"]
         assert "Great call." in captured["prompt"]
@@ -728,10 +728,12 @@ class TestPortfolioManagerInjection:
         can parse without any extra LLM call."""
         captured = {}
         decision = PortfolioDecision(
-            rating=PortfolioRating.OVERWEIGHT,
+            rating=PortfolioRating.BUY,
             executive_summary="Build position gradually over the next two weeks.",
             investment_thesis="AI capex cycle remains intact; institutional flows constructive.",
             price_target=215.0,
+            stop_loss=190.0,
+            take_profit=215.0,
             time_horizon_days=126,
             time_horizon="3-6 months",
             next_review_date="2026-01-20",
@@ -740,7 +742,7 @@ class TestPortfolioManagerInjection:
         pm_node = create_portfolio_manager(llm)
         result = pm_node(_make_pm_state())
         md = result["final_trade_decision"]
-        assert "**Rating**: Overweight" in md
+        assert "**Rating**: Buy" in md
         assert "**Executive Summary**: Build position gradually" in md
         assert "**Investment Thesis**: AI capex cycle" in md
         assert "**Price Target**: 215.0" in md

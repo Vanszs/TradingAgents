@@ -86,16 +86,17 @@ class MarkdownDecisionParser:
                 source_report_path=source_report_path,
             )
 
-        agent_rating = self._extract_rating(text)
-        if agent_rating == Rating.INVALID:
+        legacy_rating = self._extract_rating(text)
+        if legacy_rating == Rating.INVALID:
             return ExtendedDecision.invalid(
                 ticker=ticker,
                 trade_date=trade_date,
-                reason="Unable to parse one of: Sell, Buy, Hold, Underweight, Overweight.",
+                reason="Unable to parse a BUY/WNS rating.",
                 source_report_path=source_report_path,
             )
 
-        normalized_rating = agent_rating.value.upper()
+        agent_rating = "Buy" if legacy_rating in (Rating.BUY, Rating.OVERWEIGHT) else "WNS"
+        normalized_rating = agent_rating.upper()
 
         confidence = self._extract_pct(
             text,
@@ -195,13 +196,7 @@ class MarkdownDecisionParser:
         if time_horizon_days is None:
             time_horizon_days = self._upper_bound_horizon_days(time_horizon_label)
 
-        short_allowed = True
-        if re.search(
-            r"(jangan|tidak|no|don't)\s+(?:buka\s+posisi\s+)?(short|jual\s+pendek)",
-            text,
-            re.I,
-        ):
-            short_allowed = False
+        short_allowed = False
 
         allow_new_position = True
         if re.search(
@@ -223,7 +218,7 @@ class MarkdownDecisionParser:
             report_generated_at=generated_at,
             last_data_date=last_data_date,
             decision_valid_from=decision_valid_from,
-            agent_rating=agent_rating.value,
+            agent_rating=agent_rating,
             normalized_rating=normalized_rating,
             confidence=confidence,
             allocation_pct=allocation_pct,
@@ -265,8 +260,12 @@ class MarkdownDecisionParser:
         return match.group(1).strip()
 
     def _extract_rating(self, text: str) -> Rating:
-        section = self._preferred_section(text)
-        match = self.RATING_PATTERN.search(section)
+        explicit = re.search(
+            r"(?im)^\s*(?:\*{0,2})?(?:rating|recommendation)(?:\*{0,2})?\s*:\s*"
+            r"(?:\*{0,2})(Buy|Sell|Hold|WNS|Wait\s+and\s+See|Wait-and-See|Underweight|Overweight|Beli|Jual|Tahan)\b",
+            text,
+        )
+        match = explicit or self.RATING_PATTERN.search(self._preferred_section(text))
         if not match:
             match = self.RATING_PATTERN.search(text)
         if not match:
@@ -283,10 +282,10 @@ class MarkdownDecisionParser:
         return mapping.get(normalized, Rating.INVALID)
 
     def _extract_market_mode(self, text: str) -> str:
-        return "FUTURES_STYLE_SIMULATION"
+        return "SPOT_LONG_ONLY"
 
     def _extract_allowed_sides(self, text: str) -> str:
-        return "LONG,SHORT"
+        return "LONG"
 
     def _preferred_section(self, text: str) -> str:
         lower = text.lower()

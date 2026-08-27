@@ -73,12 +73,9 @@ class DataSnapshot:
 class SnapshotDataProvider:
     """Provider for stock backtests with flat data layout.
 
-    When ``fetch_from_api=True``, OHLCV, news, and fundamentals are
-    fetched from Yahoo Finance on first access and cached to disk
-    (``api_cache_dir/<TICKER>/``).  Subsequent calls read from cache,
-    preserving reproducibility.  Sentiment data cannot be fetched from
-    APIs because social-media platforms do not provide historical data
-    for arbitrary dates.
+    Historical backtests use local snapshot files only. ``fetch_from_api``
+    remains a compatibility option for non-backtest callers; it must be
+    false for any point-in-time run.
     """
 
     def __init__(
@@ -253,7 +250,10 @@ class SnapshotDataProvider:
 
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         cols = ["date", "open", "high", "low", "close", "volume"]
-        data[cols].to_csv(cache_path, index=False)
+        # Atomic write: a crash mid-write must not poison the cache permanently.
+        tmp_path = cache_path.with_suffix(".csv.tmp")
+        data[cols].to_csv(tmp_path, index=False)
+        tmp_path.replace(cache_path)
         logger.info(f"[SNAPSHOT] Cached {len(data)} OHLCV bars to {cache_path}")
         return data[cols]
 
@@ -383,8 +383,12 @@ class SnapshotDataProvider:
     def _load_json_records(path: Path) -> list[dict[str, Any]]:
         if not path.exists():
             return []
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as exc:
+            logger.warning("Corrupt snapshot JSON %s (%s); treating as empty.", path, exc)
+            return []
         if isinstance(data, list):
             return [item for item in data if isinstance(item, dict)]
         if isinstance(data, dict):
@@ -465,8 +469,8 @@ class SnapshotDataProvider:
     def get_sentiment(self, symbol: str, trade_date: str) -> list[dict[str, Any]]:
         """Get sentiment data for the given symbol and trade date.
 
-        Note: Even when ``fetch_from_api=True``, sentiment data is NOT
-        fetched from live APIs.  Social-media platforms (StockTwits, Reddit,
+        Sentiment data is never fetched from live APIs. Social-media
+        platforms (StockTwits, Reddit,
         Bluesky, Mastodon) do not provide historical data for arbitrary
         dates — live calls would return today's sentiment for every
         historical trade date, leaking future information and destroying
@@ -533,8 +537,11 @@ class SnapshotDataProvider:
 
     @staticmethod
     def _write_json(path: Path, data: Any) -> None:
-        with path.open("w", encoding="utf-8") as f:
+        # Atomic write: a crash mid-write must not corrupt the snapshot cache.
+        tmp_path = path.with_suffix(path.suffix + ".tmp")
+        with tmp_path.open("w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+        tmp_path.replace(path)
 
     def create_snapshot(
         self,
@@ -544,6 +551,24 @@ class SnapshotDataProvider:
         lookback_days: Optional[int] = None,
     ) -> DataSnapshot:
         trade_date = self._normalize_date(trade_date)
+        config_backtest = bool(
+            getattr(config, "backtest_mode", False)
+            or getattr(config, "point_in_time_mode", False)
+            or (
+                isinstance(config, dict)
+                and (
+                    config.get("backtest_mode", False)
+                    or config.get("point_in_time_mode", False)
+                )
+            )
+        )
+        config_fetch = bool(
+            self.fetch_from_api
+            or getattr(getattr(config, "data", None), "fetch_from_api", False)
+            or (isinstance(config, dict) and config.get("data", {}).get("fetch_from_api", False))
+        )
+        if config_backtest and config_fetch:
+            raise ValueError("Point-in-time snapshot cannot fetch live API data")
 
         # Resolve the effective lookback (caller can override provider default).
         effective_lookback = (
