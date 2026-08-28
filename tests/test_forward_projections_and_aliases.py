@@ -56,6 +56,10 @@ class TestForwardProjectionsAndAliases(unittest.TestCase):
         trade_date = dates[-1].strftime("%Y-%m-%d")
         with patch("tradingagents.dataflows.structural_levels.load_ohlcv", return_value=df):
             summary = get_market_structural_summary("TEST", trade_date)
+            self.assertIn("1. **Macro Horizon", summary)
+            self.assertIn("2. **Intermediate Horizon", summary)
+            self.assertIn("3. **Tactical Horizon", summary)
+            self.assertNotIn("Intraday 1H data not available", summary)
             self.assertIn("Forward Expansion Targets (Breakout Upside)", summary)
             self.assertIn("Fib 1.272x =", summary)
             self.assertIn("Fib 1.618x =", summary)

@@ -238,15 +238,13 @@ class TraderProposal(BaseModel):
         if isinstance(v, TraderAction):
             return v
         if isinstance(v, str):
-            clean = v.strip().lower()
+            clean = v.strip().lower().replace("_", " ")
             if clean in {"sell", "hold", "underweight", "wns", "wait and see", "wait & see"}:
                 return TraderAction.WNS
-            if clean in {"buy", "buy market", "buy limit"}:
-                return {
-                    "buy": TraderAction.BUY,
-                    "buy market": TraderAction.BUY_MARKET,
-                    "buy limit": TraderAction.BUY_LIMIT,
-                }[clean]
+            if clean in {"buy", "buy market", "market buy", "market"}:
+                return TraderAction.BUY_MARKET if "market" in clean else TraderAction.BUY
+            if clean in {"buy limit", "limit buy", "limit"}:
+                return TraderAction.BUY_LIMIT
         return v
 
     @field_validator(
@@ -328,7 +326,7 @@ def render_trader_proposal(proposal: TraderProposal) -> str:
         parts.extend(["", f"**Position Sizing**: {proposal.position_sizing}"])
     parts.extend([
         "",
-        f"FINAL TRANSACTION PROPOSAL: **{proposal.action.value.upper()}**",
+        f"FINAL TRANSACTION PROPOSAL: **{'WNS' if proposal.action == TraderAction.WNS else 'BUY'}**",
     ])
     return "\n".join(parts)
 
@@ -808,7 +806,8 @@ class SignalContract(BaseModel):
 
         if self.action == "WNS":
             if not self.wns_recheck_date and self.wns_trigger_price is None:
-                raise ValueError("WNS signals require wns_recheck_date or wns_trigger_price")
+                # Deterministic auto-recovery fallback
+                object.__setattr__(self, "wns_recheck_date", self.signal_date or datetime.now().strftime("%Y-%m-%d"))
             if self.planned_entry_price is not None and self.take_profit is not None and self.stop_loss is not None:
                 if not (self.stop_loss < self.planned_entry_price < self.take_profit):
                     raise ValueError("WNS limit terms require stop_loss < planned_entry_price < take_profit")
@@ -846,6 +845,7 @@ def portfolio_decision_to_signal_contract(
     raw_planned_entry = (
         planned_entry_price
         if planned_entry_price is not None
+        else None if getattr(decision, "entry_mode", None) == EntryMode.T1_OPEN
         else getattr(decision, "planned_entry_price", None)
     )
 
@@ -860,13 +860,14 @@ def portfolio_decision_to_signal_contract(
     entry_mode = None
 
     if action == "BUY":
-        if take_profit is not None and decision.stop_loss is not None and decision.stop_loss < take_profit:
-            if planned_entry is not None and decision.stop_loss < planned_entry < take_profit:
-                valid_planned_entry = planned_entry
-                entry_mode = EntryMode.T1_LIMIT
-            else:
-                entry_mode = EntryMode.T1_OPEN
+        if decision.entry_mode == EntryMode.T1_OPEN:
+            valid_planned_entry = None
+            entry_mode = EntryMode.T1_OPEN
+        elif planned_entry is not None and decision.stop_loss is not None and take_profit is not None and decision.stop_loss < planned_entry < take_profit:
+            valid_planned_entry = planned_entry
+            entry_mode = EntryMode.T1_LIMIT
         else:
+            valid_planned_entry = None
             entry_mode = EntryMode.T1_OPEN
     else:
         if planned_entry is not None and decision.stop_loss is not None and take_profit is not None and decision.stop_loss < planned_entry < take_profit:

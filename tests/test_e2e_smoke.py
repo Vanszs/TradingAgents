@@ -84,7 +84,8 @@ def test_e2e_stock_pipeline_returns_decision(patched_graph):
     """Full NVDA pipeline returns a valid decision with all state fields populated."""
     final_state, decision = patched_graph.propagate("NVDA", "2026-01-15", asset_type="stock")
 
-    assert decision in VALID_DECISIONS
+    dec_action = decision.action if hasattr(decision, "action") else str(decision)
+    assert dec_action in VALID_DECISIONS
     for key in ("market_report", "sentiment_report", "news_report", "fundamentals_report"):
         assert key in final_state
     assert "final_trade_decision" in final_state
@@ -96,7 +97,8 @@ def test_e2e_crypto_pipeline_returns_decision(patched_graph):
     """Full BTC-USD pipeline returns a decision; fundamentals_report is NOT empty."""
     final_state, decision = patched_graph.propagate("BTC-USD", "2026-01-15", asset_type="crypto")
 
-    assert decision in VALID_DECISIONS
+    dec_action = decision.action if hasattr(decision, "action") else str(decision)
+    assert dec_action in VALID_DECISIONS
     # After Phase 0, crypto fundamentals should NOT be skipped
     assert final_state["fundamentals_report"] != ""
 

@@ -33,10 +33,12 @@ def create_research_manager(llm):
 {instrument_context}
 
 **Decision Scale & Mandate (Spot Long-Only)**:
-- **BUY**: Strong conviction in asymmetric long upside. Formulate high-level strategic directional consensus and catalyst timeline.
-- **WNS (Wait and See)**: Zero capital allocated today whenever entry placement or timing cannot be committed immediately. You MUST provide at least one explicit re-evaluation term:
+- **BUY**: Strong conviction in asymmetric long upside:
+  1. Momentum Breakouts & Consolidations in Uptrend targeting Fibonacci Extensions (1.272x / 1.618x) with R:R >= 2:1.
+  2. Pullbacks in Uptrend (above 200 SMA) or confirmed oversold bounces at major support with R:R >= 2:1.
+- **WNS (Wait and See - Mandatory Invalidation)**: Zero capital allocated today. Issue WNS for falling knife breakdowns below 200 SMA/support, extreme overbought exhaustion (RSI > 75) at resistance, or when R:R < 1.8:1. You MUST provide at least one explicit re-evaluation term:
   1. Temporal Gate: "check after date X" (e.g., post-earnings release, macro catalyst, CPI).
-  2. Structural Price Gate: "check again after touch price level Y" (e.g., pullback to 200 SMA demand zone $YYY).
+  2. Structural Price Gate: "check again after touch price level Y" (e.g., reclaim 200 SMA demand zone ).
 
 ### Debate History
 {history if history else 'No debate history available.'}

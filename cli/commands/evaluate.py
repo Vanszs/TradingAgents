@@ -21,7 +21,7 @@ from cli.commands.evaluate_tui import (
 )
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import detect_asset_type
-from tradingagents.agents.schemas import SignalContract
+from tradingagents.agents.schemas import EntryMode, SignalContract
 from tradingagents.backtesting.horizon_evaluator import (
     EvaluationOutcome,
     EvaluationResult,
@@ -112,7 +112,8 @@ def _run_forward_evaluation(
     effective_horizon: int,
     ohlcv_df: pd.DataFrame,
 ):
-    entry_policy = "ASSUMED_AI_ENTRY" if signal.planned_entry_price is not None else "T1_OPEN"
+    is_limit_order = signal.entry_mode == EntryMode.T1_LIMIT and signal.planned_entry_price is not None
+    entry_policy = "ASSUMED_AI_ENTRY" if is_limit_order else "T1_OPEN"
 
     if signal.action == "BUY":
         eval_side = "LONG"
@@ -143,7 +144,7 @@ def _run_forward_evaluation(
         )
         return result, {}
 
-    actual_entry_price = signal.planned_entry_price
+    actual_entry_price = signal.planned_entry_price if is_limit_order else None
     actual_entry_timestamp = signal.signal_timestamp if actual_entry_price is not None else None
 
     result = HorizonEvaluator.evaluate(

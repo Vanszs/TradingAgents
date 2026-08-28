@@ -30,7 +30,11 @@ Mandate: Arbitrate objectively between aggressive upside and conservative risk u
 ### Risk Debate History
 {history if history else 'Opening round: Evaluate market regime, expectancy, and execution staging.'}
 
-Balance the debate: verify 1D Macro + 1H Micro trend alignment, check invalidation geometry, and propose balanced staged limit tranches.""" + get_language_instruction()
+Balance the debate:
+1. Verify Multi-Horizon Daily Structure (Macro 52W/200 SMA -> Intermediate 60D/50 SMA -> Tactical 20D/20 EMA/ATR) trend alignment. If in a sub-200 SMA breakdown without structural support, confirm Falling Knife regime and rule out Long entries (WNS).
+2. For Momentum Breakouts, verify upside expansion capacity via Fibonacci Extensions (1.272x, 1.618x) or 60D High ensuring R:R >= 2:1.
+3. For extreme oversold bounces (RSI < 25), support Buy Market or tight Limit within 0.5x ATR to avoid execution starvation (NO_FILL).
+4. Respect execution hierarchy: if Trader proposed WNS, arbitrate toward WNS ratification.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 

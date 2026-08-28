@@ -1,4 +1,4 @@
-"""Quantitative market price structural levels (1D Macro + 1H Micro Structure)."""
+"""Quantitative market price structural levels (Multi-Horizon Daily Structure)."""
 from __future__ import annotations
 
 import logging
@@ -78,7 +78,7 @@ def compute_structural_levels(
     trade_date: str,
     df_1h: Optional[pd.DataFrame] = None,
 ) -> Dict[str, Any]:
-    """Calculate 1D Macro (52W, 60D, 20D Swings, Fib) + optional 1H Micro Structure."""
+    """Calculate Multi-Horizon Daily Structure (Macro 52W, Intermediate 60D Swings/Fib, Tactical 20D/ATR)."""
     if df is None or df.empty:
         return {}
 
@@ -156,6 +156,7 @@ def compute_structural_levels(
 
     # Forward ATR Volatility Target Channels
     atr_val = atr_14_val or (last_close * 0.02)
+    atr_half_val = round(0.5 * atr_val, 2)
     atr_target_2x = round(last_close + (2.0 * atr_val), 2)
     atr_target_3x = round(last_close + (3.0 * atr_val), 2)
 
@@ -177,6 +178,7 @@ def compute_structural_levels(
         "atr_14": atr_14_val,
         "atr_20": atr_20_val,
         "atr_14_pct": atr_14_pct,
+        "atr_half": atr_half_val,
         "atr_target_2x": atr_target_2x,
         "atr_target_3x": atr_target_3x,
     }
@@ -194,7 +196,7 @@ def get_market_structural_summary(
     trade_date: str,
     df_1h: Optional[pd.DataFrame] = None,
 ) -> str:
-    """Format quantitative structural levels (1D Macro + 1H Micro) into clean prompt text."""
+    """Format quantitative structural levels (Multi-Horizon Daily Structure) into clean prompt text."""
     try:
         df_1d = load_ohlcv(symbol, trade_date)
     except Exception as exc:
@@ -203,27 +205,7 @@ def get_market_structural_summary(
 
     if df_1h is None:
         from .config import get_config, is_point_in_time_mode
-        if not is_point_in_time_mode():
-            # Only query 1h intraday data if trade_date is within Yahoo Finance 730-day window
-            trade_dt = pd.Timestamp(str(trade_date)[:10], tz="UTC")
-            now_dt = pd.Timestamp.now(tz="UTC")
-            if (now_dt - trade_dt).days <= 700:
-                try:
-                    from .y_finance import get_intraday_data
-                    end_dt = pd.Timestamp(f"{str(trade_date)[:10]} 23:59:59", tz="UTC")
-                    start_dt = end_dt - pd.Timedelta(days=10)
-                    df_1h = get_intraday_data(
-                        symbol=symbol,
-                        start=start_dt.isoformat(),
-                        end=end_dt.isoformat(),
-                        interval="1h",
-                        timezone="UTC",
-                    )
-                except Exception:
-                    df_1h = None
-            else:
-                df_1h = None
-        else:
+        if is_point_in_time_mode():
             snap = get_config().get("snapshot_data", {})
             df_1h = snap.get("ohlcv_1h") if isinstance(snap, dict) else None
 
@@ -239,30 +221,30 @@ def get_market_structural_summary(
 
     summary = (
         f"Quantitative Structural Price Levels (as of {levels['trade_date']}):\n"
-        f"1. **Macro Structure (1D Timeframe)**:\n"
-        f"   - Last Close (1D): {levels['last_close']}\n"
+        f"1. **Macro Horizon (52-Week Range & Major Regimes)**:\n"
+        f"   - Last Close: {levels['last_close']}\n"
         f"   - {range_label}: Low = {levels['52_week_low']} | High = {levels['52_week_high']}\n"
+        f"2. **Intermediate Horizon (60D Swings & Fibonacci)**:\n"
         f"   - 60D Swing Range: Low = {levels['60d_swing_low']} | High = {levels['60d_swing_high']}\n"
-        f"   - 20D Swing Range: Low = {levels['20d_swing_low']} | High = {levels['20d_swing_high']}\n"
-        f"   - Key Retracements: Fib 50% = {levels['fib_50_level']} | Fib 61.8% = {levels['fib_618_level']}\n"
+        f"   - Pullback Support Floors (Dips/Consolidations Only - Do NOT bid below market on Breakouts): Fib 50% = {levels['fib_50_level']} | Fib 61.8% = {levels['fib_618_level']}\n"
         f"   - Forward Expansion Targets (Breakout Upside): Fib 1.272x = {levels.get('fib_ext_1272')} | Fib 1.618x = {levels.get('fib_ext_1618')}\n"
+        f"3. **Tactical Horizon (20D Momentum & ATR Volatility)**:\n"
+        f"   - 20D Swing Range: Low = {levels['20d_swing_low']} | High = {levels['20d_swing_high']}\n"
         f"   - Expected Volatility Target Channels: +2x ATR = {levels.get('atr_target_2x')} | +3x ATR = {levels.get('atr_target_3x')}\n"
     )
 
     if levels.get("atr_14") is not None:
         summary += (
-            f"   - Volatility (ATR 14): {levels['atr_14']} ({levels.get('atr_14_pct', 'N/A')}% of price) | ATR 20: {levels.get('atr_20', 'N/A')}\n"
+            f"   - Volatility (ATR 14): {levels['atr_14']} ({levels.get('atr_14_pct', 'N/A')}% of price) | 0.5x ATR Buffer: {levels.get('atr_half', 'N/A')} | ATR 20: {levels.get('atr_20', 'N/A')}\n"
         )
 
     if "micro_1h" in levels:
         m = levels["micro_1h"]
         summary += (
-            f"2. **Micro Structure (1H Timeframe)**:\n"
+            f"4. **Intraday Supplement (1H Micro)**:\n"
             f"   - 1H 24-Bar Swing Range: Low = {m['1h_24bar_swing_low']} | High = {m['1h_24bar_swing_high']}\n"
             f"   - 1H Momentum EMAs: 20 EMA = {m['1h_ema_20']} | 50 EMA = {m['1h_ema_50']}\n"
             f"   - 1H Trend Alignment: {m['1h_trend_bias']}\n"
         )
-    else:
-        summary += "2. **Micro Structure (1H Timeframe)**: Intraday 1H data not available (rely on 1D macro structure).\n"
 
     return summary

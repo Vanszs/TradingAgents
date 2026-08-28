@@ -157,6 +157,17 @@ def snapshot_get_indicators(
 
     from stockstats import wrap
 
+    raw_ind = indicator.strip().lower()
+    alias_map = {
+        "rsi_14": "rsi",
+        "atr_14": "atr_14",
+        "atr_20": "atr_20",
+        "atr": "atr_14",
+        "boll_ub": "boll_ub",
+        "boll_lb": "boll_lb",
+    }
+    indicator = alias_map.get(raw_ind, raw_ind)
+
     best_ind_params = {
         "close_50_sma": "50 SMA: A medium-term trend indicator.",
         "close_200_sma": "200 SMA: A long-term trend benchmark.",
@@ -169,6 +180,8 @@ def snapshot_get_indicators(
         "boll_ub": "Bollinger Upper Band: 2 std dev above middle.",
         "boll_lb": "Bollinger Lower Band: 2 std dev below middle.",
         "atr": "ATR: Averages true range to measure volatility.",
+        "atr_14": "ATR 14: 14-day Average True Range volatility measure.",
+        "atr_20": "ATR 20: 20-day Average True Range volatility measure.",
         "vwma": "VWMA: A moving average weighted by volume.",
         "mfi": "MFI: Money Flow Index momentum indicator.",
     }
@@ -199,10 +212,23 @@ def snapshot_get_indicators(
         return f"No OHLCV data available before {curr_date}."
 
     try:
-        wrapped = wrap(df)
-        wrapped["Date"] = wrapped["Date"].dt.strftime("%Y-%m-%d")
-        # Trigger indicator calculation
-        _ = wrapped[indicator]
+        if indicator in ("atr", "atr_14"):
+            from .stockstats_utils import compute_atr
+            atr_s = compute_atr(df, period=14)
+            wrapped = df.copy()
+            wrapped["Date"] = pd.to_datetime(wrapped["Date"]).dt.strftime("%Y-%m-%d")
+            wrapped[indicator] = atr_s
+        elif indicator == "atr_20":
+            from .stockstats_utils import compute_atr
+            atr_s = compute_atr(df, period=20)
+            wrapped = df.copy()
+            wrapped["Date"] = pd.to_datetime(wrapped["Date"]).dt.strftime("%Y-%m-%d")
+            wrapped[indicator] = atr_s
+        else:
+            wrapped = wrap(df)
+            wrapped["Date"] = wrapped["Date"].dt.strftime("%Y-%m-%d")
+            # Trigger indicator calculation
+            _ = wrapped[indicator]
 
         # Build lookback range
         before = curr_date_dt - timedelta(days=look_back_days)

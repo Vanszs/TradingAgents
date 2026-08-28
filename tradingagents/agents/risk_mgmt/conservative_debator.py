@@ -30,7 +30,10 @@ Mandate: Champion the bear case and protect firm capital. Stress-test the trade 
 ### Risk Debate History
 {history if history else 'Opening round: Stress-test the proposal against downside risks and tail-risk.'}
 
-Attack over-optimistic assumptions, ensure stop-loss sits strictly below structural invalidation, and advocate for defensive sizing or restraint.""" + get_language_instruction()
+**Risk Assessment Policy**:
+- **Falling Knife / Sub-200 SMA Breakdown Veto**: Strictly enforce WNS whenever price breaks below the 200 SMA or major multi-month support floors without structural base or divergence, or if solvency is deteriorating. Zero dip-buying in freefall.
+- **Strict Execution Hierarchy**: If the Trader proposed WNS, validate the prudence of the Trader's gate and recommend ratifying WNS to preserve capital.
+- **Asymmetric Oversold Mean-Reversion**: If the asset is testing a major macro/52W support floor with intact business fundamentals, tight stop-loss (Risk <= 5%), and R:R >= 2.5:1, do NOT issue a blanket WNS veto out of vague downtrend fear. Instead, advocate for defensive position sizing (e.g. 5-10% equity) and strict stop-loss adherence.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 

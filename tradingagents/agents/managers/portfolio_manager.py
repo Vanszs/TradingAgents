@@ -11,12 +11,16 @@ back gracefully to free-text generation.
 from __future__ import annotations
 
 import logging
+import re
 
 import pandas as pd
 
 from tradingagents.agents.schemas import (
+    EntryMode,
     PortfolioDecision,
     PortfolioRating,
+    SignalContract,
+    TraderAction,
     portfolio_decision_to_signal_contract,
     render_pm_decision,
 )
@@ -49,9 +53,27 @@ def create_portfolio_manager(llm):
         research_plan = state.get("investment_plan", "")
         trader_plan = state.get("trader_investment_plan", "")
         trader_proposal = state.get("trader_proposal")
-        planned_entry_price = (
-            trader_proposal.entry_price if trader_proposal is not None and trader_proposal.entry_price is not None else None
-        )
+
+        # Identify if Trader proposed WNS (Rule 1: Strict Execution Hierarchy)
+        trader_is_wns = False
+        if trader_proposal is not None:
+            if getattr(trader_proposal, "action", None) == TraderAction.WNS:
+                trader_is_wns = True
+        elif trader_plan:
+            if re.search(r"FINAL TRANSACTION PROPOSAL:\s*\*\*WNS\*\*|\*\*Action\*\*:\s*WNS|\bAction:\s*WNS\b", str(trader_plan), re.IGNORECASE):
+                trader_is_wns = True
+
+        # Planned entry price and mode resolution
+        planned_entry_price = None
+        resolved_entry_mode = EntryMode.T1_OPEN
+        if trader_proposal is not None:
+            if getattr(trader_proposal, "action", None) == TraderAction.BUY_LIMIT and trader_proposal.entry_price is not None:
+                planned_entry_price = trader_proposal.entry_price
+                resolved_entry_mode = EntryMode.T1_LIMIT
+            elif getattr(trader_proposal, "action", None) in (TraderAction.BUY_MARKET, TraderAction.BUY):
+                resolved_entry_mode = EntryMode.T1_OPEN
+        elif trader_plan and re.search(r"FINAL TRANSACTION PROPOSAL:\s*\*\*BUY LIMIT\*\*|\*\*Action\*\*:\s*Buy Limit|\bAction:\s*Buy Limit\b", str(trader_plan), re.IGNORECASE):
+            resolved_entry_mode = EntryMode.T1_LIMIT
 
         past_context = state.get("past_context", "")
         lessons_line = (
@@ -75,11 +97,24 @@ def create_portfolio_manager(llm):
 ### Risk Committee Debate
 {history if history else 'No risk debate history.'}
 
-**Final Allocation Policy**:
-- **BUY**: Authorize immediate Market Buy or staged Limit Buy. Planned entry, stop loss, and take profit must satisfy R:R >= 2:1.
-- **WNS (Wait and See)**: Zero capital allocated today. You MUST explicitly define:
-  1. `wns_recheck_date`: Specific future date X (YYYY-MM-DD) to re-analyze.
-  2. `wns_trigger_price`: Specific structural price level Y that will wake up the strategy upon touch.
+**Strict Execution Hierarchy Governance**:
+1. **Trader WNS Invariant (Absolute Rule)**: If the Trader Proposal is **WNS**, the Portfolio Manager **CANNOT** override or upgrade it into a BUY. You MUST issue **WNS**. Capital cannot be deployed when the execution trader identifies an unviable entry, falling knife breakdown, or lack of mathematical edge.
+2. **Trader BUY Evaluation**: If the Trader Proposal is **BUY** (Market or Limit), the Portfolio Manager may either:
+   - **Accept BUY**: Authorize execution if the risk committee confirms favorable mathematical expectancy (R:R >= 2:1) and structural asymmetry.
+   - **Downgrade to WNS**: Veto/downgrade to WNS if risk is excessive, solvency is deteriorating, or tail risk is unacceptable.
+
+**Capital Allocation Governance**:
+- **BUY (Market or Limit)**: Authorize ONLY when Trader proposed BUY and there is positive mathematical expectancy:
+  1. **Momentum Breakout & Consolidation in Uptrend**: Reclaiming key dynamic levels or consolidating in an uptrend with targets anchored to Fibonacci Extensions (1.272x, 1.618x) or +3x ATR channels and R:R >= 2:1. Do not veto breakout setups just because price is near a prior high if structural R:R to Fib extension is positive.
+  2. **Bullish Trend Pullback / Dip in Uptrend**: Asset above 200 SMA pulling back to support (Fib 50%/61.8%, 20D swing low) with RSI 30–45 and R:R >= 2:1.
+  3. **Capitulation Reversal**: Extreme oversold at 52W support (RSI < 28 or positive Kronos forecast) and R:R >= 2.5:1 with tight stop loss.
+  *(If Trader proposal sizing exceeds risk guidelines, adjust/scale down position size to 5–10%, do NOT veto mathematically valid trades to WNS solely due to sizing).*
+- **WNS (Wait and See - Strict Invalidation & Falling Knife Gate)**: You MUST issue WNS when:
+  1. Trader proposed WNS (Mandatory Rule 1 Invariant).
+  2. Asset is a True Falling Knife breakdown below 200 SMA / major support with RSI 35–55 without a structural base.
+  3. Overbought exhaustion at resistance where R:R < 1.8:1.
+  4. Natural structural R:R < 1.8:1 or market trend is choppy / indeterminate.
+  When issuing WNS, you MUST define `wns_recheck_date` (catalyst date YYYY-MM-DD) and/or `wns_trigger_price` (structural level).
 
 Output your decision strictly matching the PortfolioDecision schema.{get_language_instruction()}"""
 
@@ -97,8 +132,47 @@ Output your decision strictly matching the PortfolioDecision schema.{get_languag
                 None, llm, prompt, PortfolioDecision, render_pm_decision, "Portfolio Manager"
             )
 
+        # Rule 1 Invariant Enforcement: Downgrade to WNS if Trader proposed WNS
+        if trader_is_wns:
+            if typed_decision is not None and typed_decision.rating == PortfolioRating.BUY:
+                logger.warning(
+                    "Strict Execution Hierarchy Invariant Triggered: Trader proposed WNS for %s on %s. "
+                    "Portfolio Manager cannot override Trader WNS to BUY. Downgrading PM decision to WNS.",
+                    company_name, trade_date,
+                )
+                typed_decision.rating = PortfolioRating.WNS
+                typed_decision.stop_loss = None
+                typed_decision.take_profit = None
+                typed_decision.price_target = None
+                typed_decision.planned_entry_price = None
+                if trader_proposal is not None:
+                    if not typed_decision.wns_recheck_date and trader_proposal.wns_recheck_date:
+                        typed_decision.wns_recheck_date = trader_proposal.wns_recheck_date
+                    if typed_decision.wns_trigger_price is None and trader_proposal.wns_trigger_price is not None:
+                        typed_decision.wns_trigger_price = trader_proposal.wns_trigger_price
+                    if typed_decision.wns_condition_type is None and trader_proposal.wns_condition_type is not None:
+                        typed_decision.wns_condition_type = trader_proposal.wns_condition_type
+                if not typed_decision.wns_recheck_date and typed_decision.wns_trigger_price is None:
+                    try:
+                        typed_decision.wns_recheck_date = (pd.to_datetime(trade_date) + pd.Timedelta(days=14)).strftime("%Y-%m-%d")
+                    except Exception:
+                        typed_decision.wns_recheck_date = trade_date
+                final_trade_decision = render_pm_decision(typed_decision)
+            elif typed_decision is None and final_trade_decision:
+                final_trade_decision = re.sub(
+                    r"(\b\*\*Rating\*\*:\s*|\bRating:\s*)(Buy|Overweight)",
+                    r"\1WNS",
+                    final_trade_decision,
+                    flags=re.IGNORECASE,
+                )
+
         signal_contract = None
         if typed_decision is not None and trade_date:
+            if typed_decision.rating == PortfolioRating.BUY:
+                typed_decision.entry_mode = resolved_entry_mode
+                if resolved_entry_mode == EntryMode.T1_OPEN:
+                    typed_decision.planned_entry_price = None
+
             # Deterministic Python date calculation if missing
             if not typed_decision.next_review_date:
                 days_delta = 7 if typed_decision.rating == PortfolioRating.BUY else 21
@@ -115,20 +189,43 @@ Output your decision strictly matching the PortfolioDecision schema.{get_languag
                     planned_entry_price=planned_entry_price,
                 )
             except Exception as exc:
-                logger.error("Failed to build SignalContract for %s on %s: %s", state.get("company_of_interest"), trade_date, exc)
-                signal_contract = None
+                logger.error("Failed to build SignalContract for %s on %s: %s. Building fallback WNS contract.", state.get("company_of_interest"), trade_date, exc)
+                recheck = (pd.to_datetime(trade_date) + pd.Timedelta(days=14)).strftime("%Y-%m-%d")
+                signal_contract = SignalContract(
+                    ticker=state["company_of_interest"],
+                    signal_date=trade_date,
+                    rating=PortfolioRating.WNS,
+                    action="WNS",
+                    time_horizon_days=20,
+                    confidence=0.7,
+                    wns_recheck_date=recheck,
+                    thesis_summary="Automated fallback WNS contract due to contract conversion recovery.",
+                )
+        elif trade_date:
+            # Failsafe fallback contract when typed_decision was None
+            recheck = (pd.to_datetime(trade_date) + pd.Timedelta(days=14)).strftime("%Y-%m-%d")
+            signal_contract = SignalContract(
+                ticker=state["company_of_interest"],
+                signal_date=trade_date,
+                rating=PortfolioRating.WNS,
+                action="WNS",
+                time_horizon_days=20,
+                confidence=0.7,
+                wns_recheck_date=recheck,
+                thesis_summary="Fallback WNS signal contract from text report recovery.",
+            )
 
         new_risk_debate_state = {
             "judge_decision": final_trade_decision,
-            "history": risk_debate_state["history"],
-            "aggressive_history": risk_debate_state["aggressive_history"],
-            "conservative_history": risk_debate_state["conservative_history"],
-            "neutral_history": risk_debate_state["neutral_history"],
+            "history": risk_debate_state.get("history", ""),
+            "aggressive_history": risk_debate_state.get("aggressive_history", ""),
+            "conservative_history": risk_debate_state.get("conservative_history", ""),
+            "neutral_history": risk_debate_state.get("neutral_history", ""),
             "latest_speaker": "Judge",
-            "current_aggressive_response": risk_debate_state["current_aggressive_response"],
-            "current_conservative_response": risk_debate_state["current_conservative_response"],
-            "current_neutral_response": risk_debate_state["current_neutral_response"],
-            "count": risk_debate_state["count"],
+            "current_aggressive_response": risk_debate_state.get("current_aggressive_response", ""),
+            "current_conservative_response": risk_debate_state.get("current_conservative_response", ""),
+            "current_neutral_response": risk_debate_state.get("current_neutral_response", ""),
+            "count": risk_debate_state.get("count", 0),
         }
 
         return {

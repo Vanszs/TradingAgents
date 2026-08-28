@@ -429,7 +429,12 @@ def _generate_predictor_forecast(
     x_values = x_df[["open", "high", "low", "close"]].copy()
     x_values["volume"] = x_df["volume"] if "volume" in x_df else 0.0
     last_date = x_timestamp.iloc[-1]
-    y_timestamp = pd.Series(pd.bdate_range(last_date + pd.offsets.BDay(1), periods=pred_days))
+    sym_u = symbol.upper().strip()
+    is_crypto = any(sym_u.endswith(sfx) for sfx in ("-USD", "-USDT", "-USDC", "USDT", "USDC", "-BTC", "-ETH"))
+    if is_crypto:
+        y_timestamp = pd.Series(pd.date_range(last_date + pd.Timedelta(days=1), periods=pred_days, freq="D"))
+    else:
+        y_timestamp = pd.Series(pd.bdate_range(last_date + pd.offsets.BDay(1), periods=pred_days))
 
     predicted = predictor.predict(
         df=x_values,

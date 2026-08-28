@@ -116,6 +116,12 @@ def normalize_symbol(raw: str) -> str:
         canonical = f"{s[:3]}-USD"
     elif s[:-3] in _CRYPTO_BASES and s.endswith("USD") and "-" not in s:
         canonical = f"{s[:-3]}-USD"
+    elif (s.endswith("USDT") or s.endswith("USDC")) and "-" not in s:
+        base = s[:-4]
+        if base in _CRYPTO_BASES:
+            canonical = f"{base}-USD"
+        else:
+            canonical = s
     elif len(s) == 6 and s[:3] in _FOREX_CURRENCIES and s[3:] in _FOREX_CURRENCIES:
         canonical = f"{s}=X"
     else:

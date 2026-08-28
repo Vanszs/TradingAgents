@@ -30,7 +30,10 @@ Mandate: Champion the bull case and maximize upside capture on the proposed trad
 ### Risk Debate History
 {history if history else 'Opening round: Present the aggressive case for maximizing upside capture.'}
 
-Deliver an assertive, data-backed defense of the trade, advocate for ambitious targets, and counter downside fears.""" + get_language_instruction()
+**Alpha Capture Defense & Guardrails**:
+- Defend high-asymmetry setups where reward vastly outweighs risk (R:R >= 2.5:1) targeting Fibonacci Extensions (1.272x/1.618x) or 60D High on breakouts.
+- For extreme oversold bounces (RSI < 25-30 at major support) with pristine solvency, advocate immediate capital deployment rather than letting conservative fear miss major cycle turns.
+- **Falling Knife Guardrail**: If the asset has broken down below the 200 SMA or major support without a structural base or bullish divergence, or if Trader proposed WNS due to invalidation, do NOT attempt to force a Long trade into freefall. Respect Trader's execution gate.""" + get_language_instruction()
 
         response = llm.invoke(prompt)
 

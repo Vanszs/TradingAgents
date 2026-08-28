@@ -29,6 +29,14 @@ def get_indicator(
 
     from dateutil.relativedelta import relativedelta
 
+    raw_ind = indicator.strip().lower()
+    alias_map = {
+        "rsi_14": "rsi",
+        "atr_14": "atr",
+        "atr_20": "atr",
+    }
+    indicator = alias_map.get(raw_ind, raw_ind)
+
     supported_indicators = {
         "close_50_sma": ("50 SMA", "close"),
         "close_200_sma": ("200 SMA", "close"),
