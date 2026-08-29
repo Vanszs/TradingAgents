@@ -18,7 +18,11 @@ The Portfolio Manager (`tradingagents/agents/managers/portfolio_manager.py`) act
 
 ---
 
-## 2. Pydantic Output Contract (`SignalContract`)
+## 3. Governance Invariants
+
+1. **Trader WNS Invariant (Absolute Rule)**: If the Trader Proposal is **WNS**, the Portfolio Manager **CANNOT** override or upgrade it into a BUY. Capital cannot be deployed when execution identifies a falling knife breakdown or lack of mathematical edge.
+2. **Decoupled Position Sizing & Signal Validity**: If the Risk Committee flags elevated asset volatility, the Portfolio Manager scales down position allocation (e.g. 5%–10% NAV) rather than vetoing a mathematically valid trade with $R:R \ge 2.0:1$ to WNS.
+3. **Adaptive Sample-Length Handling**: For assets with $< 180$ bars (IPOs), the CIO assesses 20D/60D base structure rather than rejecting setups solely for lack of a 200 SMA.
 
 ```python
 class SignalContract(BaseModel):

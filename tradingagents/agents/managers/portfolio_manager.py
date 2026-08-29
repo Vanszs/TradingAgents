@@ -105,8 +105,8 @@ def create_portfolio_manager(llm):
 
 **Capital Allocation Governance**:
 - **BUY (Market or Limit)**: Authorize ONLY when Trader proposed BUY and there is positive mathematical expectancy:
-  1. **Momentum Breakout & Consolidation in Uptrend**: Reclaiming key dynamic levels or consolidating in an uptrend with targets anchored to Fibonacci Extensions (1.272x, 1.618x) or +3x ATR channels and R:R >= 2:1. Do not veto breakout setups just because price is near a prior high if structural R:R to Fib extension is positive.
-  2. **Bullish Trend Pullback / Dip in Uptrend**: Asset above 200 SMA pulling back to support (Fib 50%/61.8%, 20D swing low) with RSI 30–45 and R:R >= 2:1.
+  1. **Momentum Breakout & Consolidation in Uptrend**: Reclaiming key dynamic levels or consolidating in an uptrend with targets anchored to Fibonacci Extensions (1.272x, 1.618x) or +3x ATR channels and R:R >= 2:1. For assets with < 180 bars (new IPOs), evaluate based on 20D/60D swing base rather than penalizing lack of 200 SMA. Do not veto breakout setups just because price is near a prior high if structural R:R to Fib extension is positive.
+  2. **Bullish Trend Pullback / Dip in Uptrend**: Asset in an uptrend pulling back to support (Fib 50%/61.8%, 20D swing low) with RSI 30–48 and R:R >= 2:1.
   3. **Capitulation Reversal**: Extreme oversold at 52W support (RSI < 28 or positive Kronos forecast) and R:R >= 2.5:1 with tight stop loss.
   *(If Trader proposal sizing exceeds risk guidelines, adjust/scale down position size to 5–10%, do NOT veto mathematically valid trades to WNS solely due to sizing).*
 - **WNS (Wait and See - Strict Invalidation & Falling Knife Gate)**: You MUST issue WNS when:
