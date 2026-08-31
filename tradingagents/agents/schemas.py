@@ -51,7 +51,7 @@ def _parse_optional_iso_date(value: Any, field_name: str) -> Optional[str]:
 
 
 def _parse_coerced_positive_price(v: Any) -> Optional[float]:
-    if v is None:
+    if v is None or isinstance(v, bool):
         return None
     if isinstance(v, str):
         clean = v.strip()

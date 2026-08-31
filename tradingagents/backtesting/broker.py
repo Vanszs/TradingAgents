@@ -15,7 +15,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from .decision_schema import MarginEvent, MarketPoint, OpenClose, OrderSide
+from .decision_schema import (
+    MarginEvent,
+    MarketPoint,
+    OpenClose,
+    OrderSide,
+    Trade as LegacyTrade,
+)
 from .portfolio import Portfolio
 from .position import (
     ExecutionConfig,
@@ -47,7 +53,6 @@ class SimulatedBroker:
         self.filled_orders: list[Order] = []
         self.rejected_orders: list[Order] = []
         self.margin_events: list[MarginEvent] = []
-        self.fills: list[Fill] = []
 
     def add_pending_orders(self, orders: Iterable[Order]) -> None:
         for order in orders:
@@ -153,9 +158,6 @@ class SimulatedBroker:
         spec: Optional[InstrumentSpec] = None,
     ) -> list["Trade"]:
         """Execute a single-leg order with percentage-based fees/slippage."""
-        from .decision_schema import InstrumentSpec
-        from .decision_schema import Trade as LegacyTrade
-
         if order.is_reverse or order.order_type not in {
             OrderType.BUY_TO_OPEN,
             OrderType.SELL_TO_CLOSE,
