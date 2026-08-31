@@ -20,6 +20,8 @@ from .decision_schema import (
     MarketPoint,
     OpenClose,
     OrderSide,
+)
+from .decision_schema import (
     Trade as LegacyTrade,
 )
 from .portfolio import Portfolio
