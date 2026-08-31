@@ -21,18 +21,23 @@ from __future__ import annotations
 import logging
 import math
 import re
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal, Optional
 
+import pandas as pd
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 logger = logging.getLogger(__name__)
 
 
 def _parse_optional_iso_date(value: Any, field_name: str) -> Optional[str]:
-    if value is None or value == "" or str(value).strip().lower() in {"none", "null", "n/a"}:
+    if value is None or value == "" or str(value).strip().lower() in {"none", "null", "n/a", "undefined"}:
         return None
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.strftime("%Y-%m-%d")
+    if hasattr(value, "isoformat") and not isinstance(value, str):
+        return value.isoformat()[:10]
     if not isinstance(value, str):
         raise ValueError(f"{field_name} must use YYYY-MM-DD format")
     clean = value.strip()
@@ -43,6 +48,41 @@ def _parse_optional_iso_date(value: Any, field_name: str) -> Optional[str]:
     except ValueError as exc:
         raise ValueError(f"{field_name} must be a valid calendar date") from exc
     return clean
+
+
+def _parse_coerced_positive_price(v: Any) -> Optional[float]:
+    if v is None:
+        return None
+    if isinstance(v, str):
+        clean = v.strip()
+        if clean.lower() in {"none", "null", "n/a", "", "undefined"}:
+            return None
+        is_pct = "%" in clean
+        dot_count = clean.count(".")
+        if dot_count > 1:
+            clean = clean.replace(".", "")
+        elif dot_count == 1:
+            parts = clean.split(".")
+            after_dot = re.sub(r"[^\d]", "", parts[1])
+            before_dot = re.sub(r"[^\d]", "", parts[0])
+            if len(after_dot) == 3 and ("rp" in clean.lower() or "idr" in clean.lower()):
+                clean = before_dot + after_dot
+        
+        clean = re.sub(r"[^\d.-]", "", clean)
+        if not clean or clean in {"-", ".", "-."}:
+            return None
+        try:
+            val = float(clean)
+            if is_pct and val > 1.0:
+                val /= 100.0
+            v = val
+        except ValueError:
+            return None
+    if isinstance(v, (int, float)):
+        if not math.isfinite(v) or v <= 0:
+            return None
+        return float(v)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -256,20 +296,10 @@ class TraderProposal(BaseModel):
     )
     @classmethod
     def _coerce_positive_price(cls, v):
-        if v is None or (isinstance(v, str) and v.strip().lower() in {"none", "null", "n/a", "", "undefined"}):
-            return None
-        if isinstance(v, str):
-            clean = v.strip()
-            is_pct = "%" in clean
-            clean = re.sub(r"[^\d.-]", "", clean)
-            if not clean:
-                raise ValueError("price must be numeric")
-            v = float(clean)
-            if is_pct and v > 1.0:
-                v /= 100.0
-        if not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0:
+        res = _parse_coerced_positive_price(v)
+        if res is None and v is not None and str(v).strip().lower() not in {"none", "null", "n/a", "", "undefined"}:
             raise ValueError("price must be finite and positive")
-        return float(v)
+        return res
 
     @field_validator("wns_recheck_date", mode="before")
     @classmethod
@@ -413,20 +443,16 @@ class PortfolioDecision(BaseModel):
     wns_trigger_price: Optional[float] = None
 
     @field_validator(
-        "stop_loss",
         "take_profit",
         "price_target",
+        "stop_loss",
         "planned_entry_price",
         "wns_trigger_price",
         mode="before",
     )
     @classmethod
-    def _validate_portfolio_prices(cls, value):
-        if value is None:
-            return None
-        if not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
-            raise ValueError("price must be finite and positive")
-        return float(value)
+    def _coerce_portfolio_prices(cls, v):
+        return _parse_coerced_positive_price(v)
 
     @field_validator("wns_recheck_date", "next_review_date", mode="before")
     @classmethod
@@ -487,50 +513,6 @@ class PortfolioDecision(BaseModel):
     @classmethod
     def _normalize_rating(cls, v: Any) -> Any:
         return normalize_portfolio_rating(v)
-
-    @field_validator(
-        "take_profit",
-        "price_target",
-        "stop_loss",
-        "planned_entry_price",
-        mode="before",
-    )
-    @classmethod
-    def _coerce_optional_prices(cls, v):
-        if isinstance(v, str):
-            clean = v.strip().lower()
-            if clean in ("none", "null", "n/a", "", "undefined"):
-                return None
-            is_pct = "%" in clean
-            num_clean = re.sub(r"[^\d.-]", "", v.strip())
-            if not num_clean:
-                return None
-            try:
-                val = float(num_clean)
-                if is_pct and val > 1.0:
-                    val = val / 100.0
-                v = val
-            except ValueError:
-                return None
-        if isinstance(v, (int, float)):
-            import math
-            if not math.isfinite(v) or v <= 0:
-                return None
-            return float(v)
-        return v
-
-    @field_validator("next_review_date", "wns_recheck_date", mode="before")
-    @classmethod
-    def _validate_next_review_date(cls, v):
-        if v is None or v == "" or str(v).lower() in ("none", "null", "n/a"):
-            return None
-        if not isinstance(v, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", v.strip()):
-            return None
-        try:
-            datetime.strptime(v.strip(), "%Y-%m-%d")
-            return v.strip()
-        except ValueError:
-            return None
 
 
 def render_pm_decision(decision: PortfolioDecision) -> str:

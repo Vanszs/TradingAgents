@@ -35,6 +35,16 @@ def get_indicator(
         "atr_14": "atr",
         "atr_20": "atr",
     }
+    if raw_ind.startswith("atr_"):
+        try:
+            time_period = int(raw_ind.split("_")[1])
+        except (IndexError, ValueError):
+            pass
+    elif raw_ind.startswith("rsi_"):
+        try:
+            time_period = int(raw_ind.split("_")[1])
+        except (IndexError, ValueError):
+            pass
     indicator = alias_map.get(raw_ind, raw_ind)
 
     supported_indicators = {

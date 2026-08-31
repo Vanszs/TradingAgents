@@ -232,7 +232,8 @@ class HorizonEvaluator:
         if effective_time_stop is not None and not 1 <= effective_time_stop <= 252:
             raise ValueError("max_holding_days must be between 1 and 252")
 
-        planned_rr = round((take_profit - entry_price) / (entry_price - stop_loss), 2)
+        risk_denom = entry_price - stop_loss
+        planned_rr = round((take_profit - entry_price) / risk_denom, 2) if risk_denom > 0 else 0.0
         trajectory: list[DailyExcursionBar] = []
         max_mfe = 0.0
         max_mae = 0.0
@@ -291,7 +292,8 @@ class HorizonEvaluator:
             EvaluationOutcome.EXPIRED,
         }
         realized = (exit_price - entry_price) / entry_price if terminal else 0.0
-        realized_rr = round(realized / ((entry_price - stop_loss) / entry_price), 2) if terminal else None
+        risk_pct = (entry_price - stop_loss) / entry_price if entry_price > 0 else 0.0
+        realized_rr = round(realized / risk_pct, 2) if terminal and risk_pct > 0 else 0.0 if terminal else None
         mfe_efficiency = round(realized / max_mfe, 2) if terminal and max_mfe > 0 else 0.0 if terminal else None
         return EvaluationResult(
             ticker=ticker, signal_date=signal_date, entry_date=entry_date,
